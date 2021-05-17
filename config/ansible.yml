@@ -1,0 +1,12 @@
+---
+- hosts: localhost
+  connection: local
+
+  tasks:
+
+    - name: local config template
+      template: src=local.sys.config.j2 dest=local.sys.config
+    - name: qa config template
+      template: src=qa.sys.config.j2 dest=qa.sys.config
+    - name: pro config template
+      template: src=pro.sys.config.j2 dest=pro.sys.config

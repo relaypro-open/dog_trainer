@@ -1,0 +1,17 @@
+%% Vsn auto-managed by relflow utility.
+%% DO NOT CHANGE VSN FIELD MANUALLY!
+{application,dog_trainer,
+             [
+              {vsn, {cmd, "scripts/git_hash.sh"} },
+              {description,"An OTP application"},
+              {registered,[]},
+              {mod,{dog_trainer_app,[]}},
+              {applications,[amqp_client,asn1,cowboy,diffy,gen_smtp,ibrowse,inets,jesse,
+                             kernel,lager,maps_utils,public_key,
+                             rabbit_common,rethink,sasl,ssl,stdlib,thumper,jsx,base16,erlexec,plists,imetrics,
+                             jason,json_xema,nested,poolboy,jsn,observer_cli]},
+              {env,[]},
+              {modules,[]},
+              {maintainers,[]},
+              {licenses,["Apache 2.0"]},
+              {links,[]}]}.

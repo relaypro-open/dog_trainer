@@ -1,0 +1,68 @@
+[
+    {dog_trainer, [
+        {keepalive_alert_seconds, 60}
+        ]},
+    {sync, [
+        {growl, none},
+        {log, [warnings, errors]},
+        {non_descendants, fix},
+        {executable, auto},
+        {whitelisted_modules, []},
+        {excluded_modules, []}
+    ]},
+    {lager, [
+        {handlers, [
+            {lager_console_backend, 
+        	[none,
+        	    {lager_default_formatter, [time, 
+        		" [", severity, "] ", pid, " (", {turbine_id, "non-turbine"}, ") ==> ", message, "\n"]}]},
+            {{lager_file_backend, "error_log"}, [{file, "/var/log/dog_trainer/error.log"}, {level, error}]},
+            {{lager_file_backend, "console_log"}, [{file, "/var/log/dog_trainer/console.log"}, {level, info }]}
+        ]},
+        {crash_log, "/var/log/dog_trainer/crash.log"},
+        {tracefiles, [
+        	    ]},
+        {async_threshold, 10000},
+        {sieve_threshold, 5000},
+        {sieve_window, 100}
+    ]},
+    {thumper, [
+        {substitution_rules, []},
+        {thumper_svrs, [default, publish]},
+        {brokers, [
+            {default, [
+                {rabbitmq_config,
+                    [
+                        {host, "dog-ubuntu-server.lxd"},
+                        {port, 5673},
+                        {api_port, 15672},
+                        {virtual_host, <<"dog">>},
+                        {user, <<"dog_trainer">>},
+                        {password, <<"327faf06-c3f5-11e7-9765-7831c1be5b34">>},
+                        {ssl_options, [{cacertfile, "/opt/dog_trainer/priv/certs/rabbitmq/ca/cacert.pem"},
+                                       {certfile, "/opt/dog_trainer/priv/certs/rabbitmq/client/cert.pem"},
+                                       {keyfile, "/opt/dog_trainer/priv/certs/rabbitmq/client/key.pem"},
+                                       {verify, verify_none},
+                                       {fail_if_no_peer_cert, true}
+                                      ]},
+                         {broker_config,
+                             {thumper_tx,
+                                 ["/opt/dog_trainer/priv/broker.tx"]}}
+                    ]}]},
+            {publish, [{rabbitmq_config, default}]}
+        ]},
+        {queuejournal,
+            [
+                {enabled, true},
+                {dir, "/var/db/dog_trainer/queuejournal"},
+                {memqueue_max, 10000},
+                {check_journal, true}
+            ]
+        }
+    ]},
+    {erlcloud, [
+      {aws_config, [
+          {ec2_host, "ec2.us-east-1.amazonaws.com"}
+      ]}
+    ]}
+].

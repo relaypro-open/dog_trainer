@@ -1,0 +1,52 @@
+---
+- hosts: localhost
+  connection: local
+  roles:
+    - { role: dog_ca_download }
+  
+- hosts: "{{ target }}"
+  serial: 1
+  gather_facts: no
+  ignore_errors: yes
+  pre_tasks:
+    - stat:
+        path: "{{ dog_data_dir }}/pki/private/server.key"
+      register: keyfile
+    - debug: var=keyfile
+  roles:
+    - { role: dog_tls_cert, when: not keyfile.stat.exists}
+
+- hosts: dog_us-east-1
+  name: Gather facts from dog server instances
+  gather_facts: yes
+  ignore_errors: yes
+  tasks: []
+
+- hosts: dog_us-east-2
+  name: Gather facts from dog server instances
+  gather_facts: yes
+  ignore_errors: yes
+  tasks: []
+
+- hosts: dog_us-west-1
+  name: Gather facts from dog server instances
+  gather_facts: yes
+  ignore_errors: yes
+  tasks: []
+
+- hosts: dog_us-west-2
+  name: Gather facts from dog server instances
+  gather_facts: yes
+  ignore_errors: yes
+  tasks: []
+
+- hosts: "{{ target }}"
+  roles:
+    - { role: ips }
+    - { role: dog, dog_server: false }
+
+- hosts: localhost
+  connection: local
+  roles:
+    - { role: dog_ca_teardown }
+  

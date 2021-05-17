@@ -1,0 +1,9 @@
+{ "name": "any",
+    "version": 1,
+    "services": 
+        [ 
+        { "protocol": "tcp", "ports": ["1-65536"]},
+        { "protocol": "udp", "ports": ["1-65536"]},
+        { "protocol": "icmp", "ports": ["1-254"]}
+        ]
+}

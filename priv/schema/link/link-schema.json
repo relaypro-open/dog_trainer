@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "",
+  "type": "object",
+  "properties": {
+    "connection": {
+      "type": "object",
+      "properties": {
+        "api_port": {
+          "type": "number"
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1
+        },
+        "password": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "number"
+        },
+        "ssl_options": {
+          "type": "object",
+          "properties": {
+            "cacertfile": {
+              "type": "string",
+              "minLength": 1
+            },
+            "certfile": {
+              "type": "string",
+              "minLength": 1
+            },
+            "fail_if_no_peer_cert": {
+              "type": "boolean"
+            },
+            "server_name_indication": {
+              "type": "string",
+              "minLength": 1
+            },
+            "verify": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "cacertfile",
+            "certfile",
+            "fail_if_no_peer_cert",
+            "keyfile",
+            "server_name_indication",
+            "verify"
+          ]
+        }
+      },
+      "required": [
+      "api_port",
+      "host",
+      "password",
+      "ssl_options"
+      ]
+    },
+    "connection_type": {
+      "enum": [
+        "thumper"
+      ]
+    },
+    "direction": {
+      "enum": [
+        "bidirectional",
+        "inbound",
+        "outbound"
+      ]
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2
+    },
+    "state": {
+      "enum": [
+        "active",
+        "inactive"
+      ]
+    },
+    "address_handling": {
+      "type": "string",
+      "enum": ["prefix","union"]
+    }
+  },
+  "required": [
+    "connection",
+    "connection_type",
+    "direction",
+    "enabled",
+    "name",
+    "address_handling"
+  ]
+}

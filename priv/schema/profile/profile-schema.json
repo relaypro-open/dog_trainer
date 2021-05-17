@@ -1,0 +1,201 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"description": "",
+	"type": "object",
+	"definitions": {
+		"rule": {
+			"type": "object",
+			"allOf": [
+				{
+					"if": {
+						"properties": {
+							"type": {
+								"const": "BASIC"
+							}
+						}
+					},
+					"then": {
+						"required": [
+							"order",
+							"active",
+							"log",
+							"log_prefix",
+							"group",
+							"group_type",
+							"service",
+							"interface",
+							"action",
+							"comment"
+						]
+					}
+				},
+				{
+					"if": {
+						"properties": {
+							"type": {
+								"const": "CONNLIMIT"
+							}
+						}
+					},
+					"then": {
+						"required": [
+							"order",
+							"active",
+							"log",
+							"log_prefix",
+							"group",
+							"group_type",
+							"service",
+							"interface",
+							"action",
+							"comment",
+							"conn_limit_above"
+						]
+					}
+				},
+				{
+					"if": {
+						"properties": {
+							"type": {
+								"const": "RECENT"
+							}
+						}
+					},
+					"then": {
+						"required": [
+							"order",
+							"active",
+							"log",
+							"log_prefix",
+							"group",
+							"group_type",
+							"service",
+							"interface",
+							"action",
+							"comment",
+							"hit_count",
+							"seconds"
+																															]
+					}
+				}
+			],
+			"properties": {
+				"order": {
+					"type": "number",
+					"minimum": 1
+				},
+				"active": {
+					"type": "boolean"
+				},
+				"states": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"enum": [
+							"NEW",
+							"ESTABLISHED",
+							"RELATED",
+							"INVALID"
+						]
+					}
+				},
+				"log": {
+					"type": "boolean"
+				},
+				"log_prefix": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string",
+					"enum": [
+						"BASIC",
+						"CONNLIMIT",
+						"RECENT"
+					]
+				},
+				"group": {
+					"type": "string",
+					"minLength": 1,
+          "maxLength": 37,
+          "pattern": "^[A-Za-z0-9_.-](.*)$"
+				},
+				"group_type": {
+					"type": "string",
+					"enum": [
+						"ANY",
+						"ROLE",
+						"ZONE"
+					]
+				},
+				"service": {
+					"type": "string",
+					"minLength": 1
+				},
+				"interface": {
+					"type": "string"
+				},
+				"action": {
+					"type": "string",
+					"enum": [
+						"ACCEPT",
+						"DROP",
+						"REJECT"
+					]
+				},
+				"comment": {
+					"type": "string",
+					"minLength": 0
+				},
+				"conn_limit_above": {
+					"type": "number",
+					"minimum": 1
+				},
+				"conn_limit_mask": {
+					"type": "number",
+					"minimum": 1
+				},
+				"seconds": {
+					"type": "number",
+					"minimum": 1
+				},
+				"hit_count": {
+					"type": "number",
+					"minimum": 1
+				},
+				"set_name": {
+					"type": "string"
+				}
+			}
+		}
+	},
+	"properties": {
+		"name": {
+			"type": "string",
+			"minLength": 1
+		},
+		"rules": {
+			"type": "object",
+			"properties": {
+				"inbound": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/rule"
+					}
+				},
+				"outbound": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/rule"
+					}
+				}
+			},
+			"required": [
+				"inbound",
+				"outbound"
+			]
+		}
+	},
+	"required": [
+		"name"
+		]
+}

@@ -1,0 +1,98 @@
+#!/bin/bash
+
+export ERL_MAX_ETS_TABLES=8192
+
+APPNAME="dog_trainer"
+HOST=`/bin/hostname -s`
+ERL=`which erl`
+DOG_HOME=/opt/dog_trainer
+AWK=`which awk`
+SED=`which sed`
+PF=`which printf`
+
+ERL_VER=`$ERL +V 2>&1 | $AWK '{print $6}' | $SED "s/$($PF '\r')//"`
+
+ERL_LIBS=${ERL_LIBS}:${DOG_HOME}:${DOG_HOME}/deps
+
+export ERL_LIBS=${ERL_LIBS}
+
+ENV_VARS="ERL_MAX_ETS_TABLES 4096"
+export ERL_FULLSWEEP_AFTER=0
+mkdir /tmp/dog_trainer/
+
+start() {
+   echo "Starting dog_trainer"
+   NODE="dog_trainer@${HOST}"
+   $ERL 128 +P 4194304 +A 128 \
+       -noinput -detached  \
+       -boot $DOG_HOME/priv/dog_trainer_${ERL_VER} \
+       -env $ENV_VARS \
+       -sname $NODE -config ${DOG_HOME}/config/sys.config -s dog_trainer_app
+}
+
+console() {
+   echo "Starting dog_trainer in console mode - version ${ERL_VER} ${ERL}"
+   NODE="dog_trainer@${HOST}"
+   ${ERL} 128 +P 4194304 +A 128 \
+       -boot ${DOG_HOME}/priv/dog_trainer_${ERL_VER} \
+       -env ${ENV_VARS} \
+       -sname ${NODE} -config ${DOG_HOME}/config/sys.config -s dog_trainer_app
+}
+
+stop() {
+    echo "Stopping dog_trainer"
+    NODE="dog_trainerctl@${HOST}"
+    $ERL -noshell \
+       -boot ${DOG_HOME}/priv/dog_trainer_${ERL_VER} \
+       -sname $NODE -s dog_trainer_app stop
+}
+
+debug() {
+    NODE="dog_trainerdebug@$HOST"
+    $ERL -sname ${NODE} \
+        -boot $DOG_HOME/priv/dog_trainer_${ERL_VER} \
+        -remsh dog_trainer@${HOST}
+}
+
+rebar_eunit() {
+   NODE="dog_trainer@${HOST}"
+   ERL_FLAGS="-config config/sys.config -sname $NODE" ./rebar3 eunit
+}
+
+rebar_shell() {
+   NODE="dog_trainer@${HOST}"
+   ERL_FLAGS="-config config/sys.config -sname $NODE" ./rebar3 shell
+}
+
+rebar_auto() {
+   NODE="dog_trainer@${HOST}"
+   ERL_FLAGS="-config config/sys.config -sname $NODE" ./rebar3 auto	
+}
+
+usage() {
+    echo "dog_trainer.sh start"
+    echo "dog_trainer.sh stop"
+    echo "dog_trainer.sh debug"
+    echo "dog_trainer.sh console"
+    echo "dog_trainer.sh rebar_eunit"
+    echo "dog_trainer.sh rebar_shell"
+    echo "dog_trainer.sh rebar_auto"
+    echo -n
+    exit 1
+}
+
+if [ $# -eq 1 ] 
+then
+    case $1 in
+        "start" ) start ;;
+        "stop"  ) stop ;;
+        "debug" ) debug ;;
+        "console" ) console ;;
+        "rebar_eunit" ) rebar_eunit ;;
+        "rebar_shell" ) rebar_shell ;;
+        "rebar_auto" ) rebar_auto ;;
+        *       ) echo "Invalid command: $1"; usage ;; 
+    esac
+else 
+    usage
+fi

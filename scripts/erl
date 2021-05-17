@@ -1,0 +1,2 @@
+#!/bin/bash
+./_build/default/rel/dog/erts-10.0/bin/erl -sname test -boot /opt/dog/_build/default/rel/dog/bin/start_clean

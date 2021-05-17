@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "",
+  "type": "object",
+  "properties": {
+    "active": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "retired"
+      ]
+    },
+    "environment": {
+      "type": "string",
+      "minLength": 1
+    },
+    "hostkey": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^((?!localhost).)*$"
+    },
+    "location": {
+      "type": "string",
+      "minLength": 1
+    },
+    "group": {
+      "minLength": 0,
+      "maxLength": 28
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "active",
+    "environment",
+    "group",
+    "hostkey",
+    "location",
+    "name"
+  ]
+}

@@ -1,0 +1,7 @@
+{ "name": "any",
+    "version": 1,
+    "services": 
+        [ 
+        { "protocol": "tcp", "ports": ["1-65536"]}
+        ]
+}

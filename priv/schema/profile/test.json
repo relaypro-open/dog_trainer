@@ -1,0 +1,81 @@
+{ "name": "test",
+  "version": "1.0",
+  "rules":
+  { "inbound":
+    [
+      {  "order": 1, 
+         "active": true,
+         "states": [],
+         "log": false,
+         "log_prefix": "",
+         "type": "BASIC",
+         "group": "office",
+         "group_type": "ZONE",
+         "service": "ssh",
+         "interface": "any",
+         "action": "ACCEPT",
+         "environments": [],
+         "comment": "ssh"
+      },
+      {  "order": 2, 
+         "active": true,
+         "states": [],
+         "log": false,
+         "log_prefix": "",
+         "type": "BASIC",
+         "group": "test",
+         "group_type": "ROLE",
+         "service": "test",
+         "interface": "all",
+         "action": "ACCEPT",
+         "environments": [],
+         "comment": "proxy api"
+      },
+      {  "order": 3, 
+         "active": true,
+         "states": [],
+         "log": false,
+         "log_prefix": "",
+         "type": "BASIC",
+         "group": "any",
+         "group_type": "ANY",
+         "service": "any",
+         "interface": "any",
+         "action": "DROP",
+         "environments": [],
+         "comment": ""
+      }
+    ],
+  "outbound": 
+  [
+    {  "order": 1, 
+       "active": true,
+       "states": [],
+       "log": false,
+       "log_prefix": "",
+       "type": "BASIC",
+       "group": "any",
+       "group_type": "ANY",
+       "service": "ssh",
+       "interface": "all",
+       "action": "ACCEPT",
+       "environments": [],
+       "comment": ""
+    },
+    {  "order": 2, 
+       "active": true,
+       "states": [],
+       "log": false,
+       "log_prefix": "",
+       "type": "BASIC",
+       "group": "any",
+       "group_type": "ANY",
+       "service": "any",
+       "interface": "all",
+       "action": "ACCEPT",
+       "environments": [],
+       "comment": ""
+    }
+  ]
+  }
+}
