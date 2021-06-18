@@ -3,102 +3,10 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-BASEURL=http://localhost:7070/api
-#TESTDIR=/home/dgulino/dog_trainer/test
-TESTDIR=/opt/dog_trainer/test
-
 PASS=0
 FAIL=0
-
-function log() {
-  echo "${BASH_LINENO[-2]}: $@"
-}
-
-post() {
-  DATA=$1
-  URL=$2
-  R=$(curl -d @"${DATA}" -w "\n%{http_code}\n" --silent --show-error  -H "Content-Type: application/json" -X POST "${URL}")
-  BODY=$(echo ${R} | awk '{print $1}')
-  RESPONSE_CODE=$(echo ${R} | awk '{print $2}')
-  if [ "$RESPONSE_CODE" != "500" ]
-  then
-    let PASS=${PASS}+1
-    >&2 log "pass: POST ${URL}"
-    #echo ${BODY}
-    #echo ${RESPONSE_CODE}
-    ID=$(echo ${BODY} | jq -r .id)
-    echo ${ID}
-  else
-    let FAIL=${FAIL}+1
-    >&2 log "fail: ${R} != ${RESPONSE_CODE}, POST ${URL}"
-  fi
-}
-
-c_data() {
-  METHOD=$1
-  DATA=$2
-  URL=$3
-  CODE=$4
-  R=$(curl -d @"${DATA}" -H "Content-Type: application/json" -X ${METHOD} --write-out %{http_code} --silent --output /dev/null --show-error ${URL})
-    
-  if [ "$R" == "$CODE" ];then let PASS=${PASS}+1;log "pass: ${METHOD} ${URL}";else let FAIL=${FAIL}+1;log "fail: ${R} != ${CODE}, ${METHOD} ${URL}";fi
-}
-
-putc() {
-  DATA=$1
-  URL=$2
-  CODE=$3
-  c_data PUT ${DATA} ${URL} ${CODE}
-}
-
-put() {
-  DATA=$1
-  URL=$2
-  putc ${DATA} ${URL} 303
-}
-
-c_nodata() {
-  METHOD=$1
-  URL=$2
-  CODE=$3
-  R=$(curl --write-out %{http_code} --silent --output /dev/null --show-error -H "Content-Type: application/json" -X ${METHOD} ${URL})
-  if [ "$R" == "$CODE" ];then let PASS=${PASS}+1;log "pass: ${METHOD} ${URL}";else let FAIL=${FAIL}+1;log "fail: ${R} != ${CODE}, ${METHOD} ${URL}";fi
-}
-
-getc() {
-  URL=$1
-  CODE=$2
-  c_nodata GET ${URL} ${CODE}
-}
-
-get() {
-  URL=$1
-  getc ${URL} 200
-}
-
-delete() {
-  URL=$1
-  c_nodata DELETE ${URL} 204
-}
-
-get_id() {
-  URL=$1
-  R=$(curl -w "\n%{http_code}\n" --silent --show-error  -H "Content-Type: application/json" -X GET "${URL}")
-  BODY=$(echo ${R} | awk '{print $1}')
-  RESPONSE_CODE=$(echo ${R} | awk '{print $2}')
-  if [ "$RESPONSE_CODE" != "500" ]
-  then
-    let PASS=${PASS}+1
-    >&2 log "pass: POST ${URL}"
-    #echo ${BODY}
-    #echo ${RESPONSE_CODE}
-    ID=$(echo ${BODY} | jq -r .id)
-    echo ${ID}
-  else
-    let FAIL=${FAIL}+1
-    >&2 log "fail: ${R} != ${RESPONSE_CODE}, GET ${URL}"
-  fi
-}
+source test_lib.sh
+TESTDIR=/opt/dog_trainer/test
 
 echo "dog_trainer basic API test"
 #echo -e "{\n\"name\":\"office\",\n\"ipv4_addresses\":[\"1.1.1.1\",\"2.2.2.2\"],\n\"ipv6_addresses\":[]\n}" > ${TESTDIR}/zone.json
