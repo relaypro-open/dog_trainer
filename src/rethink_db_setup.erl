@@ -33,7 +33,8 @@ setup_rethinkdb(Hostname,Port,Username,Password) ->
                maps:from_list(lists:map(fun(FieldName) ->
                              {FieldName,ensure_index_exists(Connection,?DB_NAME,TableName,FieldName)}
                          end, FieldsList))
-           end, table_schema()).
+           end, table_schema()),
+  create_initial_global_hash(Connection).
 
 -spec get_connection(Hostname :: string(),Port :: integer(), Username :: string(),Password :: string()) -> pid().
 get_connection(Hostname,Port,Username,Password) ->
@@ -109,4 +110,17 @@ create_index(Connection,TableName,FieldName) ->
                                    reql:db(X, dog),
                                    reql:table(X, TableName),
                                    reql:index_create(X, FieldName)
+                               end).
+
+
+create_initial_global_hash(Connection) ->
+  Record = #{
+    <<"hash">> => <<"initial">>,
+    <<"name">> => <<"global">>
+   }, 
+  {ok,_Map} = gen_rethink:run(Connection,
+                               fun(X) ->
+                                   reql:db(X, dog),
+                                   reql:table(X, <<"ipset">>),
+                                   reql:insert(X, Record)
                                end).
