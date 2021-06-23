@@ -10,7 +10,7 @@
         {polling_interval_seconds, 60},
         {keepalive_alert_seconds, 1800},
         {hashcheck_alert_seconds, 180},
-        {rethinkdb_host, "dog-db-dev.nocell.io"},
+        {rethinkdb_host, "localhost"},
         {rethinkdb_port, 28015},
         {rethinkdb_username, "admin"},
         {rethinkdb_password, ""},
