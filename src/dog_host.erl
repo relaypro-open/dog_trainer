@@ -405,6 +405,7 @@ send_retirement_alert(Hosts) ->
     gen_smtp_client:send({From, Addresses, Email},
                        [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
                         {tls,always}]),
+    imetrics:add_m(alert,"retirement"),
     ok.
 
 -spec send_keepalive_alert(Hosts :: list()) -> ok.
@@ -424,6 +425,7 @@ send_keepalive_alert(Hosts) ->
     gen_smtp_client:send({From, Addresses, Email},
                        [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
                         {tls,always}]),
+    imetrics:add_m(alert,"keepalive_fail"),
     ok.
 
 -spec send_keepalive_recover(Hosts :: list()) -> ok.
@@ -443,6 +445,7 @@ send_keepalive_recover(Hosts) ->
     gen_smtp_client:send({From, Addresses, Email},
                        [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
                         {tls,always}]),
+    imetrics:add_m(alert,"keepalive_recover"),
     ok.
 
 -spec send_hash_alert(Hosts :: list(), FailedChecks :: map()) -> ok.
@@ -461,6 +464,7 @@ send_hash_alert(Hosts,FailedChecks) ->
     gen_smtp_client:send({From, Addresses, Email},
                        [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
                         {tls,always}]),
+    imetrics:add_m(alert,"hash_fail"),
     ok.
 
 -spec send_hash_recover(Hosts :: list(), FailedChecks :: map()) -> ok.
@@ -479,6 +483,7 @@ send_hash_recover(Hosts,_FailedChecks) ->
     gen_smtp_client:send({From, Addresses, Email},
                        [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
                         {tls,always}]),
+    imetrics:add_m(alert,"hash_recover"),
     ok.
 
 -spec init() -> any(). 
