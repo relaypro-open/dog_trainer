@@ -493,11 +493,11 @@ is_active(Id) ->
 
 -spec delete(GroupId :: binary()) -> (ok | {error, Error :: iolist()}).
 delete(Id) ->
-    case is_active(Id) of
-        true ->
-            lager:info("profile ~p not deleted, is active~n",[Id]),
-            {error,#{<<"error">> => <<"active profile">>}};
-        false ->
+    case where_used(Id) of
+        {ok,Groups} ->
+            lager:info("profile ~p not deleted, associated with group: ~p~n",[Id,Groups]),
+            {error,#{<<"associated with group">> => Groups}};
+        {ok,[]} ->
             {ok, R} = dog_rethink:run(
                                       fun(X) -> 
                                               reql:db(X, dog),
