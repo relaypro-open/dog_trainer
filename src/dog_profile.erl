@@ -510,7 +510,7 @@ delete(Id) ->
             end;
         {ok,Groups} ->
             lager:info("profile ~p not deleted, associated with group: ~p~n",[Id,Groups]),
-            {error,#{<<"associated with group">> => Groups}}
+            {error,#{<<"errors">> => #{<<"associated with group">> => Groups}}}
     end.
 
 -spec rule_to_text(Rule :: map(), Keys :: list()) -> iolist().

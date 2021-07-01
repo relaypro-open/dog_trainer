@@ -147,7 +147,7 @@ delete(Id) ->
             end;
         {true,Profiles} ->
             lager:info("service ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
-            {error,#{<<"in active profile">> => Profiles}}
+            {error,#{<<"errors">> => #{<<"in active profile">> => Profiles}}}
      end.
 
 -spec update(Id :: binary(), UpdateMap :: map()) -> {atom(), any()} .

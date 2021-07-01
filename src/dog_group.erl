@@ -660,7 +660,7 @@ delete(Id) ->
             end;
         {true,Profiles} ->
             lager:info("group ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
-            {error,#{<<"in active profile">> => Profiles}}
+            {error,#{<<"errors">> => #{<<"in active profile">> => Profiles}}}
      end.
 
 - spec get_internal_ips_by_name( iolist() ) -> {'ok', list()} | {'error', atom()}.
