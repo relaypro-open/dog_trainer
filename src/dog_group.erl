@@ -357,9 +357,9 @@ get_profile_by_id(GroupId) ->
                         {error,notfound}
   end.
 
--spec in_active_profile(Id :: binary()) -> {false, []} | {true, Profiles :: map() }.
+-spec in_active_profile(Id :: binary()) -> {false, []} | {true, Profiles :: list() }.
 in_active_profile(Id) ->
-    Used = dog_zone:where_used(Id),
+    {ok, Used} = dog_zone:where_used(Id),
     {ok, Active} = dog_profile:all_active(),
     Profiles = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(Active))),
     case Profiles of

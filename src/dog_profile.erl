@@ -491,12 +491,9 @@ is_active(Id) ->
     {ok, Active} = dog_profile:all_active(),
     lists:member(Id,Active).
 
--spec delete(GroupId :: binary()) -> (ok | {error, Error :: iolist()}).
+-spec delete(GroupId :: binary()) -> (ok | {error, Error :: map()}).
 delete(Id) ->
     case where_used(Id) of
-        {ok,Groups} ->
-            lager:info("profile ~p not deleted, associated with group: ~p~n",[Id,Groups]),
-            {error,#{<<"associated with group">> => Groups}};
         {ok,[]} ->
             {ok, R} = dog_rethink:run(
                                       fun(X) -> 
@@ -510,7 +507,10 @@ delete(Id) ->
             case Deleted of
                 1 -> ok;
                 _ -> {error,#{<<"error">> => <<"error">>}}
-            end
+            end;
+        {ok,Groups} ->
+            lager:info("profile ~p not deleted, associated with group: ~p~n",[Id,Groups]),
+            {error,#{<<"associated with group">> => Groups}}
     end.
 
 -spec rule_to_text(Rule :: map(), Keys :: list()) -> iolist().

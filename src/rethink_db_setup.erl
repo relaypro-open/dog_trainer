@@ -24,7 +24,7 @@ table_schema() ->
     <<"zone">> => [<<"name">>]
    }.
 
--spec setup_rethinkdb(Hostname :: string(), Port :: integer(), Username :: string(), Password :: string()) -> map().
+-spec setup_rethinkdb(Hostname :: string(), Port :: integer(), Username :: string(), Password :: string()) -> {ok, map()}.
 setup_rethinkdb(Hostname,Port,Username,Password) ->
   Connection = get_connection(Hostname,Port,Username,Password),
   ensure_db_exists(Connection,?DB_NAME),
@@ -104,21 +104,22 @@ ensure_index_exists(Connection,DatabaseName,TableName,FieldName) ->
       change
   end.
 
+-spec create_index(Connection :: pid(), TableName :: string(), FieldName :: string() ) -> {ok, map()}.
 create_index(Connection,TableName,FieldName) ->
-  {ok,_Map} = gen_rethink:run(Connection,
+  gen_rethink:run(Connection,
                                fun(X) ->
                                    reql:db(X, dog),
                                    reql:table(X, TableName),
                                    reql:index_create(X, FieldName)
                                end).
 
-
+-spec create_initial_global_hash(Connection :: pid()) -> {ok, map()}.
 create_initial_global_hash(Connection) ->
   Record = #{
     <<"hash">> => <<"initial">>,
     <<"name">> => <<"global">>
    }, 
-  {ok,_Map} = gen_rethink:run(Connection,
+  gen_rethink:run(Connection,
                                fun(X) ->
                                    reql:db(X, dog),
                                    reql:table(X, <<"ipset">>),

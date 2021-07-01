@@ -266,7 +266,7 @@ update(Id, UpdateMap) ->
             {false, Error}
     end.
 
--spec delete(ZoneId :: binary()) -> (ok | error).
+-spec delete(ZoneId :: binary()) -> ok | {error, Error :: map()}.
 delete(Id) ->
     case in_active_profile(Id) of
         {false,[]} -> 
@@ -342,19 +342,19 @@ where_used_outbound(ZoneId) ->
     lager:info("ProfileIds: ~p~n",[R]),
     {ok, ProfileIds}.
 
--spec where_used(ZoneId :: binary() ) -> ProfileIds :: list().
+-spec where_used(ZoneId :: binary() ) -> {ok, ProfileIds :: list()}.
 where_used(ZoneId) ->
     {ok, Inbound} = where_used_inbound(ZoneId),
     {ok, Outbound} = where_used_outbound(ZoneId),
-    lists:flatten(sets:to_list(sets:from_list([Inbound,Outbound]))).
+    {ok, lists:flatten(sets:to_list(sets:from_list([Inbound,Outbound])))}.
 
 -spec get_schema() -> binary().
 get_schema() ->
   dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec in_active_profile(Id :: binary()) -> {false, []} | {true, Profiles :: map() }.
+-spec in_active_profile(Id :: binary()) -> {false, []} | {true, Profiles :: list() }.
 in_active_profile(Id) ->
-    Used = where_used(Id),
+    {ok, Used} = where_used(Id),
     {ok, Active} = dog_profile:all_active(),
     Profiles = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(Active))),
     case Profiles of

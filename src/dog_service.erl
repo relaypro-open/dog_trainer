@@ -128,7 +128,7 @@ parse_ports(Ports) ->
     M = lists:map(fun(Port) ->  [case X of $- -> $:; _ -> X end || X <- binary_to_list(Port) ] end, Ports),
     M.
 
--spec delete(Id :: binary()) -> (ok | {error,Error :: iolist()}).
+-spec delete(ZoneId :: binary()) -> ok | {error, Error :: map()}.
 delete(Id) ->
     case in_active_profile(Id) of
         {false,[]} -> 
@@ -296,7 +296,7 @@ any_service() ->
 get_schema() ->
   dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec in_active_profile(Id :: binary()) -> {false, []} | {true, Profiles :: map() }.
+-spec in_active_profile(Id :: binary()) -> {false, []} | {true, Profiles :: list() }.
 in_active_profile(Id) ->
     {ok, Used} = where_used(Id),
     {ok, Active} = dog_profile:all_active(),
