@@ -133,8 +133,8 @@ resource_exists(Req@0, State@0) ->
                 {ok, Object} -> 
                     State@1 = maps:put(<<"object">>,Object,State@0),
                     {true, Req@0, State@1};
-                {error, _Error} ->
-                    {false, Req@0, State@0}
+                {error, Error} ->
+                    {false, Error, Req@0, State@0}
             end;
         _ ->
             {true, Req@0, State@0}
@@ -458,8 +458,12 @@ delete_resource(Req@0, State) ->
     Path = cowboy_req:path(Req@0),
     Handler = get_handler_module(Path),
     Id = cowboy_req:binding(id, Req@0),
-    Result = case Handler:delete(Id) of
-                 ok -> true;
-                 _ -> false
-             end,
-    {Result, Req@0, State}.
+    {Result,Req@1} = case Handler:delete(Id) of
+                 ok -> 
+                             {true,Req@0};
+                 {error, Error} -> 
+                                ErrorReq = cowboy_req:set_resp_body(jsx:encode(Error),Req@0),
+
+                             {false,ErrorReq}
+              end,
+    {Result, Req@1, State}.

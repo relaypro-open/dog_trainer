@@ -31,6 +31,7 @@
          get_all_ipv4s_by_name/1,
          get_all_ipv6s_by_id/1,
          get_all_ipv6s_by_name/1,
+         in_active_profile/1,
          init/0
         ]).
 
@@ -267,22 +268,25 @@ update(Id, UpdateMap) ->
 
 -spec delete(ZoneId :: binary()) -> (ok | error).
 delete(Id) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-    {ok, R} = dog_rethink:run(
-                              fun(X) -> 
-                                      reql:db(X, dog),
-                                      reql:table(X, ?TYPE_TABLE),
-                                      reql:get(X, Id),
-                                      reql:delete(X)
-                              end),
-    lager:debug("delete R: ~p~n",[R]),
-    Deleted = maps:get(<<"deleted">>, R),
-    case Deleted of
-        1 -> ok;
-        _ -> error
-    end.
-
+    case in_active_profile(Id) of
+        {false,[]} -> 
+            {ok, R} = dog_rethink:run(
+                                      fun(X) -> 
+                                              reql:db(X, dog),
+                                              reql:table(X, ?TYPE_TABLE),
+                                              reql:get(X, Id),
+                                              reql:delete(X)
+                                      end),
+            lager:debug("delete R: ~p~n",[R]),
+            Deleted = maps:get(<<"deleted">>, R),
+            case Deleted of
+                1 -> ok;
+                _ -> {error,#{<<"error">> => <<"error">>}}
+            end;
+        {true,Profiles} ->
+            lager:info("zone ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
+            {error,#{<<"in active profile">> => Profiles}}
+     end.
 
 %r.db('dog').table('profile')
 %  .filter(function(group) {
@@ -291,10 +295,10 @@ delete(Id) ->
 %          .filter(function(group) {
 %                return group("rules")("outbound")("group").contains("058e7bc0-1ea1-463d-babf-73a39110edad")}).getField("id")).distinct()
 %                .setIntersection(r.db("dog").table("group")("profile_id").distinct())
+
+%TODO: differentiate between ROLE(Group) and ZONE(Zone) groups. 
 -spec where_used_inbound(ZoneId :: binary()) -> {ok, ProfileIds :: list()}.
 where_used_inbound(ZoneId) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
                                 fun(X) -> 
                                     reql:db(X, dog),
@@ -315,10 +319,9 @@ where_used_inbound(ZoneId) ->
     lager:info("ProfileIds: ~p~n",[R]),
     {ok, ProfileIds}.
 
+%TODO: differentiate between ROLE(Group) and ZONE(Zone) groups. 
 -spec where_used_outbound(ZoneId :: binary()) -> {ok, ProfileIds :: list()}.
 where_used_outbound(ZoneId) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
                                 fun(X) -> 
                                     reql:db(X, dog),
@@ -348,3 +351,15 @@ where_used(ZoneId) ->
 -spec get_schema() -> binary().
 get_schema() ->
   dog_json_schema:get_file(?VALIDATION_TYPE).
+
+-spec in_active_profile(Id :: binary()) -> {false, []} | {true, Profiles :: map() }.
+in_active_profile(Id) ->
+    Used = where_used(Id),
+    {ok, Active} = dog_profile:all_active(),
+    Profiles = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(Active))),
+    case Profiles of
+        [] -> 
+            {false,[]};
+        _ -> 
+            {true, Profiles}
+    end.

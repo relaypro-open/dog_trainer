@@ -73,6 +73,7 @@
         get_profile_by_name/1,
         group_name_exists/1,
         init/0,
+        in_active_profile/1,
         merge/1,
         merge_join/2,
         replace_profile_by_profile_id/2,
@@ -356,6 +357,18 @@ get_profile_by_id(GroupId) ->
                         {error,notfound}
   end.
 
+-spec in_active_profile(Id :: binary()) -> {false, []} | {true, Profiles :: map() }.
+in_active_profile(Id) ->
+    Used = dog_zone:where_used(Id),
+    {ok, Active} = dog_profile:all_active(),
+    Profiles = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(Active))),
+    case Profiles of
+        [] -> 
+            {false,[]};
+        _ -> 
+            {true, Profiles}
+    end.
+
 all_active() -> 
     ExternalIpv4s = all_external_ipv4s(),
     ExternalIpv6s = all_external_ipv6s(), 
@@ -628,23 +641,27 @@ update(Id, UpdateMap) ->
             {false, Error}
     end.
 
--spec delete(GroupId :: binary()) -> (ok | error).
+-spec delete(GroupId :: binary()) -> (ok | {error, Error :: iolist()}).
 delete(Id) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-    {ok, R} = dog_rethink:run(
-                              fun(X) ->
-                                      reql:db(X, dog),
-                                      reql:table(X, ?TYPE_TABLE),
-                                      reql:get(X, Id),
-                                      reql:delete(X)
-                              end),
-    lager:debug("delete_group R: ~p~n",[R]),
-    Deleted = maps:get(<<"deleted">>, R),
-    case Deleted of
-        1 -> ok;
-        _ -> error
-    end.
+    case in_active_profile(Id) of
+        {false,[]} -> 
+            {ok, R} = dog_rethink:run(
+                                      fun(X) -> 
+                                              reql:db(X, dog),
+                                              reql:table(X, ?TYPE_TABLE),
+                                              reql:get(X, Id),
+                                              reql:delete(X)
+                                      end),
+            lager:debug("delete R: ~p~n",[R]),
+            Deleted = maps:get(<<"deleted">>, R),
+            case Deleted of
+                1 -> ok;
+                _ -> {error,#{<<"error">> => <<"error">>}}
+            end;
+        {true,Profiles} ->
+            lager:info("group ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
+            {error,#{<<"in active profile">> => Profiles}}
+     end.
 
 - spec get_internal_ips_by_name( iolist() ) -> {'ok', list()} | {'error', atom()}.
 get_internal_ips_by_name(GroupName) ->

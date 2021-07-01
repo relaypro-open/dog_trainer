@@ -22,6 +22,7 @@
         get_all_in_profile/1,
         get_id_by_name/1,
         get_name_by_id/1,
+        in_active_profile/1,
         init/0, 
         where_used/1,
         any_service/0
@@ -127,23 +128,27 @@ parse_ports(Ports) ->
     M = lists:map(fun(Port) ->  [case X of $- -> $:; _ -> X end || X <- binary_to_list(Port) ] end, Ports),
     M.
 
--spec delete(Id :: binary()) -> (ok | error).
+-spec delete(Id :: binary()) -> (ok | {error,Error :: iolist()}).
 delete(Id) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-    {ok, R} = dog_rethink:run(
-                              fun(X) -> 
-                                      reql:db(X, dog),
-                                      reql:table(X, ?TYPE_TABLE),
-                                      reql:get(X, Id),
-                                      reql:delete(X)
-                              end),
-    lager:debug("delete R: ~p~n",[R]),
-    Deleted = maps:get(<<"deleted">>, R),
-    case Deleted of
-        1 -> ok;
-        _ -> error
-    end.
+    case in_active_profile(Id) of
+        {false,[]} -> 
+            {ok, R} = dog_rethink:run(
+                                      fun(X) -> 
+                                              reql:db(X, dog),
+                                              reql:table(X, ?TYPE_TABLE),
+                                              reql:get(X, Id),
+                                              reql:delete(X)
+                                      end),
+            lager:debug("delete R: ~p~n",[R]),
+            Deleted = maps:get(<<"deleted">>, R),
+            case Deleted of
+                1 -> ok;
+                _ -> {error,#{<<"error">> => <<"error">>}}
+            end;
+        {true,Profiles} ->
+            lager:info("service ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
+            {error,#{<<"in active profile">> => Profiles}}
+     end.
 
 -spec update(Id :: binary(), UpdateMap :: map()) -> {atom(), any()} .
 update(Id, UpdateMap) ->
@@ -290,3 +295,15 @@ any_service() ->
 -spec get_schema() -> binary().
 get_schema() ->
   dog_json_schema:get_file(?VALIDATION_TYPE).
+
+-spec in_active_profile(Id :: binary()) -> {false, []} | {true, Profiles :: map() }.
+in_active_profile(Id) ->
+    {ok, Used} = where_used(Id),
+    {ok, Active} = dog_profile:all_active(),
+    Profiles = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(Active))),
+    case Profiles of
+        [] -> 
+            {false,[]};
+        _ -> 
+            {true, Profiles}
+    end.
