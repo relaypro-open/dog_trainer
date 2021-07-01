@@ -99,21 +99,32 @@ get_by_id(Id) ->
       {ok, Link}
   end.
 
--spec delete(Id :: binary()) -> (ok | error).
+-spec is_enabled(Id :: binary()) -> boolean().
+is_enabled(Id) ->
+    {ok, Link} = get_by_id(Id),
+    maps:get(<<"enabled">>,Link).
+
+-spec delete(Id :: binary()) -> ok | {error, Error :: map() }.
 delete(Id) ->
-    delete_related_external(Id),
-    {ok, R} = dog_rethink:run(
-                              fun(X) -> 
-                                      reql:db(X, dog),
-                                      reql:table(X, ?TYPE_TABLE),
-                                      reql:get(X, Id),
-                                      reql:delete(X)
-                              end),
-    lager:debug("delete R: ~p~n",[R]),
-    Deleted = maps:get(<<"deleted">>, R),
-    case Deleted of
-        1 -> ok;
-        _ -> error
+    case is_enabled(Id) of
+        true ->
+            lager:info("link ~p not deleted, is enabled~n",[Id]),
+            {error,#{<<"errors">> => #{<<"unable to delete">> => <<"link enabled">>}}};
+        false -> 
+            delete_related_external(Id),
+            {ok, R} = dog_rethink:run(
+                                      fun(X) -> 
+                                              reql:db(X, dog),
+                                              reql:table(X, ?TYPE_TABLE),
+                                              reql:get(X, Id),
+                                              reql:delete(X)
+                                      end),
+            lager:debug("delete R: ~p~n",[R]),
+            Deleted = maps:get(<<"deleted">>, R),
+            case Deleted of
+                1 -> ok;
+                _ -> {error,#{<<"error">> => <<"error">>}}
+            end
     end.
 
 -spec delete_related_external(Id :: binary()) -> (ok | error).
