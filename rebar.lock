@@ -89,7 +89,7 @@
  {<<"ssl_verify_fun">>,{pkg,<<"ssl_verify_fun">>,<<"1.1.5">>},0},
  {<<"thumper">>,
   {git,"https://github.com/relaypro-open/thumper.git",
-       {ref,"127b6bc87700eb4eb33456cce69e52f9d057895f"}},
+       {ref,"a4e626ea69c5693f30440f64b285d318fc04986d"}},
   0},
  {<<"unicode_util_compat">>,{pkg,<<"unicode_util_compat">>,<<"0.5.0">>},0},
  {<<"xema">>,{pkg,<<"xema">>,<<"0.11.0">>},1},
