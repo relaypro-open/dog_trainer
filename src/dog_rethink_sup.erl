@@ -35,13 +35,13 @@ init([]) ->
     DbSetupResult = rethink_db_setup:setup_rethinkdb(RethinkdbHost,RethinkdbPort,RethinkdbUser,RethinkdbPassword),
     lager:info("RethinkDB setup: ~p~n",[DbSetupResult]),
     ConnectOptions = #{host => RethinkdbHost,
-			port => RethinkdbPort,
-			timeout => RethinkTimeoutMs,
-                        user => binary:list_to_bin(RethinkdbUser),
-                        password => binary:list_to_bin(RethinkdbPassword)},
+                       port => RethinkdbPort,
+                       timeout => RethinkTimeoutMs,
+                       user => binary:list_to_bin(RethinkdbUser),
+                       password => binary:list_to_bin(RethinkdbPassword)},
     {ok, {#{strategy => one_for_one, intensity => 100, period => 3600}, 
-       [#{id => {gen_rethink_session, dog_session},
-  start => {gen_rethink_session, start_link, [dog_session, ConnectOptions]}}]}}.
+          [#{id => {gen_rethink_session, dog_session},
+             start => {gen_rethink_session, start_link, [dog_session, ConnectOptions]}}]}}.
 
 %%====================================================================
 %% Internal functions============================================

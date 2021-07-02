@@ -38,7 +38,11 @@ setup_rethinkdb(Hostname,Port,Username,Password) ->
 
 -spec get_connection(Hostname :: string(),Port :: integer(), Username :: string(),Password :: string()) -> pid().
 get_connection(Hostname,Port,Username,Password) ->
-  {ok, Connection} = gen_rethink:connect(#{host => Hostname, port => Port, id => Username, password => Password }),
+  {ok, Connection} = gen_rethink:connect(
+                       #{host => Hostname, 
+                         port => Port, 
+                         user => binary:list_to_bin(Username), 
+                         password => binary:list_to_bin(Password) }),
   Connection.
  
 -spec ensure_db_exists(Connection :: pid(),DatabaseName :: binary()) -> ok | change.
