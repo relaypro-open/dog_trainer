@@ -82,9 +82,8 @@ value() ->
 -spec init(_) -> {'ok', []}.
 init(_Args) ->
     LastAgentUpdateCheckIntervalSeconds = application:get_env(dog_trainer,last_agent_update_check_interval_seconds,60),
-    MaxIntervalSinceLastAgentUpdate = application:get_env(dog_trainer,max_interval_since_last_agent_update,2),
     _PublishTimer = erlang:send_after(LastAgentUpdateCheckIntervalSeconds * 1000, self(), periodic_reset),
-    State = MaxIntervalSinceLastAgentUpdate,
+    State = 0,
     {ok, State}.
 
 %%----------------------------------------------------------------------
