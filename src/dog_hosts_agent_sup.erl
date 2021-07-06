@@ -40,13 +40,7 @@ init([]) ->
             permanent,
             5000,
             worker,
-            [dog_keepalive_agent]},
-        {hash_agent,
-            {dog_hash_agent, start_link, []},
-            permanent,
-            5000,
-            worker,
-            [dog_hash_agent]}
+            [dog_keepalive_agent]}
        ]}}.
 
 %%====================================================================

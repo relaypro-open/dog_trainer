@@ -31,17 +31,19 @@
          get_id_by_hostkey/1,
          get_all_ips/0,
          get_all_active_interfaces/0,
-         hash_check/0,
+         get_state_by_id/1,
+         hash_check/1,
          hash_logic/5,
          init/0, 
          keepalive_age_check/0,
          keepalive_age_check/1,
          keepalive_check/0,
          keepalive_check/1,
+         new_state/3,
          retirement_check/0,
          retirement_check/1,
-         send_hash_alert/2,
-         send_hash_recover/2,
+         send_hash_alert/1,
+         send_hash_recover/1,
          send_keepalive_alert/1,
          send_keepalive_recover/1,
          send_retirement_alert/1,
@@ -54,11 +56,9 @@
          set_inactive_by_name/1,
          set_retired_by_name/1,
          set_retired_by_id/1,
-         update_active/2,
-         update_hash_alert_sent/2,
-         update_keepalive_alert_sent/2,
-         all_hash_alerted/0,
-         all_keepalive_alerted/0
+         set_state_by_id/2,
+         state_event/2,
+         update_active/2
         ]).
 
 -export([
@@ -165,30 +165,6 @@ host_hashes() ->
     Hosts = [ A || A <- R1],
     Hosts.
 
--spec update_hash_pass(SuccesHosts :: list()) -> ok.
-update_hash_pass(SuccessHosts) ->
-    lager:info("SuccessHosts: ~p",[SuccessHosts]),
-    lists:foreach(fun(HostName) ->
-        %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-        %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-        {ok, R} = dog_rethink:run(
-              fun(X) ->
-                      reql:db(X, dog),
-                      reql:table(X, ?TYPE_TABLE),
-                      reql:get_all(X, HostName, #{index => <<"name">>}),
-                      reql:update(X, #{<<"hash_timestamp">> => dog_time:timestamp()} )
-                  end),
-        lager:debug("update R: ~p~n", [R]),
-        Replaced = maps:get(<<"replaced">>, R),
-        Unchanged = maps:get(<<"unchanged">>, R),
-        case {Replaced,Unchanged} of
-            {1,0} -> {true,HostName};
-            {0,1} -> {false,HostName};
-            _ -> {false, no_updated}
-        end
-    end, SuccessHosts),
-    ok.
-
 lmm(ListOfMaps, Key) ->
     list_of_maps_to_map(ListOfMaps, Key, #{}).
 
@@ -221,48 +197,49 @@ rekey_map_of_maps(Iterator,NewKey,OldKeysNewKey,MapAcc) ->
     NewIterator = maps:next(ThisIterator),
     rekey_map_of_maps(NewIterator,NewKey,OldKeysNewKey,MapAcc@1).
     
-
--spec hash_check() -> {ok, map(), map()}.
-hash_check() ->
-    {ok, GroupsMap} = group_hashes(),
-    Hosts = host_hashes(),
+-spec hash_check(HostId :: binary() ) -> {pass, map()}  | {fail, map()}.
+hash_check(HostId) ->
+    {ok, Host} = get_by_id(HostId),
+    HostName = maps:get(<<"name">>,Host),
+    GroupName = maps:get(<<"group">>,Host),
+    {ok, Group} = dog_group:get_by_name(GroupName),
     TrainerIpsetHash = dog_ipset:read_hash(),
-    HostChecks = lists:map(fun(Host) ->
-                Group = maps:get(<<"group">>,Host),
-                Hostname = maps:get(<<"name">>,Host),
-                HostHash4Ipsets = maps:get(<<"hash4_ipsets">>,Host),
-                HostHash6Ipsets = maps:get(<<"hash6_ipsets">>,Host),
-                HostHash4Iptables = maps:get(<<"hash4_iptables">>,Host),
-                HostHash6Iptables = maps:get(<<"hash6_iptables">>,Host),
-                HostIpsetHash = maps:get(<<"ipset_hash">>,Host),
-                GroupHash4Ipsets =  maps:get(<<"hash4_ipsets">>,maps:get(Group,GroupsMap)),
-                GroupHash6Ipsets =  maps:get(<<"hash6_ipsets">>,maps:get(Group,GroupsMap)),
-                GroupHash4Iptables =  maps:get(<<"hash4_iptables">>,maps:get(Group,GroupsMap)),
-                GroupHash6Iptables =  maps:get(<<"hash6_iptables">>,maps:get(Group,GroupsMap)),
-                Match4IpsetsCheck = (HostHash4Ipsets == GroupHash4Ipsets),
-                Match6IpsetsCheck = (HostHash6Ipsets == GroupHash6Ipsets),
-                Match4IptablesCheck = (HostHash4Iptables == GroupHash4Iptables),
-                Match6IptablesCheck = (HostHash6Iptables == GroupHash6Iptables),
-                MatchIpsetHashCheck = (HostIpsetHash == TrainerIpsetHash),
-                #{<<"name">> => Hostname, 
-                 <<"hash4_ipsets">> => Match4IpsetsCheck,
-                 <<"hash6_ipsets">> => Match6IpsetsCheck, 
-                 <<"hash4_iptables">> => Match4IptablesCheck,
-                 <<"hash6_iptables">> => Match6IptablesCheck,
-                 <<"ipset_hash">> => MatchIpsetHashCheck
-                 }
-              end, Hosts),
-    {SuccessChecksList,FailedChecksList} = check_hashes(HostChecks),
-    SuccessHosts = [maps:get(<<"name">>,Check) || Check <- SuccessChecksList],
-    _FailedHosts = [maps:get(<<"name">>,Check) || Check <- FailedChecksList],
-    SuccessChecks = lmm(SuccessChecksList,<<"name">>),
-    FailedChecks = lmm(FailedChecksList,<<"name">>),
-    send_hash_metrics(FailedChecks),
-    lager:debug("SuccessChecks: ~p",[SuccessChecks]),
-    lager:debug("FailedChecks: ~p",[FailedChecks]),
-    update_hash_pass(SuccessHosts),
-    {ok, SuccessChecks, FailedChecks}.
-
+    HostHash4Ipsets = maps:get(<<"hash4_ipsets">>,Host),
+    HostHash6Ipsets = maps:get(<<"hash6_ipsets">>,Host),
+    HostHash4Iptables = maps:get(<<"hash4_iptables">>,Host),
+    HostHash6Iptables = maps:get(<<"hash6_iptables">>,Host),
+    HostIpsetHash = maps:get(<<"ipset_hash">>,Host),
+    LastHostHash4Ipsets = maps:get(<<"last_hash4_ipsets">>,Host,HostHash4Ipsets),
+    LastHostHash6Ipsets = maps:get(<<"last_hash6_ipsets">>,Host,HostHash6Ipsets), 
+    LastHostHash4Iptables = maps:get(<<"last_hash4_iptables">>,Host,HostHash4Iptables), 
+    LastHostHash6Iptables = maps:get(<<"last_hash6_iptables">>,Host,HostHash6Iptables),
+    LastHostIpsetHash = maps:get(<<"last_ipset_hash">>,Host,HostIpsetHash),
+    GroupHash4Ipsets =  maps:get(<<"hash4_ipsets">>,Group),
+    GroupHash6Ipsets =  maps:get(<<"hash6_ipsets">>,Group),
+    GroupHash4Iptables =  maps:get(<<"hash4_iptables">>,Group),
+    GroupHash6Iptables =  maps:get(<<"hash6_iptables">>,Group),
+    Match4IpsetsCheck = (HostHash4Ipsets == GroupHash4Ipsets) or (HostHash4Ipsets == LastHostHash4Ipsets),
+    Match6IpsetsCheck = (HostHash6Ipsets == GroupHash6Ipsets) or (HostHash6Ipsets == LastHostHash6Ipsets),
+    Match4IptablesCheck = (HostHash4Iptables == GroupHash4Iptables) or (HostHash4Iptables == LastHostHash4Iptables),
+    Match6IptablesCheck = (HostHash6Iptables == GroupHash6Iptables) or (HostHash6Iptables == LastHostHash6Iptables),
+    MatchIpsetHashCheck = (HostIpsetHash == TrainerIpsetHash) or (HostIpsetHash == LastHostIpsetHash),
+    AllHashPass = hash_logic(Match4IpsetsCheck,Match6IpsetsCheck,Match4IptablesCheck,Match6IptablesCheck,MatchIpsetHashCheck),
+    HashStatus = #{<<"name">> => HostName, 
+      <<"id">> => HostId,
+     <<"hash4_ipsets">> => Match4IpsetsCheck,
+     <<"hash6_ipsets">> => Match6IpsetsCheck, 
+     <<"hash4_iptables">> => Match4IptablesCheck,
+     <<"hash6_iptables">> => Match6IptablesCheck,
+     <<"ipset_hash">> => MatchIpsetHashCheck
+     },
+    case AllHashPass of
+        true ->
+            update_last_hashes(HostId,HostHash4Ipsets, HostHash6Ipsets, HostHash4Iptables, HostHash6Iptables,HostIpsetHash),
+            {pass, HashStatus};
+        false ->
+            {fail, HashStatus}
+    end.
+%    LastHostHash4Ipsets, LastHostHash6Ipsets, LastHostHash4Iptables, LastHostHash6Iptables, LastHostIpsetHash
 send_hash_metrics(FailedChecks) ->
     MetricNames = [<<"hash4_iptables">>,<<"hash6_iptables">>,<<"hash4_ipsets">>,<<"hash6_ipsets">>,<<"ipset_hash">>],
     Metrics = lists:map(fun(MetricName) ->
@@ -270,6 +247,29 @@ send_hash_metrics(FailedChecks) ->
         {MetricName, MetricNumber} end, MetricNames),    
     imetrics:set_gauge(<<"hash_failures">>,Metrics),
     ok.
+
+-spec update_last_hashes(Id :: binary(),HostHash4Ipsets :: binary(), HostHash6Ipsets :: binary(), HostHash4Iptables :: binary(), HostHash6Iptables :: binary(),HostIpsetHash :: binary()) -> {true,binary()} | {false,binary()} | {false, no_updated}.
+update_last_hashes(Id, HostHash4Ipsets, HostHash6Ipsets, HostHash4Iptables, HostHash6Iptables, HostIpsetHash) ->
+    {ok, R} = dog_rethink:run(
+          fun(X) -> 
+                  reql:db(X, dog),
+                  reql:table(X, ?TYPE_TABLE),
+                  reql:get(X, Id),
+                  reql:update(X,#{
+                                  <<"last_hash4_ipsets">> => HostHash4Ipsets,
+                                  <<"last_hash6_ipsets">> => HostHash6Ipsets, 
+                                  <<"last_hash4_iptables">> => HostHash4Iptables,
+                                  <<"last_hash6_iptables">> => HostHash6Iptables,
+                                  <<"last_ipset_hash">> => HostIpsetHash 
+                                 })
+          end),
+    Replaced = maps:get(<<"replaced">>, R),
+    Unchanged = maps:get(<<"unchanged">>, R),
+    case {Replaced,Unchanged} of
+        {1,0} -> {true,Id};
+        {0,1} -> {false,Id};
+        _ -> {false, no_updated}
+    end.
 
 -spec hash_age_check() -> {ok, Unalive :: list()}.
 hash_age_check() ->
@@ -334,38 +334,6 @@ keepalive_age_check(TimeCutoff) ->
     lager:info("OldAgents: ~p",[OldAgents]),
     {ok, OldAgents}.
 
--spec all_keepalive_alerted() -> [binary()].
-all_keepalive_alerted() ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-    {ok, R} = dog_rethink:run(
-        fun(X) ->
-            reql:db(X, dog),
-            reql:table(X, ?TYPE_TABLE),
-            reql:filter(X,#{<<"keepalive_alert_sent">> => true}),
-            reql:get_field(X,<<"name">>)
-        end),
-    {ok, ResultTime} = rethink_cursor:all(R),
-    lager:info("ResultTime: ~p",[ResultTime]),
-    R1 = lists:flatten(ResultTime),
-    R1.
-
--spec all_hash_alerted() -> [binary()].
-all_hash_alerted() ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-    {ok, R} = dog_rethink:run(
-        fun(X) ->
-            reql:db(X, dog),
-            reql:table(X, ?TYPE_TABLE),
-            reql:filter(X,#{<<"hash_alert_sent">> => true}),
-            reql:get_field(X,<<"name">>)
-        end),
-    {ok, ResultTime} = rethink_cursor:all(R),
-    lager:info("ResultTime: ~p",[ResultTime]),
-    R1 = lists:flatten(ResultTime),
-    R1.
-
 -spec check_hashes(HostChecks :: list()) -> {list(), list()}.
 check_hashes(HostChecks) ->
     lager:info("HostChecks: ~p",[HostChecks]),
@@ -388,19 +356,22 @@ hash_logic(HashCheck4Ipsets, HashCheck6Ipsets, HashCheck4Iptables, HashCheck6Ipt
             HashCheck4Ipsets and HashCheck4Iptables and HashCheckIpset
     end.
 
--spec send_retirement_alert(Hosts :: list()) -> ok.
-send_retirement_alert(Hosts) ->
-    lager:info("Retirement alert sent: ~p",[Hosts]),
-    HostStrings = [ binary:bin_to_list(H) || H <- Hosts],
+-spec send_retirement_alert(Id :: binary()) -> ok.
+send_retirement_alert(Id) ->
+    lager:error("Id: ~p", [Id]),
+    {ok, Host} = get_by_id(Id),
+    HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
+    HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
+    lager:info("Retirement alert sent: ~p, ~p",[HostName, HostKey]),
     {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
     {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
     {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
-    Subject = io_lib:format("Dog Agent Retired: ~p",[HostStrings]),
+    Subject = io_lib:format("Dog Agent Retired: ~p",[HostName]),
     {ok,From} = application:get_env(dog_trainer,smtp_from),
     {ok,Addresses} = application:get_env(dog_trainer,smtp_to),
     To = string:join(Addresses,","),
     KeepAliveAlertSeconds = application:get_env(dog_trainer,retirement_alert_seconds,86400),
-    Body = io_lib:format("Hosts that haven't communicated in last ~p seconds: ~p", [KeepAliveAlertSeconds,HostStrings]),
+    Body = io_lib:format("Hosts that haven't communicated in last ~p seconds: ~nHostName: ~p~nHostKey: ~p~n", [KeepAliveAlertSeconds,HostName,HostKey]),
     Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s",[Subject,From,To,Body]),
     gen_smtp_client:send({From, Addresses, Email},
                        [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
@@ -408,19 +379,22 @@ send_retirement_alert(Hosts) ->
     imetrics:add_m(alert,"retirement"),
     ok.
 
--spec send_keepalive_alert(Hosts :: list()) -> ok.
-send_keepalive_alert(Hosts) ->
-    lager:info("Keepalive alert sent: ~p",[Hosts]),
-    HostStrings = [ binary:bin_to_list(H) || H <- Hosts],
+-spec send_keepalive_alert(Id :: binary()) -> ok.
+send_keepalive_alert(Id) ->
+    lager:error("Id: ~p", [Id]),
+    {ok, Host} = get_by_id(Id),
+    HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
+    HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
+    lager:info("Keepalive disconnect alert sent: ~p, ~p",[HostName, HostKey]),
     {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
     {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
     {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
-    Subject = io_lib:format("Dog Not Checked In: ~p",[HostStrings]),
+    Subject = io_lib:format("Dog Agents Disconnected: ~p",[HostName]),
     {ok,From} = application:get_env(dog_trainer,smtp_from),
     {ok,Addresses} = application:get_env(dog_trainer,smtp_to),
     To = string:join(Addresses,","),
     {ok, KeepAliveAlertSeconds} = application:get_env(dog_trainer,keepalive_alert_seconds),
-    Body = io_lib:format("Hosts that haven't communicated in last ~p seconds: ~p", [KeepAliveAlertSeconds,HostStrings]),
+    Body = io_lib:format("Hosts that haven't communicated in last ~p seconds: ~nHostName: ~p~nHostKey: ~p~n", [KeepAliveAlertSeconds,HostName, HostKey]),
     Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s",[Subject,From,To,Body]),
     gen_smtp_client:send({From, Addresses, Email},
                        [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
@@ -428,19 +402,22 @@ send_keepalive_alert(Hosts) ->
     imetrics:add_m(alert,"keepalive_fail"),
     ok.
 
--spec send_keepalive_recover(Hosts :: list()) -> ok.
-send_keepalive_recover(Hosts) ->
-    lager:info("Keepalive recover alert sent: ~p",[Hosts]),
-    HostStrings = [ binary:bin_to_list(H) || H <- Hosts],
+-spec send_keepalive_recover(Id :: binary()) -> ok.
+send_keepalive_recover(Id) ->
+    lager:error("Id: ~p", [Id]),
+    {ok, Host} = get_by_id(Id),
+    HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
+    HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
+    lager:info("Keepalive recover alert sent: ~p, ~p",[HostName, HostKey]),
     {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
     {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
     {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
-    Subject = io_lib:format("Dog Agents Reconnected: ~p",[HostStrings]),
+    Subject = io_lib:format("Dog Agents Reconnected: ~p",[HostName]),
     {ok,From} = application:get_env(dog_trainer,smtp_from),
     {ok,Addresses} = application:get_env(dog_trainer,smtp_to),
     To = string:join(Addresses,","),
     {ok, KeepAliveAlertSeconds} = application:get_env(dog_trainer,keepalive_alert_seconds),
-    Body = io_lib:format("Hosts reconnected in last ~p seconds: ~p", [KeepAliveAlertSeconds,HostStrings]),
+    Body = io_lib:format("Host reconnected in last ~p seconds: ~nHostName: ~s~nHostKey: ~s~n", [KeepAliveAlertSeconds,HostName,HostKey]),
     Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s",[Subject,From,To,Body]),
     gen_smtp_client:send({From, Addresses, Email},
                        [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
@@ -448,18 +425,20 @@ send_keepalive_recover(Hosts) ->
     imetrics:add_m(alert,"keepalive_recover"),
     ok.
 
--spec send_hash_alert(Hosts :: list(), FailedChecks :: map()) -> ok.
-send_hash_alert(Hosts,FailedChecks) ->
-    HostStrings = [ binary:bin_to_list(H) || H <- Hosts],
-    lager:info("Hash alert sent: ~p",[HostStrings]),
+-spec send_hash_alert(Id :: binary() ) -> ok.
+send_hash_alert(Id) ->
+    {ok, Host} = get_by_id(Id),
+    HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
+    HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
+    lager:info("Hash alert sent: ~p",[Host]),
     {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
     {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
     {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
-    Subject = io_lib:format("Dog Locally Modified On: ~p",[HostStrings]),
+    Subject = io_lib:format("Dog Locally Modified On: ~s",[HostName]),
     {ok,From} = application:get_env(dog_trainer,smtp_from),
     {ok,Addresses} = application:get_env(dog_trainer,smtp_to),
     To = string:join(Addresses,","),
-    Body = io_lib:format("Host's iptables and/or ipsets modified outside of dog: ~p\r\n", [FailedChecks]),
+    Body = io_lib:format("Host's iptables and/or ipsets modified outside of dog~nHostName: ~s~nHostKey: ~s~n",[HostName, HostKey]),
     Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s",[Subject,From,To,Body]),
     gen_smtp_client:send({From, Addresses, Email},
                        [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
@@ -467,18 +446,20 @@ send_hash_alert(Hosts,FailedChecks) ->
     imetrics:add_m(alert,"hash_fail"),
     ok.
 
--spec send_hash_recover(Hosts :: list(), FailedChecks :: map()) -> ok.
-send_hash_recover(Hosts,_FailedChecks) ->
-    HostStrings = [ binary:bin_to_list(H) || H <- Hosts],
-    lager:info("Hash recover alert sent: ~p",[HostStrings]),
+-spec send_hash_recover(Id :: binary() ) -> ok.
+send_hash_recover(Id) ->
+    {ok, Host} = get_by_id(Id),
+    HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
+    HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
+    lager:info("Hash alert sent: ~p",[Host]),
     {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
     {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
     {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
-    Subject = io_lib:format("Dog Back In Control On: ~p",[HostStrings]),
+    Subject = io_lib:format("Dog Back In Control On: ~s",[HostName]),
     {ok,From} = application:get_env(dog_trainer,smtp_from),
     {ok,Addresses} = application:get_env(dog_trainer,smtp_to),
     To = string:join(Addresses,","),
-    Body = io_lib:format("Host's iptables and/or ipsets back in sync with dog: ~p\r\n", [Hosts]),
+    Body = io_lib:format("Host's iptables and/or ipsets back in sync with dog: ~nHostName: ~s~nHostKey: ~s~n", [HostName,HostKey]),
     Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s",[Subject,From,To,Body]),
     gen_smtp_client:send({From, Addresses, Email},
                        [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
@@ -686,51 +667,9 @@ delete(Id) ->
         _ -> error
     end.
 
--spec update_keepalive_alert_sent(Name :: binary(), State :: boolean() ) -> { true, iolist() } | {false, no_updated}.
-update_keepalive_alert_sent(Name, State) ->
-    lager:info("Setting keepalive_alert_sent: ~p, ~p",[Name,State]),
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-    {ok, R} = dog_rethink:run(
-          fun(X) -> 
-                  reql:db(X, dog),
-                  reql:table(X, ?TYPE_TABLE),
-                  reql:get_all(X, Name, #{index => <<"name">>}),
-                  reql:update(X,#{<<"keepalive_alert_sent">> => State})
-          end),
-    Replaced = maps:get(<<"replaced">>, R),
-    Unchanged = maps:get(<<"unchanged">>, R),
-    case {Replaced,Unchanged} of
-        {1,0} -> {true,Name};
-        {0,1} -> {false,Name};
-        _ -> {false, no_updated}
-    end.
-
--spec update_hash_alert_sent(Name :: binary(), State :: boolean() ) -> { true, iolist() } | {false, no_updated}.
-update_hash_alert_sent(Name, State) ->
-    lager:info("Setting hash_alert_sent: ~p, ~p",[Name,State]),
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-    {ok, R} = dog_rethink:run(
-          fun(X) -> 
-                  reql:db(X, dog),
-                  reql:table(X, ?TYPE_TABLE),
-                  reql:get_all(X, Name, #{index => <<"name">>}),
-                  reql:update(X,#{<<"hash_alert_sent">> => State})
-          end),
-    Replaced = maps:get(<<"replaced">>, R),
-    Unchanged = maps:get(<<"unchanged">>, R),
-    case {Replaced,Unchanged} of
-        {1,0} -> {true,Name};
-        {0,1} -> {false,Name};
-        _ -> {false, no_updated}
-    end.
-
 -spec update_active(Id :: binary(), ActiveState :: binary() ) -> { true, binary() } | {false, no_updated}.
 update_active(Id, ActiveState) ->
-    lager:info("Setting agent active state: ~p, ~p",[Id,ActiveState]),
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
+    lager:debug("Setting agent active state: ~p, ~p",[Id,ActiveState]),
     {ok, R} = dog_rethink:run(
           fun(X) -> 
                   reql:db(X, dog),
@@ -746,6 +685,62 @@ update_active(Id, ActiveState) ->
         _ -> {false, no_updated}
     end.
 
+-spec get_state_by_id(Id :: binary()) -> {'error','notfound'} | {'ok',_}.
+get_state_by_id(Id) ->
+    case get_document_by_id(Id) of
+        {ok, Host} -> 
+            Active = maps:get(<<"active">>,Host,<<"new">>),
+            Hashpass =  maps:get(<<"hashpass">>,Host,true),
+            State = case {Active,Hashpass} of
+                {<<"retired">>,_} ->
+                    <<"retired">>;
+                {<<"new">>,true} ->
+                    <<"new">>;
+                {<<"active">>,true} ->
+                    <<"active">>;
+                {<<"active">>,false} ->
+                    <<"active_hashfail">>;
+                {<<"inactive">>,true} ->
+                    <<"inactive">>;
+                {<<"inactive">>,false} ->
+                    <<"inactive_hashfail">>
+            end,
+            {ok, State};
+        {error, Error} -> 
+            {error, Error}
+    end.
+
+-spec set_state_by_id(Id :: binary(), State :: binary() ) -> {true,binary()} | {false,binary()} | {false, no_updated}.
+set_state_by_id(Id, State) ->
+    lager:debug("Setting agent ~p state to: ~p",[Id,State]),
+    {Active, Hashpass } = case State of
+        <<"retired">> ->
+            {<<"retired">>,true};
+        <<"new">> ->
+            {<<"new">>,true};
+        <<"active">> ->
+            {<<"active">>,true};
+        <<"active_hashfail">> ->
+            {<<"active">>,false};
+        <<"inactive">> ->
+            {<<"inactive">>,true};
+        <<"inactive_hashfail">> ->
+            {<<"inactive">>,false}
+    end,
+    {ok, R} = dog_rethink:run(
+          fun(X) -> 
+                  reql:db(X, dog),
+                  reql:table(X, ?TYPE_TABLE),
+                  reql:get(X, Id),
+                  reql:update(X,#{<<"active">> => Active, <<"hashpass">> => Hashpass})
+          end),
+    Replaced = maps:get(<<"replaced">>, R),
+    Unchanged = maps:get(<<"unchanged">>, R),
+    case {Replaced,Unchanged} of
+        {1,0} -> {true,Id};
+        {0,1} -> {false,Id};
+        _ -> {false, no_updated}
+    end.
 -spec get_id_by_hostkey(Hostkey :: binary()) -> {ok, binary()} | {error, atom()}.
 get_id_by_hostkey(Hostkey) ->
     case get_by_hostkey(Hostkey) of
@@ -863,3 +858,75 @@ get_all_ips() ->
             end,
     Ips = lists:map(fun(Interface) -> element(2,dog_ips:addresses_from_interfaces(jsx:decode(Interface))) end, Interfaces),
     {ok, lists:flatten(Ips)}.
+-spec state_event(Id :: binary(),
+                Event :: keepalive | keepalive_timeout | retirement_timeout | fail_hashcheck | pass_hashcheck) -> NewState :: binary().
+state_event(Id, Event) ->
+    {ok, OldState} = get_state_by_id(Id),
+    NewState = new_state(Id, OldState, Event),
+    lager:debug("Id: ~p, Event: ~p, OldState: ~p, NewState: ~p",[Id,Event,OldState,NewState]),
+    case OldState == NewState of
+        false -> 
+            set_state_by_id(Id,NewState);
+        true ->
+            pass
+    end,
+    NewState.
+
+-spec new_state(Id :: binary(),
+                OldState :: binary(), 
+                Event :: keepalive | keepalive_timeout | retirement_timeout | fail_hashcheck | pass_hashcheck) -> NewState :: binary().
+new_state(_Id, <<"active">>, pass_hashcheck) -> 
+    <<"active">>;
+new_state(_Id, <<"new">>, pass_hashcheck) -> 
+    <<"active">>;
+new_state(Id, <<"active">>, fail_hashcheck) -> 
+    send_hash_alert(Id),
+    <<"active_hashfail">>;
+new_state(Id, <<"active">>, keepalive_timeout) ->
+    send_keepalive_alert(Id),
+    <<"inactive">>;
+
+new_state(_Id, <<"active_hashfail">>, fail_hashcheck) -> 
+    <<"active_hashfail">>;
+new_state(Id, <<"active_hashfail">>, pass_hashcheck) -> 
+    send_hash_recover(Id),
+    <<"active">>;
+new_state(Id, <<"active_hashfail">>, keepalive_timeout) -> 
+    send_hash_recover(Id),
+    <<"inactive_hashfail">>;
+
+new_state(_Id, <<"inactive">>, keepalive_timeout) ->
+    <<"inactive">>;
+new_state(Id, <<"inactive">>, pass_hashcheck) -> 
+    send_keepalive_recover(Id),
+    <<"active">>;
+new_state(Id, <<"inactive">>, fail_hashcheck) -> 
+    send_hash_alert(Id),
+    <<"active_hashfail">>;
+new_state(Id, <<"inactive">>, retirement_timeout) -> 
+    send_retirement_alert(Id),
+    <<"retired">>;
+
+new_state(_Id, <<"inactive_hashfail">>, fail_hashcheck) ->
+    <<"active_hashfail">>;
+new_state(Id, <<"inactive_hashfail">>, pass_hashcheck) ->
+    send_hash_recover(Id),
+    <<"active">>;
+new_state(Id, <<"inactive_hashfail">>, retirement_timeout) ->
+    send_retirement_alert(Id),
+    <<"retired">>;
+
+new_state(_Id, <<"retired">>, retirement_timeout) ->
+    <<"retired">>;
+new_state(Id, <<"retired">>, fail_hashcheck) ->
+    imetrics:set_gauge_m(<<"host_keepalive">>,<<"recovery">>,0),
+    send_keepalive_recover(Id),
+    <<"active">>;
+new_state(Id, <<"retired">>, pass_hashcheck) ->
+    imetrics:set_gauge_m(<<"host_keepalive">>,<<"recovery">>,0),
+    send_keepalive_recover(Id),
+    <<"active">>;
+
+new_state(Id, State,Event) -> 
+    lager:error("Invalid event: ~p, for state : ~p for host: ~p combination", [Event,State,Id]),
+    State.

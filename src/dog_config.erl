@@ -19,8 +19,8 @@ publish_host_config(Hostkey) ->
     Response = thumper:publish(Message, ?ConfigExchange, Hostkey),
     Response.
 
--spec update_host_keepalive(Hostname :: binary() ) -> ok.
-update_host_keepalive(Hostname) ->
+-spec update_host_keepalive(Hostkey :: binary() ) -> ok.
+update_host_keepalive(Hostkey) ->
   Timestamp = dog_time:timestamp(),
   %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
   %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
@@ -28,7 +28,7 @@ update_host_keepalive(Hostname) ->
                            fun(X) -> 
                                reql:db(X, dog), 
                                reql:table(X, host),
-                               reql:get_all(X, Hostname, #{index => <<"name">>}),
+                               reql:get_all(X, Hostkey, #{index => <<"hostkey">>}),
                                reql:update(X, #{<<"keepalive_timestamp">> => Timestamp})
                            end),
   ok.
