@@ -186,15 +186,44 @@ write_profile_to_file(Profile, GroupName) ->
     ok = file:write_file(FileName, jsx:encode(Profile)),
     ok.
 
-remove_quotes(Line) ->
-    string:replace(Line,"\"","",all).
 
--spec normalize_ruleset(Ruleset :: iodata()) -> iolist().
+remove_comments(Ruleset) ->
+  NoCommentRulesList = lists:filter(fun(X) -> case re:run(X,"^#") of nomatch -> true; _ -> false end end, split(Ruleset,"\n", all) ),
+  NoCommentRules = lists:flatten(lists:join("\n",
+                         NoCommentRulesList)),
+  NoCommentRules.
+    
+remove_docker(Ruleset) ->
+  lists:filter(fun(Line0) ->
+	       {ok, Re} = re:compile("docker", [caseless, unicode]),
+	       case re:run(Line0, Re) of
+                  nomatch -> true;
+                  _  -> false 
+              end
+            end, Ruleset).
+
+remove_empty_lists(List) ->
+  [L || L <- List, L =/= []].
+
+remove_quotes(Line0) ->
+    Line1 = re:replace(Line0, "\"", "", [{return, list},global]),
+    Line2 = re:replace(Line1, "\'", "", [{return, list},global]),
+    Line2.
+
+-spec zero_counters(Ruleset :: iolist()) -> iolist().
+zero_counters(Ruleset) ->
+    re:replace(Ruleset, "(:.*) \\[.*\\]", "\\1 [0:0]",
+           [{return, list}, global]).
+
 normalize_ruleset(Ruleset) ->
-    RulesetSplit = string:split(Ruleset,"\n",all),
+    RulesetNoComments = remove_comments(Ruleset),
+    RulesetZeroed = zero_counters(RulesetNoComments),
+    RulesetSplit = string:split(RulesetZeroed,"\n",all),
     RulesetNoQuotes = [remove_quotes(Line) || Line <- RulesetSplit],
     RulesetTrimmed = [string:trim(Line,trailing," ") || Line <- RulesetNoQuotes],
-    RulesetNormalized = lists:flatten(lists:join("\n",RulesetTrimmed)),
+    RulesetNoDocker = remove_docker(RulesetTrimmed),
+    RulesetNoBlankLines = remove_empty_lists(RulesetNoDocker),
+    RulesetNormalized = lists:flatten(lists:join("\n",RulesetNoBlankLines)),
     RulesetNormalized.
 
 -spec create_hash(Ruleset :: iodata() ) -> binary().
@@ -678,3 +707,26 @@ in_active_profile(Id) ->
         _ -> 
             {true, Profiles}
     end.
+
+%%--------------------------------------------------------------------
+%% Helpers
+%%--------------------------------------------------------------------
+
+hex(N) when N < 10 ->
+    N + $0;
+hex(N) when N < 16 ->
+    N - 10 + $a.
+
+%For pre-2X Erlang:
+trim(String, trailing, " ") ->
+    re:replace(re:replace(String, "\\s+$", "",
+              [global, {return, list}]),
+           "^\\s+", "", [global, {return, list}]).
+
+split(String, Delimiter, all) ->
+    split(String, Delimiter).
+split(String, Delimiter) ->
+    re:split(String, Delimiter, [{return, list}]).
+replace(String,SearchPattern,Replacement,all) ->
+    Replaced = re:replace(String,SearchPattern,Replacement,[global,{return,list}]),
+    [Replaced].
