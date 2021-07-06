@@ -465,9 +465,11 @@ normalize_ipset(Ipset) ->
     IpsetSplit = string:split(Ipset,"\n",all),
     IpsetSorted = lists:sort(IpsetSplit),
     IpsetAddOnly = lists:filter(fun(X) -> match_only_add(X) end, IpsetSorted),
-    IpsetNotNew = [lists:flatten(string:replace(X,"_n "," ")) || X <- IpsetAddOnly],
-    IpsetNot32 = [lists:flatten(string:replace(X,"/32","")) || X <- IpsetNotNew],
-    IpsetNot128 = [lists:flatten(string:replace(X,"/128","")) || X <- IpsetNot32],
+    IpsetNotNew = [lists:flatten(string:replace(X,"n "," ",all)) || X <- IpsetAddOnly],
+    IpsetNot32 = [lists:flatten(string:replace(X,"/32","",all)) || X <- IpsetNotNew],
+    IpsetNot128 = [lists:flatten(string:replace(X,"/128","",all)) || X <- IpsetNot32],
     IpsetTrimmed = [string:trim(Line,trailing," ") || Line <- IpsetNot128],
     IpsetNormalized = lists:flatten(lists:join("\n",IpsetTrimmed)),
     IpsetNormalized.
+
+
