@@ -114,3 +114,22 @@ r.db("dog").tableList().map(
       }
   )
 ```
+
+groups in profile rules:
+```
+r.db('dog').table('profile')('rules')('inbound').map(function (rule) {
+  return rule('group')})
+  ```
+
+non-existent groups in active profiles
+```r.db('dog').table('group').withFields(['profile_id']).innerJoin(
+  r.db('dog').table('profile'), 
+  function(groupRow, profileRow) {
+    return groupRow('profile_id').eq(profileRow('id'))})('right')('rules')('inbound')
+  .concatMap(function(rule) {
+    return rule.pluck(["group","group_type"])
+  })
+  .filter(function(rule) {
+    return rule('group_type').eq('ROLE')
+  }).getField('group').distinct().setDifference(r.db('dog').table('group')('id').distinct())
+```
