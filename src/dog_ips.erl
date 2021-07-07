@@ -58,6 +58,12 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
                   keepalive ->
                       lager:info("got keepalive: ~p",[Hostkey]),
                       dog_host:update_by_hostkey(Hostkey, Config)
+              end,
+              case dog_host:hash_check(HostId) of
+                  {pass,_} ->
+                      dog_host:state_event(HostId, pass_hashcheck);
+                  {fail,_} ->
+                      dog_host:state_event(HostId, fail_hashcheck)
               end;
           {error, Reason} ->
               case UpdateType of
