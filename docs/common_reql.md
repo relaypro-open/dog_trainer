@@ -114,3 +114,12 @@ r.db("dog").tableList().map(
       }
   )
 ```
+
+All hosts who's ipv4 hash doesn't match their group's ipv4 hash:
+```
+r.db('dog').table('host')
+  .filter(r.row("active").eq("active"))
+  .eqJoin('group', r.db('dog').table('group'), {index: 'name'})
+  .filter(r.row("left")("hash4_ipsets").ne(r.row("right")("hash4_ipsets")))
+  .pluck([{'left' : ['name', 'hash4_ipsets']},{'right' : ['name', 'hash4_ipsets']}])
+```
