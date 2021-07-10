@@ -121,7 +121,8 @@ create_index(Connection,TableName,FieldName) ->
 create_initial_global_hash(Connection) ->
   Record = #{
     <<"hash">> => <<"initial">>,
-    <<"name">> => <<"global">>
+    <<"name">> => <<"global">>,
+    <<"timestamp">> => dog_time:timestamp()
    }, 
   gen_rethink:run(Connection,
                                fun(X) ->
