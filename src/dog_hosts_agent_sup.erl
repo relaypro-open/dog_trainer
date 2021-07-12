@@ -9,7 +9,6 @@
 
 %% API
 -export([
-        restart_hash_agent/0,
         start_link/0
         ]).
 
@@ -22,10 +21,6 @@
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
-restart_hash_agent() ->
-    supervisor:terminate_child(dog_hosts_agent_sup,hash_agent),
-    supervisor:restart_child(dog_hosts_agent_sup,hash_agent).
 
 %%====================================================================
 %% Supervisor callbacks

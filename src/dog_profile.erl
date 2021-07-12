@@ -253,7 +253,6 @@ create_hash(Ruleset) ->
   error | {R4IpsetsRuleset :: iolist(), R6IpsetsRuleset :: iolist(), R4IptablesRuleset :: iolist(), R6IptablesRuleset :: iolist()}.
 create_ruleset(RoutingKey, Group, _Environment, _Location, _HostKey,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap,_Ipsets) ->
     lager:info("creating Ipv4,Ipv6 rulesets, ipsets: ~p",[RoutingKey]),
-    dog_hosts_agent_sup:restart_hash_agent(), %restart dog iptables hash check
     {R4IpsetsResult, R4IptablesResult} = generate_ipv4_ruleset_by_group_name(Group,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap),
     {R6IpsetsResult, R6IptablesResult} = generate_ipv6_ruleset_by_group_name(Group,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap),
     AnyError = lists:any(fun(X) -> X == error end,[R4IpsetsResult,R6IpsetsResult,R4IptablesResult,R6IptablesResult]),

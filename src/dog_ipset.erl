@@ -374,7 +374,6 @@ publish_to_external(InternalIpsetsMap) ->
 -spec publish_to_queue(Ipsets :: list()) -> any().
 publish_to_queue(Ipsets) ->
     lager:info("local publish"),
-    dog_hosts_agent_sup:restart_hash_agent(), %restart dog iptables hash check
     lager:debug("Ipsets: ~p",[Ipsets]),
     UserData = #{
       ruleset4_ipset => false,
@@ -437,15 +436,17 @@ hash_check(AgentIpsetHash) ->
 
 -spec update_ipsets(Env :: atom()) -> ok.
 update_ipsets(Env) ->
+    {ok,LatestHash} = latest_hash(),
     {MergedIpsetsList, InternalIpsetsMap} = create_ipsets(),
     write_ipsets_to_file(MergedIpsetsList),
     NormalizedIpset = normalize_ipset(MergedIpsetsList),
     NewIpsetHash = create_hash(NormalizedIpset),
-    create(NewIpsetHash),
     delete_old(),
-    {ok,LatestHash} = latest_hash(),
+    create(NewIpsetHash),
+    lager:debug("LastestHash, NewIpsetHash: ~p, ~p",[LatestHash,NewIpsetHash]),
     case NewIpsetHash == LatestHash of
           false ->
+            lager:debug("false"),
             publish_to_queue(MergedIpsetsList),
             case Env of 
               local_env ->
@@ -456,6 +457,7 @@ update_ipsets(Env) ->
                 publish_to_external(InternalIpsetsMap)
             end;
          true ->
+            lager:debug("true"),
             pass
     end.
 
