@@ -151,7 +151,7 @@ ip_ipset_format(Ip) ->
 -spec get_hashes() -> {ok, binary()}.
 get_hashes() ->
     Now =  erlang:system_time(second),
-    IpsetHashValidSeconds = application:get_env(dog_trainer,ipset_hash_valid_seconds,240),
+    IpsetHashValidSeconds = application:get_env(dog_trainer,ipset_hash_valid_seconds,600),
     TimeCutoff = Now - IpsetHashValidSeconds,
     {ok, R} = dog_rethink:run(
     fun(X) ->
