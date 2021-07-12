@@ -157,10 +157,9 @@ get_hashes() ->
     fun(X) ->
         reql:db(X, dog),
         reql:table(X, ipset),
-        reql:order_by(X,<<"timestamp">>,#{index => <<"timestamp">>}),
-        reql:desc(X)
+        reql:order_by(X,reql:desc(<<"timestamp">>))
     end),
-    {ok, Result} = rethink_cursor:all(R),
+    Result = R,
     Hashes = lists:flatten(Result),
     LastHash = maps:get(<<"hash">>,hd(Hashes)),
     ValidIpsets = lists:filter(fun(X) -> 
