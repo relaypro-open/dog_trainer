@@ -134,7 +134,9 @@ do_watch_keepalives(_State) ->
                     ok;
                 _ ->
                     imetrics:set_gauge_m(<<"host_keepalive">>,<<"retirement">>,length(RetiredHostIds)),
-                    lists:foreach(fun(HostId) -> dog_host:state_event(HostId,retirement_timeout) end, RetiredHostIds)
+                    lists:foreach(fun(HostId) -> 
+                                          {ok,Host} = dog_host:get_by_id(HostId),
+                                          dog_host:state_event(Host,retirement_timeout,[]) end, RetiredHostIds)
             end,
 
             {ok,HostsFailedKeepaliveCheck} = dog_host:keepalive_age_check(),
@@ -145,7 +147,9 @@ do_watch_keepalives(_State) ->
                     ok;
                 _ ->
                     imetrics:set_gauge_m(<<"host_keepalive">>,<<"inactive">>,length(HostsFailedKeepaliveCheckIds)),
-                    lists:foreach(fun(HostId) -> dog_host:state_event(HostId,keepalive_timeout) end, HostsFailedKeepaliveCheckIds)
+                    lists:foreach(fun(HostId) -> 
+                                          {ok,Host} = dog_host:get_by_id(HostId),
+                                          dog_host:state_event(Host,keepalive_timeout,[]) end, HostsFailedKeepaliveCheckIds)
             end,
 
             ok;

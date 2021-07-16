@@ -420,14 +420,13 @@ publish_to_outbound_exchange(TargetEnvName, IpsetExternalMap) ->
     imetrics:add(ipset_outbound_publish),
     Response.
 
-%-spec update_ipsets() -> ok.
-%update_ipsets() ->
-%  update_ipsets(all_envs).
+-spec hash_check(AgentIpsetHash :: binary()) -> boolean().
 hash_check(AgentIpsetHash) ->
-    {ok, IpsetHashes} = get_hashes(),
-    case lists:member(AgentIpsetHash, IpsetHashes) of
+    %{ok, IpsetHashes} = get_hashes(),
+    {ok,LatestHash} = latest_hash(),
+    case AgentIpsetHash == LatestHash of
         false ->
-            lager:info("IpsetHash ~p not a member of Valid IpsetHashes: ~p",[AgentIpsetHash,IpsetHashes]),
+            lager:info("Host IpsetHash ~p not equal to Latest IpsetHashes: ~p",[AgentIpsetHash,LatestHash]),
             false;
         true ->
             true

@@ -36,13 +36,15 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
       lager:info("Hostname: ~p, Hostkey: ~p",[Hostname,Hostkey]),
       dog_config:update_host_keepalive(Hostkey),
       case dog_host:get_by_hostkey(Hostkey) of
-          {ok, Host} -> 
-              HostId = maps:get(<<"id">>, Host),
-              case dog_host:hash_check(HostId) of
-                  {pass,_} ->
-                      dog_host:state_event(HostId, pass_hashcheck);
-                  {fail,_} ->
-                      dog_host:state_event(HostId, fail_hashcheck)
+          {ok, HostExists} -> 
+              %HostId = maps:get(<<"id">>, HostExists),
+              Host = maps:merge(HostExists,Config),
+              %Host = dog_state:to_map(dog_state:from_map(UpdatedHost)),
+              case dog_host:hash_check(Host) of
+                  {pass,HashStatus} ->
+                      dog_host:state_event(Host, pass_hashcheck, HashStatus);
+                  {fail,HashStatus} ->
+                      dog_host:state_event(Host, fail_hashcheck, HashStatus)
               end,
               case UpdateType of
                   force ->
@@ -58,12 +60,6 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
                   keepalive ->
                       lager:info("got keepalive: ~p",[Hostkey]),
                       dog_host:update_by_hostkey(Hostkey, Config)
-              end,
-              case dog_host:hash_check(HostId) of
-                  {pass,_} ->
-                      dog_host:state_event(HostId, pass_hashcheck);
-                  {fail,_} ->
-                      dog_host:state_event(HostId, fail_hashcheck)
               end;
           {error, Reason} ->
               case UpdateType of
