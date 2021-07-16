@@ -40,6 +40,7 @@
          create_ruleset/11,
          create_ruleset/12,
          create_ruleset/13,
+         normalize_ruleset/1,
          to_text/1,
          where_used/1,
          read_profile_from_file/1
@@ -193,14 +194,27 @@ remove_comments(Ruleset) ->
                          NoCommentRulesList)),
   NoCommentRules.
     
+%remove_docker(Ruleset) ->
+%  lists:filter(fun(Line0) ->
+%	       {ok, Re} = re:compile("docker", [caseless, unicode]),
+%	       case re:run(Line0, Re) of
+%                  nomatch -> true;
+%                  _  -> false 
+%              end
+%            end, Ruleset).
+
 remove_docker(Ruleset) ->
-  lists:filter(fun(Line0) ->
-	       {ok, Re} = re:compile("docker", [caseless, unicode]),
-	       case re:run(Line0, Re) of
-                  nomatch -> true;
-                  _  -> false 
-              end
-            end, Ruleset).
+    lists:map(fun(Line0) ->
+        Line1 = re:replace(Line0, "^-A DOCKER(.*)","",[{return,list}]),
+        Line2 = re:replace(Line1, "^:DOCKER(.*)","",[{return,list}]),
+        Line3 = case Line2 of
+            "-A FORWARD -j REJECT --reject-with icmp-port-unreachable" ->
+                Line2;
+            _ ->
+                re:replace(Line2, "^-A FORWARD(.*)","",[{return,list}])
+        end,
+        Line3
+              end, Ruleset).
 
 remove_empty_lists(List) ->
   [L || L <- List, L =/= []].
