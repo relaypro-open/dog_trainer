@@ -717,6 +717,7 @@ create(HostMap@0) ->
           {ok, ExistingHosts} = get_all(),
           ExistingHostkeys = [maps:get(<<"hostkey">>,Host) || Host <- ExistingHosts],
           DefaultValuesHostMap = #{
+                          <<"active">> => <<"new">>,
                           <<"iptables_hash_timestamp">> => <<"">>,
                           <<"ipset_hash_timestamp">> => <<"">>,
                           <<"keepalive_timestamp">> => <<"">>,
@@ -1046,6 +1047,8 @@ state_event(HostMap, Event, HashStatus) ->
 new_state(_HostMap, <<"active">>, pass_hashcheck, _HashStatus) -> 
     <<"active">>;
 new_state(_HostMap, <<"new">>, pass_hashcheck,_HashStatus) -> 
+    <<"active">>;
+new_state(_HostMap, <<"new">>, fail_hashcheck,_HashStatus) -> 
     <<"active">>;
 new_state(HostMap, <<"active">>, fail_hashcheck,HashStatus) -> 
     send_hash_alert(HostMap,HashStatus),
