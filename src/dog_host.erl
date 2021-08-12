@@ -317,7 +317,7 @@ hash_check(Host) ->
             hash_fail_count_check(HostId, IptablesHashAgeCheck, HashStatus);
         {true,false} ->
             iptables_hash_age_update(HostId, Now),
-            hash_fail_count_check(HostId, IptablesHashAgeCheck, HashStatus);
+            hash_fail_count_check(HostId, IpsetHashAgeCheck, HashStatus);
         {false,false} ->
             case {IptablesHashAgeCheck,IpsetHashAgeCheck} of
                 {true, true} ->
