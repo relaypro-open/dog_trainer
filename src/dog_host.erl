@@ -199,7 +199,60 @@ rekey_map_of_maps(Iterator,NewKey,OldKeysNewKey,MapAcc) ->
     MapAcc@1 = maps:put(NewKeyValue,NewMap@1,MapAcc),
     NewIterator = maps:next(ThisIterator),
     rekey_map_of_maps(NewIterator,NewKey,OldKeysNewKey,MapAcc@1).
-    
+
+-spec hash_fail_count_check(HostId :: binary(), HashCheck :: (true | false), HashStatus :: map()) -> {true | false, map()}.
+hash_fail_count_check(HostId, HashCheck, HashStatus) ->
+    case HashCheck of
+        true ->
+            hash_fail_count_update(HostId, 0),
+            {pass, HashStatus};
+        false ->
+            hash_fail_count_increment(HostId),
+            case hash_fail_count(HostId) >= application:get_env(dog_trainer,max_hash_fail_count,2) of
+                true -> 
+                    {fail, HashStatus};
+                false ->
+                    {pass, HashStatus}
+            end
+    end.
+
+-spec hash_fail_count_increment(HostId :: binary() ) -> number().
+hash_fail_count_increment(HostId) ->
+    Count = hash_fail_count(HostId),
+    hash_fail_count_update(HostId, Count + 1).
+
+-spec hash_fail_count(HostId :: binary() ) -> number().
+hash_fail_count(HostId) ->
+    {ok, HostHashFailCount} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get(X,HostId),
+            reql:get_field(X,<<"hash_fail_count">>)
+        end),
+    lager:debug("HostHashFailCount: ~p",[HostHashFailCount]),
+    HostHashFailCount.
+
+-spec hash_fail_count_update(HostId :: binary(), Count :: number()) -> {true, binary()} | {false, atom()}.
+hash_fail_count_update(HostId, Count) ->
+    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
+    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get(X,HostId),
+            reql:update(X,#{<<"hash_fail_count">> => Count})
+        end),
+    lager:debug("update R: ~p~n", [R]),
+    Replaced = maps:get(<<"replaced">>, R),
+    Unchanged = maps:get(<<"unchanged">>, R),
+    case {Replaced,Unchanged} of
+        {1,0} -> {true,HostId};
+        {0,1} -> {false,HostId};
+        _ -> {false, no_updated}
+    end.
+
 -spec hash_check(HostId :: binary() ) -> {pass, map()}  | {fail, map()}.
 hash_check(Host) ->
     %{ok, Host} = get_by_id(HostId),
@@ -257,23 +310,14 @@ hash_check(Host) ->
         {true,true} ->
             iptables_hash_age_update(HostId, Now),
             ipset_hash_age_update(HostId, Now),
+            hash_fail_count_update(HostId, 0),
             {pass, HashStatus};
         {false,true} ->
             ipset_hash_age_update(HostId, Now),
-            case IptablesHashAgeCheck of
-                true ->
-                    {pass, HashStatus};
-                false ->
-                    {fail, HashStatus}
-            end;
+            hash_fail_count_check(HostId, IptablesHashAgeCheck, HashStatus);
         {true,false} ->
             iptables_hash_age_update(HostId, Now),
-            case IpsetHashAgeCheck of
-                true ->
-                    {pass, HashStatus};
-                false ->
-                    {fail, HashStatus}
-            end;
+            hash_fail_count_check(HostId, IptablesHashAgeCheck, HashStatus);
         {false,false} ->
             case {IptablesHashAgeCheck,IpsetHashAgeCheck} of
                 {true, true} ->
@@ -718,14 +762,16 @@ create(HostMap@0) ->
           ExistingHostkeys = [maps:get(<<"hostkey">>,Host) || Host <- ExistingHosts],
           DefaultValuesHostMap = #{
                           <<"active">> => <<"new">>,
-                          <<"iptables_hash_timestamp">> => <<"">>,
-                          <<"ipset_hash_timestamp">> => <<"">>,
-                          <<"keepalive_timestamp">> => <<"">>,
-                          <<"hash_alert_sent">> => <<"">>,
-                          <<"keepalive_alert_sent">> =>  <<"">>,
-                          <<"location">> => <<"*">>,
                           <<"environment">> => <<"*">>,
-                          <<"hostkey">> => <<"">> },
+                          <<"hash_alert_sent">> => <<"">>,
+                          <<"hash_fail_count">> => 0,
+                          <<"hostkey">> => <<"">>,
+                          <<"ipset_hash_timestamp">> => <<"">>,
+                          <<"iptables_hash_timestamp">> => <<"">>,
+                          <<"keepalive_alert_sent">> =>  <<"">>,
+                          <<"keepalive_timestamp">> => <<"">>,
+                          <<"location">> => <<"*">>
+                                  },
           MergedHostMap = maps:merge(DefaultValuesHostMap, HostMap@0),
 
           case lists:member(Name, ExistingHostkeys) of
