@@ -609,51 +609,63 @@ send_keepalive_recover(Host) ->
 
 -spec send_hash_alert(Host :: binary(), HashStatus :: map() ) -> ok.
 send_hash_alert(Host, HashStatus) ->
-    lager:info("Host: ~p", [Host]),
-    HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
-    HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
-    GroupName = maps:get(<<"group">>,Host),
-    {ok,IpsetHashes} = dog_ipset:latest_hash(),
-    {ok,Group} = dog_group:get_by_name(GroupName),
-    lager:info("Hash alert sent: ~p",[Host]),
-    {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
-    {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
-    {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
-    Subject = io_lib:format("Dog Locally Modified On: ~s",[HostName]),
-    {ok,From} = application:get_env(dog_trainer,smtp_from),
-    {ok,Addresses} = application:get_env(dog_trainer,smtp_to),
-    To = string:join(Addresses,","),
-    Body = io_lib:format("Host's iptables and/or ipsets modified outside of dog~nHostName: ~s~nHostKey: ~s~nHost: ~p~nGroup: ~p~nIpsetHashes: ~p~nHashStatus: ~p~n",[HostName, HostKey,Host,Group,IpsetHashes,HashStatus]),
-    Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s",[Subject,From,To,Body]),
-    gen_smtp_client:send({From, Addresses, Email},
-                       [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
-                        {tls,always}]),
-    imetrics:add_m(alert,"hash_fail"),
-    ok.
+    HashAlertEnabled = application:get_env(dog_trainer,hash_alert_enabled,true),
+    case HashAlertEnabled of
+        true ->
+            lager:info("Host: ~p", [Host]),
+            HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
+            HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
+            GroupName = maps:get(<<"group">>,Host),
+            {ok,IpsetHashes} = dog_ipset:latest_hash(),
+            {ok,Group} = dog_group:get_by_name(GroupName),
+            lager:info("Hash alert sent: ~p",[Host]),
+            {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
+            {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
+            {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
+            Subject = io_lib:format("Dog Locally Modified On: ~s",[HostName]),
+            {ok,From} = application:get_env(dog_trainer,smtp_from),
+            {ok,Addresses} = application:get_env(dog_trainer,smtp_to),
+            To = string:join(Addresses,","),
+            Body = io_lib:format("Host's iptables and/or ipsets modified outside of dog~nHostName: ~s~nHostKey: ~s~nHost: ~p~nGroup: ~p~nIpsetHashes: ~p~nHashStatus: ~p~n",[HostName, HostKey,Host,Group,IpsetHashes,HashStatus]),
+            Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s",[Subject,From,To,Body]),
+            gen_smtp_client:send({From, Addresses, Email},
+                               [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
+                                {tls,always}]),
+            imetrics:add_m(alert,"hash_fail"),
+            ok;
+        false ->
+            ok
+    end.
 
 -spec send_hash_recover(Host :: binary(), HashStatus :: map() ) -> ok.
 send_hash_recover(Host, HashStatus) ->
-    lager:info("Host: ~p", [Host]),
-    HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
-    HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
-    GroupName = maps:get(<<"group">>,Host),
-    {ok,IpsetHashes} = dog_ipset:latest_hash(),
-    {ok,Group} = dog_group:get_by_name(GroupName),
-    lager:info("Hash alert sent: ~p",[Host]),
-    {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
-    {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
-    {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
-    Subject = io_lib:format("Dog Back In Control On: ~s",[HostName]),
-    {ok,From} = application:get_env(dog_trainer,smtp_from),
-    {ok,Addresses} = application:get_env(dog_trainer,smtp_to),
-    To = string:join(Addresses,","),
-    Body = io_lib:format("Host's iptables and/or ipsets back in sync with dog: ~nHostName: ~s~nHostKey: ~s~nHost: ~p~nGroup: ~p~nIpsetHashes: ~p~nHashStatus: ~p~n", [HostName,HostKey,Host,Group,IpsetHashes,HashStatus]),
-    Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s",[Subject,From,To,Body]),
-    gen_smtp_client:send({From, Addresses, Email},
-                       [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
-                        {tls,always}]),
-    imetrics:add_m(alert,"hash_recover"),
-    ok.
+    HashAlertEnabled = application:get_env(dog_trainer,hash_alert_enabled,true),
+    case HashAlertEnabled of
+        true ->
+            lager:info("Host: ~p", [Host]),
+            HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
+            HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
+            GroupName = maps:get(<<"group">>,Host),
+            {ok,IpsetHashes} = dog_ipset:latest_hash(),
+            {ok,Group} = dog_group:get_by_name(GroupName),
+            lager:info("Hash alert sent: ~p",[Host]),
+            {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
+            {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
+            {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
+            Subject = io_lib:format("Dog Back In Control On: ~s",[HostName]),
+            {ok,From} = application:get_env(dog_trainer,smtp_from),
+            {ok,Addresses} = application:get_env(dog_trainer,smtp_to),
+            To = string:join(Addresses,","),
+            Body = io_lib:format("Host's iptables and/or ipsets back in sync with dog: ~nHostName: ~s~nHostKey: ~s~nHost: ~p~nGroup: ~p~nIpsetHashes: ~p~nHashStatus: ~p~n", [HostName,HostKey,Host,Group,IpsetHashes,HashStatus]),
+            Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s",[Subject,From,To,Body]),
+            gen_smtp_client:send({From, Addresses, Email},
+                               [{relay, SmtpRelay}, {username, SmtpUsername}, {password, SmtpPassword},
+                                {tls,always}]),
+            imetrics:add_m(alert,"hash_recover"),
+            ok;
+        false ->
+            ok
+    end.
 
 -spec init() -> any(). 
 init() ->
