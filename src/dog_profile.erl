@@ -33,6 +33,7 @@
          get_name_by_id/1,
          get_role_groups_in_profile/1,
          get_zone_groups_in_profile/1,
+         get_all_inbound_ports_by_protocol/1,
          init/0,
          in_active_profile/1,
          is_active/1,
@@ -721,6 +722,21 @@ in_active_profile(Id) ->
             {true, Profiles}
     end.
 
+-spec get_all_inbound_ports_by_protocol(ProfileJson :: list()) -> ProtocolPorts :: list().
+get_all_inbound_ports_by_protocol(ProfileJson) ->
+    Inbound = nested:get([<<"rules">>,<<"inbound">>], ProfileJson),
+    RawPortsProtocols = lists:map(fun(Rule) ->
+                              ServiceId = maps:get(<<"service">>,Rule),
+                              {ok,Service} = dog_service:get_by_id(ServiceId),
+                              Services = maps:get(<<"services">>,Service),
+                              lists:nth(1,lists:map(fun(S) ->
+                                                Ports = maps:get(<<"ports">>,S),
+                                                Protocol = maps:get(<<"protocol">>,S),
+                                                {Protocol,Ports}
+                                        end,Services))
+                      end,Inbound),
+    merge_lists_in_tuples(RawPortsProtocols).
+    
 %%--------------------------------------------------------------------
 %% Helpers
 %%--------------------------------------------------------------------
@@ -743,3 +759,20 @@ split(String, Delimiter) ->
 replace(String,SearchPattern,Replacement,all) ->
     Replaced = re:replace(String,SearchPattern,Replacement,[global,{return,list}]),
     [Replaced].
+
+merge_lists_in_tuples(List) ->
+    Map = lists:foldl(fun fun_merge_lists_in_tuples/2, maps:new(), List),
+    lists:map(fun({K,V}) ->
+                      UniqueV = lists:usort(lists:flatten(V)),
+                      {K,UniqueV}
+              end,maps:to_list(Map)).
+
+fun_merge_lists_in_tuples(H, A) ->
+    K = element(1, H),
+    case maps:is_key(K, A) of
+        true ->
+            V = maps:get(K, A),
+            maps:put(K, [element(2,H) | V], A);
+        false ->
+            maps:put(K, element(2,H), A)
+    end.

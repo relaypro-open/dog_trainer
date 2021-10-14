@@ -35,6 +35,7 @@
         get_all_group_interfaces/0,
         get_all_group_interfaces/1,
         get_all_grouped_by_id/0,
+        get_all_inbound_ports_by_protocol/1,
         get_all_ips_by_id/1,
         get_all_ipv4s_by_id/1,
         get_all_ipv4s_by_name/1,
@@ -1143,3 +1144,13 @@ where_zone_used(GroupName) ->
 -spec get_schema() -> binary().
 get_schema() ->
   dog_json_schema:get_file(?VALIDATION_TYPE).
+
+-spec get_all_inbound_ports_by_protocol(GroupName :: string()) -> ProtocolPorts :: list().
+get_all_inbound_ports_by_protocol(GroupName) ->
+    case get_profile_by_name(GroupName) of
+        {error,_Error} ->
+            lager:info("No profile associated with group: ~p",[GroupName]),
+            throw(profile_not_found);
+        {ok, ProfileJson} ->
+            dog_profile:get_all_inbound_ports_by_protocol(ProfileJson)
+    end.

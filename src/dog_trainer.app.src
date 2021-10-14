@@ -9,7 +9,7 @@
               {applications,[amqp_client,asn1,cowboy,diffy,gen_smtp,ibrowse,inets,jesse,
                              kernel,lager,maps_utils,public_key,
                              rabbit_common,rethink,sasl,ssl,stdlib,thumper,jsx,base16,erlexec,plists,imetrics,
-                             jason,json_xema,nested,poolboy,jsn,observer_cli]},
+                             jason,json_xema,nested,poolboy,jsn,observer_cli,erlcloud]},
               {env,[]},
               {modules,[]},
               {maintainers,[]},
