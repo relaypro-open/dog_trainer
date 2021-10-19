@@ -41,6 +41,7 @@
         get_all_ipv4s_by_name/1,
         get_all_ipv6s_by_id/1,
         get_all_ipv6s_by_name/1,
+        get_ec2_security_group_ids/1,
         get_external_ips_by_id/1,
         get_external_ipv4s_by_id/1,
         get_external_ipv6s_by_id/1,
@@ -796,22 +797,18 @@ get_hosts_by_id(GroupId) ->
         _ ->
             {ok, Group} = get_by_id(GroupId),
             GroupName = maps:get(<<"name">>, Group),
-            %lager:info("GroupName: ~p",[GroupName]),
-            %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-            %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
                     reql:table(X, host),
                     reql:filter(X,fun(Y) -> reql:bracket(Y, <<"group">>), reql:eq(Y, GroupName) end),
-                    reql:pluck(X,[<<"name">>,<<"id">>])
+                    reql:pluck(X,[<<"name">>,<<"id">>,<<"hostkey">>])
                 end),
             {ok, Result} = rethink_cursor:all(R),
             Hosts = lists:flatten(Result),
             Hosts@1 = lists:map(fun(X) -> X end, Hosts),
             case Hosts@1 of
                 [] -> {ok, []};
-                %_ -> {ok, (Hosts@1)}
                 _ -> {ok, Hosts@1}
             end
     end.
@@ -1154,3 +1151,22 @@ get_all_inbound_ports_by_protocol(GroupName) ->
         {ok, ProfileJson} ->
             dog_profile:get_all_inbound_ports_by_protocol(ProfileJson)
     end.
+
+get_ec2_security_group_ids(GroupName) ->
+    {ok,GroupId} = get_id_by_name(GroupName),
+    {ok, HostList} = get_hosts_by_id(GroupId),
+    Ec2SecurityGroupList = lists:map(fun(Host) ->
+                                             {ok,DogHost} = dog_host:get_by_id(maps:get(<<"id">>,Host)),
+                                             Ec2SecurityGroupIds = maps:get(<<"ec2_security_group_ids">>,DogHost,[]),
+                                             Ec2AvailablityZone = maps:get(<<"ec2_availability_zone">>,DogHost,[]),
+                                             Ec2Region = case Ec2AvailablityZone of
+                                                             [] -> 
+                                                                 [];
+                                                             _ -> 
+                                                                 lists:droplast(binary:bin_to_list(Ec2AvailablityZone))
+                                                         end,
+                                             lists:map(fun(Ec2SecurityGroupId) ->
+                                                               {Ec2Region,Ec2SecurityGroupId}
+                                                       end, Ec2SecurityGroupIds)
+                                     end,HostList),
+    sets:to_list(sets:from_list(lists:flatten(Ec2SecurityGroupList))).
