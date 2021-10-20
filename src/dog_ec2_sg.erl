@@ -21,7 +21,7 @@ config(Region) ->
     {ok, Key} = application:get_env(dog_trainer, aws_key),
     {ok,Secret} = application:get_env(dog_trainer, aws_secret),
     Url = "ec2." ++ Region ++ ".amazonaws.com",
-    io:format("Url: ~s~n",[Url]),
+    lager:debug("Url: ~s~n",[Url]),
     erlcloud_ec2:new(Key,
                      Secret, Url).
 
@@ -76,7 +76,7 @@ default_remove_ingress_rules() ->
 publish_ec2_sg(DogGroupName) ->
     %{ok,DogGroupId} = dog_group:get_id_by_name(DogGroupName),
     AnywhereIngressRules = create_port_anywhere_ingress_rules(DogGroupName),
-    io:format("AnywhereIngressRules: ~p~n",[AnywhereIngressRules]),
+    lager:info("AnywhereIngressRules: ~p~n",[AnywhereIngressRules]),
     Ec2SecurityGroupInfo = dog_group:get_ec2_security_group_ids(DogGroupName),
     lists:map(fun({Ec2Region, Ec2SecurityGroupId}) ->
                           update_sg(
@@ -107,28 +107,30 @@ create_port_anywhere_ingress_rules(DogGroupName) ->
 
 -spec update_sg(Ec2SecurityGroupId :: string(), Region :: string(), AnywhereIngressRules :: list()) -> ok | error.
 update_sg(Ec2SecurityGroupId, Region, AnywhereIngressRules) ->
-    AddVpcIngressSpecs = default_ingress_rules(Ec2SecurityGroupId) ++ AnywhereIngressRules,
-    io:format("AddVpcIngressSpecs: ~p~n",[AddVpcIngressSpecs]),
+    ExistingRules = ip_permissions(Region, Ec2SecurityGroupId),
+    AddVpcIngressSpecs = ordsets:to_list(ordsets:from_list(default_ingress_rules(Ec2SecurityGroupId) ++ AnywhereIngressRules)),
+    lager:debug("AddVpcIngressSpecs: ~p~n",[AddVpcIngressSpecs]),
+    NewAddVpcIngressSpecs = ordsets:subtract(ordsets:from_list(AddVpcIngressSpecs),ordsets:from_list(ExistingRules)), 
+    lager:debug("NewAddVpcIngressSpecs: ~p~n",[NewAddVpcIngressSpecs]),
     Config = config(Region),
-    io:format("~p~n",[erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config)]),
+    lager:debug("~p~n",[erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config)]),
     Results = lists:map(fun(RuleSpec) ->
         AuthorizeResponse = erlcloud_ec2:authorize_security_group_ingress(Ec2SecurityGroupId, [RuleSpec], Config),
-        io:format("AuthorizeResponse: ~p~n",[AuthorizeResponse]),
+        lager:debug("AuthorizeResponse: ~p~n",[AuthorizeResponse]),
 		case AuthorizeResponse of
 			{error,{_ErrorDescription,_ErrorCode,_ShortDescription,Description}} ->
 				{error,erlsom:simple_form(Description)};
 			Other ->
 				Other
         end
-    end, AddVpcIngressSpecs),
-    RequestResults = lists:zip(AddVpcIngressSpecs,Results),
+    end, NewAddVpcIngressSpecs),
+    RequestResults = lists:zip(NewAddVpcIngressSpecs,Results),
     lists:foreach(fun({Rule,Result}) ->
-        io:format("~p~n~p~n",[Rule,Result])
+        lager:debug("~p~n~p~n",[Rule,Result])
     end, RequestResults),
     %TODO: Remove all rules not just added
-    ExistingRules = ip_permissions(Region, Ec2SecurityGroupId),
     RemoveVpcIngressSpecs = ordsets:subtract(ordsets:from_list(ExistingRules),ordsets:from_list(AddVpcIngressSpecs)), 
-    io:format("RemoveVpcIngressSpecs: ~p~n",[RemoveVpcIngressSpecs]),
+    lager:debug("RemoveVpcIngressSpecs: ~p~n",[RemoveVpcIngressSpecs]),
     %RemoveVpcIngressSpecs = default_remove_ingress_rules(),
     RemoveResults = lists:map(fun(RuleSpec) ->
 		case erlcloud_ec2:revoke_security_group_ingress(Ec2SecurityGroupId, [RuleSpec], Config) of
@@ -140,9 +142,9 @@ update_sg(Ec2SecurityGroupId, Region, AnywhereIngressRules) ->
     end, RemoveVpcIngressSpecs),
     RemoveRequestResults = lists:zip(RemoveVpcIngressSpecs,RemoveResults),
     lists:foreach(fun({Rule,Result}) ->
-        io:format("~p~n~p~n",[Rule,Result])
+        lager:debug("~p~n~p~n",[Rule,Result])
     end, RemoveRequestResults),
-    io:format("~p~n",[erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config)]).
+    lager:debug("~p~n",[erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config)]).
 
 %-spec get_instance_id(InstanceName :: string()) -> InstanceId :: string().
 %get_instance_id(InstanceName) ->
@@ -157,7 +159,7 @@ update_sg(Ec2SecurityGroupId, Region, AnywhereIngressRules) ->
 ip_permissions(Ec2Region, Ec2SecurityGroupId) ->
     Config = config(Ec2Region),
     {ok, Permissions} = erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config),
-    %io:format("Permissions: ~p~n",[Permissions]),
+    %lager:debug("Permissions: ~p~n",[Permissions]),
     IpPermissions = maps:get(ip_permissions, maps:from_list(hd(Permissions))),
     %IpPermissions.
     IpPermissionSpecs = [tuple_to_ingress_records(T) || T <- IpPermissions],
