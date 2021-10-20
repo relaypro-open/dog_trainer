@@ -722,9 +722,11 @@ in_active_profile(Id) ->
             {true, Profiles}
     end.
 
+%TODO: Phase 1 of ec2 sg management: only control ports, allow any source address
 -spec get_all_inbound_ports_by_protocol(ProfileJson :: list()) -> ProtocolPorts :: list().
 get_all_inbound_ports_by_protocol(ProfileJson) ->
     Inbound = nested:get([<<"rules">>,<<"inbound">>], ProfileJson),
+    ActiveInbound = [Rule || Rule <- Inbound, maps:get(<<"active">>,Rule) == true],
     RawPortsProtocols = lists:map(fun(Rule) ->
                               ServiceId = maps:get(<<"service">>,Rule),
                               {ok,Service} = dog_service:get_by_id(ServiceId),
@@ -732,10 +734,45 @@ get_all_inbound_ports_by_protocol(ProfileJson) ->
                               lists:nth(1,lists:map(fun(S) ->
                                                 Ports = maps:get(<<"ports">>,S),
                                                 Protocol = maps:get(<<"protocol">>,S),
-                                                {Protocol,Ports}
+                                                case Protocol of
+                                                    <<"any">> ->
+                                                            [
+                                                             {<<"tcp">>, Ports},
+                                                             {<<"udp">>, Ports}
+                                                            ];
+                                                        _ ->
+                                                            {Protocol,Ports}
+                                                end
                                         end,Services))
-                      end,Inbound),
-    merge_lists_in_tuples(RawPortsProtocols).
+                      end,ActiveInbound),
+    merge_lists_in_tuples(lists:flatten(RawPortsProtocols)).
+
+%TODO: Add security group source to rules
+%-spec get_all_inbound_rule_specs(ProfileJson :: list()) -> Rules :: list().
+%get_all_inbound_rule_specs(ProfileJson) ->
+%    Inbound = nested:get([<<"rules">>,<<"inbound">>], ProfileJson),
+%    RawPortsProtocols = lists:map(fun(Rule) ->
+%                              ServiceId = maps:get(<<"service">>,Rule),
+%                              {ok,Service} = dog_service:get_by_id(ServiceId),
+%                              Services = maps:get(<<"services">>,Service),
+%                              lists:nth(1,lists:map(fun(S) ->
+%                                                Ports = maps:get(<<"ports">>,S),
+%                                                Protocol = maps:get(<<"protocol">>,S),
+%                                                Users
+%                                                IpRanges
+%                                                Groups
+%                                                case Protocol of
+%                                                    <<"any">> ->
+%                                                            [
+%                                                             {<<"tcp">>, Ports},
+%                                                             {<<"udp">>, Ports}
+%                                                            ];
+%                                                        _ ->
+%                                                            {Protocol,Ports}
+%                                                end
+%                                        end,Services))
+%                      end,Inbound),
+%    merge_lists_in_tuples(lists:flatten(RawPortsProtocols)).
     
 %%--------------------------------------------------------------------
 %% Helpers
