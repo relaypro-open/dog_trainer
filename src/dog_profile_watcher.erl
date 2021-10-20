@@ -95,18 +95,23 @@ handle_query_result(Result, State) ->
         _ ->
             imetrics:add_m(watcher,profile_update),
             lists:foreach(fun(Entry) ->
+                lager:info("Entry: ~p", [Entry]),
                 ProfileId = case maps:get(<<"new_val">>,Entry) of
                     null ->
                         maps:get(<<"id">>,maps:get(<<"old_val">>,Entry));
                     _ ->
                         maps:get(<<"id">>,maps:get(<<"new_val">>,Entry))
                 end,
+                timer:sleep(1000), %TODO Fix race condition
                 GroupIds = dog_group:get_ids_with_profile_id(ProfileId),
+                %{ok,GroupIds} = dog_profile:where_used(ProfileId),
+                lager:info("GroupIds: ~p", [GroupIds]),
                 lists:foreach(fun(GroupId) ->
                     {ok, GroupName} = dog_group:get_name_by_id(GroupId),
                     lager:info(GroupName),
                     GroupType = <<"role">>,
-                    dog_iptables:update_group_iptables(GroupName, GroupType)
+                    dog_iptables:update_group_iptables(GroupName, GroupType),
+                    dog_ec2_sg:publish_ec2_sg(GroupName)
                 end, GroupIds)
             end, Result)
     end,
