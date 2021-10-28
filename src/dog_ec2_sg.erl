@@ -81,7 +81,7 @@ publish_ec2_sg(DogGroupName) ->
     lists:map(fun({Ec2Region, Ec2SecurityGroupId}) ->
                           update_sg(
                             binary:bin_to_list(Ec2SecurityGroupId),
-                            Ec2Region,
+                            binary:bin_to_list(Ec2Region),
                             AnywhereIngressRules)
                   end,Ec2SecurityGroupInfo).
 

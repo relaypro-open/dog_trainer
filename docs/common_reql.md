@@ -125,3 +125,11 @@ r.db('dog').table('host')
   //('left')('hostkey')
   .pluck([{'left' : ['name', 'hash4_ipsets','version']},{'right' : ['name', 'hash4_ipsets']}])
 ```
+
+List Host ec2_security_groups by associated Groups:
+```
+r.db('dog').table('host')
+  .filter(r.row("active").eq("active"))
+  .eqJoin('group', r.db('dog').table('group'), {index: 'name'})
+  .zip().group("name").getField("ec2_security_group_ids").distinct()
+```

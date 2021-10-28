@@ -18,6 +18,7 @@
         ]).
 
 -export([
+        all_ec2_sg_mappings/0,
         all_ips/0,
         all_ipv4s/0,
         all_ipv4s_grouped/0,
@@ -42,6 +43,7 @@
         get_all_ipv6s_by_id/1,
         get_all_ipv6s_by_name/1,
         get_ec2_security_group_ids/1,
+        get_ec2_security_group_ids_from_members/1,
         get_external_ips_by_id/1,
         get_external_ipv4s_by_id/1,
         get_external_ipv6s_by_id/1,
@@ -95,6 +97,7 @@
         get_document_by_id/1,
         inverse_map_of_lists/1,
         maps_append/3,
+        set_ec2_group_mappings_from_members/0,
         tuple_pairs_to_map_of_lists/1
         ]).
 
@@ -1152,7 +1155,18 @@ get_all_inbound_ports_by_protocol(GroupName) ->
             dog_profile:get_all_inbound_ports_by_protocol(ProfileJson)
     end.
 
+%GROUP BASED EC2 INFO
 get_ec2_security_group_ids(GroupName) ->
+    {ok,Group} = get_by_name(GroupName),
+    case maps:get(<<"ec2_security_group_ids">>,Group,[]) of
+                       [] ->
+                           [];
+                       RegionGroups ->
+                        maps:to_list(RegionGroups)
+                   end.
+
+%HOST BASED EC2 INFO
+get_ec2_security_group_ids_from_members(GroupName) ->
     {ok,GroupId} = get_id_by_name(GroupName),
     {ok, HostList} = get_hosts_by_id(GroupId),
     Ec2SecurityGroupList = lists:map(fun(Host) ->
@@ -1163,10 +1177,28 @@ get_ec2_security_group_ids(GroupName) ->
                                                              [] -> 
                                                                  [];
                                                              _ -> 
-                                                                 lists:droplast(binary:bin_to_list(Ec2AvailablityZone))
+                                                                 binary:list_to_bin(lists:droplast(binary:bin_to_list(Ec2AvailablityZone)))
                                                          end,
                                              lists:map(fun(Ec2SecurityGroupId) ->
                                                                {Ec2Region,Ec2SecurityGroupId}
                                                        end, Ec2SecurityGroupIds)
                                      end,HostList),
     sets:to_list(sets:from_list(lists:flatten(Ec2SecurityGroupList))).
+    %lists:flatten(Ec2SecurityGroupList).
+
+
+all_ec2_sg_mappings() ->
+    lists:filter(fun(X) -> element(2,X) =/= [] end,([{G,dog_group:get_ec2_security_group_ids_from_members(G)} || G <- dog_group:get_group_names(), G =/= <<"all-active">>])).
+
+
+set_ec2_group_mappings_from_members() ->
+    Ec2SgMappings = all_ec2_sg_mappings(),
+          lists:map(fun({GroupName,SgList}) ->
+                                        {ok, GroupId} = dog_group:get_id_by_name(GroupName),
+                                        io:format("GroupId: ~p, SgList: ~p~n",[GroupId,maps:from_list(SgList)]),
+                                        {ok,CurrentGroupMap} = dog_group:get_by_id(GroupId),
+                                        UpdateMap = maps:merge(CurrentGroupMap,
+                                                         #{<<"ec2_security_group_ids">> =>
+                                                           maps:from_list(SgList)}),
+                                        dog_group:replace(GroupId,UpdateMap)
+              end, Ec2SgMappings).
