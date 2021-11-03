@@ -43,6 +43,7 @@
         get_all_ipv6s_by_id/1,
         get_all_ipv6s_by_name/1,
         get_ec2_security_group_ids/1,
+        get_ec2_security_group_ids_by_id/1,
         get_ec2_security_group_ids_from_members/1,
         get_external_ips_by_id/1,
         get_external_ipv4s_by_id/1,
@@ -1156,13 +1157,22 @@ get_all_inbound_ports_by_protocol(GroupName) ->
     end.
 
 %GROUP BASED EC2 INFO
+get_ec2_security_group_ids_by_id(GroupId) ->
+    {ok,Group} = get_by_id(GroupId),
+    case maps:get(<<"ec2_security_group_ids">>,Group,[]) of
+                       [] ->
+                           [];
+                       RegionGroups ->
+                        RegionGroups
+                   end.
+
 get_ec2_security_group_ids(GroupName) ->
     {ok,Group} = get_by_name(GroupName),
     case maps:get(<<"ec2_security_group_ids">>,Group,[]) of
                        [] ->
                            [];
                        RegionGroups ->
-                        maps:to_list(RegionGroups)
+                        RegionGroups
                    end.
 
 %HOST BASED EC2 INFO

@@ -1,24 +1,45 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "",
-  "type": "object",
-  "properties": {
-    "name": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 28,
-      "pattern": "^[A-Za-z0-9_.-](.*)$"
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "",
+    "type": "object",
+    "definitions": {
+        "ec2_security_group": {
+            "type": "object",
+            "properties": {
+                "region" :{
+                    "type": "string",
+                    "pattern": "^(.*)-(.*)-(.*)$"
+                },
+                "sgid" :{
+                    "type": "string",
+                    "pattern": "^sg-(.*)$"
+                }
+            }
+        }
     },
-    "profile_name": {
-      "type": "string",
-      "minLength": 1
+    "properties": {
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 28,
+            "pattern": "^[A-Za-z0-9_.-](.*)$"
+        },
+        "profile_name": {
+            "type": "string",
+            "minLength": 1
+        },
+        "profile_version": {
+            "type": "string",
+            "minLength": 1
+        },
+        "ec2_security_group_ids": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/ec2_security_group"
+            }
+        }
     },
-    "profile_version": {
-      "type": "string",
-      "minLength": 1
-    }
-  },
-  "required": [
-    "name"
-  ]
+    "required": [
+        "name"
+    ]
 }
