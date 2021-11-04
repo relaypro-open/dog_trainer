@@ -1,6 +1,8 @@
 [
     {dog_trainer, [
         {env, "p1"},
+        {aws_key, "{{ lookup('credstash', 'dog_trainer>aws_key', table='credential-store_mob_pro', region='us-east-1') }}" },
+        {aws_secret, "{{ lookup('credstash', 'dog_trainer>aws_secret', table='credential-store_mob_pro', region='us-east-1') }}" },
         {version, "20180423-180410-relflow"},
         {smtp_relay,"smtp.sendgrid.net"},
         {smtp_username, "{{ lookup('credstash', 'sendgrid_alert_username', table='credential-store', region='us-east-1') }}" },
