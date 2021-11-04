@@ -78,10 +78,10 @@ publish_ec2_sg(DogGroupName) ->
     AnywhereIngressRules = create_port_anywhere_ingress_rules(DogGroupName),
     lager:info("AnywhereIngressRules: ~p~n",[AnywhereIngressRules]),
     Ec2SecurityGroupInfo = dog_group:get_ec2_security_group_ids(DogGroupName),
-    lists:map(fun({Ec2Region, Ec2SecurityGroupId}) ->
+    lists:map(fun(Group) ->
                           update_sg(
-                            binary:bin_to_list(Ec2SecurityGroupId),
-                            binary:bin_to_list(Ec2Region),
+                            binary:bin_to_list(maps:get(<<"sgid">>,Group)),
+                            binary:bin_to_list(maps:get(<<"region">>,Group)),
                             AnywhereIngressRules)
                   end,Ec2SecurityGroupInfo).
 
