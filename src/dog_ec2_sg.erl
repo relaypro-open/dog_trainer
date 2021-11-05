@@ -76,14 +76,17 @@ default_remove_ingress_rules() ->
 publish_ec2_sg(DogGroupName) ->
     %{ok,DogGroupId} = dog_group:get_id_by_name(DogGroupName),
     AnywhereIngressRules = create_port_anywhere_ingress_rules(DogGroupName),
-    lager:info("AnywhereIngressRules: ~p~n",[AnywhereIngressRules]),
+    lager:debug("AnywhereIngressRules: ~p~n",[AnywhereIngressRules]),
     Ec2SecurityGroupInfo = dog_group:get_ec2_security_group_ids(DogGroupName),
-    lists:map(fun(Group) ->
-                          update_sg(
+    Results = lists:map(fun(Group) ->
+                      lager:info("DogGroup: ~p, SecurityGroup: ~p",[DogGroupName,Group]),
+                      {update_sg(
                             binary:bin_to_list(maps:get(<<"sgid">>,Group)),
                             binary:bin_to_list(maps:get(<<"region">>,Group)),
-                            AnywhereIngressRules)
-                  end,Ec2SecurityGroupInfo).
+                            AnywhereIngressRules)}
+                  end,Ec2SecurityGroupInfo),
+    lager:info("Results: ~p",[Results]),
+    Results.
 
 create_port_anywhere_ingress_rules(DogGroupName) ->
     ProtocolPorts = dog_group:get_all_inbound_ports_by_protocol(DogGroupName),
@@ -105,6 +108,38 @@ create_port_anywhere_ingress_rules(DogGroupName) ->
               end, ProtocolPorts),
     lists:flatten(AnywhereIngressRules).
 
+parse_authorize_response(AuthorizeResponse) ->
+		case AuthorizeResponse of
+            {error,{_ErrorType,_ErrorCode,_ErrorHeader,ErrorDescription}} ->
+			%{error,Error} ->
+                %{error,{http_error,400,"Bad Request",<<"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response><Errors><Error><Code>InvalidPermission.Duplicate</Code><Message>the specified rule \"peer: sg-0d741a6be4fa9691d, UDP, from port: 0, to port: 65535, ALLOW\" already exists</Message></Error></Errors><RequestID>3cbe6e0d-179d-4481-8589-34eea28bfc65</RequestID></Response>">>}}
+                Xml = element(2,(erlsom:simple_form(ErrorDescription))),
+                %{"Response",[],
+                % [{"Errors",[],
+                %    [{"Error",[],
+                %         [{"Code",[],["InvalidPermission.Duplicate"]},
+                %               {"Message",[],
+                %                      ["the specified rule \"peer: sg-0d741  a6be4fa9691d, UDP, from port: 0, to port: 65535, ALLOW\" already exists"]}]}]},
+                %                        {"RequestID",[],["3cbe6e0d-179d-4481-8589-34eea28bfc65"]}]}     
+                {"Response",[],
+                 [{"Errors",[],
+                   [{"Error",[],
+                     [{"Code",[],[Code]},
+                      {"Message",[],
+                       [_Message]}]}]},
+                  {"RequestID",[],[_RequestId]}]} = Xml,
+               case Code of
+                   %Ignore duplicate entry error
+                   "InvalidPermission.Duplicate" -> 
+                       ok;
+                   _ ->
+                       Code
+               end;
+			Other ->
+				Other
+        end.
+
+
 -spec update_sg(Ec2SecurityGroupId :: string(), Region :: string(), AnywhereIngressRules :: list()) -> ok | error.
 update_sg(Ec2SecurityGroupId, Region, AnywhereIngressRules) ->
     ExistingRules = ip_permissions(Region, Ec2SecurityGroupId),
@@ -117,12 +152,7 @@ update_sg(Ec2SecurityGroupId, Region, AnywhereIngressRules) ->
     Results = lists:map(fun(RuleSpec) ->
         AuthorizeResponse = erlcloud_ec2:authorize_security_group_ingress(Ec2SecurityGroupId, [RuleSpec], Config),
         lager:debug("AuthorizeResponse: ~p~n",[AuthorizeResponse]),
-		case AuthorizeResponse of
-			{error,{_ErrorDescription,_ErrorCode,_ShortDescription,Description}} ->
-				{error,erlsom:simple_form(Description)};
-			Other ->
-				Other
-        end
+        parse_authorize_response(AuthorizeResponse)
     end, NewAddVpcIngressSpecs),
     RequestResults = lists:zip(NewAddVpcIngressSpecs,Results),
     lists:foreach(fun({Rule,Result}) ->
@@ -133,18 +163,20 @@ update_sg(Ec2SecurityGroupId, Region, AnywhereIngressRules) ->
     lager:debug("RemoveVpcIngressSpecs: ~p~n",[RemoveVpcIngressSpecs]),
     %RemoveVpcIngressSpecs = default_remove_ingress_rules(),
     RemoveResults = lists:map(fun(RuleSpec) ->
-		case erlcloud_ec2:revoke_security_group_ingress(Ec2SecurityGroupId, [RuleSpec], Config) of
-			{error,{_ErrorDescription,_ErrorCode,_ShortDescription,Description}} ->
-				{error,erlsom:simple_form(Description)};
-			Other ->
-				Other
-        end
+		AuthorizeResponse = erlcloud_ec2:revoke_security_group_ingress(Ec2SecurityGroupId, [RuleSpec], Config),
+        parse_authorize_response(AuthorizeResponse)
     end, RemoveVpcIngressSpecs),
     RemoveRequestResults = lists:zip(RemoveVpcIngressSpecs,RemoveResults),
     lists:foreach(fun({Rule,Result}) ->
         lager:debug("~p~n~p~n",[Rule,Result])
     end, RemoveRequestResults),
-    lager:debug("~p~n",[erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config)]).
+    AllResultTrueFalse = lists:all(fun(X) -> lists:member(X,[ok,[]]) end, lists:flatten([Results ++ RemoveResults])),
+    AllResult = case AllResultTrueFalse of
+        true -> ok;
+        false -> error
+    end,
+    {AllResult,{add_results,Results},{remove_results,RemoveResults}}.
+    %lager:debug("~p~n",[erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config)]).
 
 %-spec get_instance_id(InstanceName :: string()) -> InstanceId :: string().
 %get_instance_id(InstanceName) ->
