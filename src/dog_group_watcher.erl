@@ -75,7 +75,7 @@ handle_connection_up(Connection, State) ->
     Reql = reql:db(<<"dog">>),
     reql:table(Reql, <<"group">>),
     %reql:get_field(Reql, <<"profile">>),
-    reql:pluck(Reql, [<<"name">>,<<"profile_id">>,<<"profile_name">>,<<"profile_version">>,<<"external_ipv4_addresses">>,<<"external_ipv6_addresses">>]),
+    reql:pluck(Reql, [<<"name">>,<<"profile_id">>,<<"profile_name">>,<<"profile_version">>,<<"external_ipv4_addresses">>,<<"external_ipv6_addresses">>,<<"ec2_security_group_ids">>]),
     reql:changes(Reql, #{<<"include_initial">> => false, <<"squash">> => RethinkSquashSec}),
     {noreply, Reql, State}.
 
@@ -85,7 +85,7 @@ handle_connection_up(Connection, State) ->
 %% requests during this time.
 handle_connection_down(State) ->
     lager:info("handle_connection_down"),
-    {noreply, State}.
+    noreply, State}.
 
 handle_query_result(Result, State) ->
     lager:info("Result: ~p", [Result]),
@@ -115,7 +115,8 @@ handle_query_result(Result, State) ->
                 {ok, _} = dog_group:set_hash4_ipsets(GroupName, Hash4Ipsets),
                 {ok, _} = dog_group:set_hash6_ipsets(GroupName, Hash6Ipsets),
                 {ok, _} = dog_group:set_hash4_iptables(GroupName, Hash4Iptables),
-                {ok, _} = dog_group:set_hash6_iptables(GroupName, Hash6Iptables)
+                {ok, _} = dog_group:set_hash6_iptables(GroupName, Hash6Iptables),
+                dog_ec2_sg:publish_ec2_sg(GroupName)
               end, Result)
     end,
     {noreply, [Result|State]}.
