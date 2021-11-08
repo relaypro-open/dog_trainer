@@ -6,14 +6,14 @@
 -include_lib("erlcloud/include/erlcloud_ec2.hrl").
 
 -export([
-        create_port_anywhere_ingress_rules/1,
+        %create_port_anywhere_ingress_rules/1,
         ip_permissions/2,
         publish_ec2_sg/1,
         update_sg/3
         ]).
 %test
 -export([
-        default_ingress_rules/1,
+        %default_ingress_rules/1,
         tuple_to_ingress_records/1
         ]).
 
@@ -57,22 +57,23 @@ default_ingress_rules(Ec2SecurityGroupId) ->
          }
     ].
 
-default_remove_ingress_rules() ->	
-    [
-		#vpc_ingress_spec{
-          ip_protocol = tcp,
-          from_port = 0,
-          to_port = 65535, 
-          cidr_ip= ["0.0.0.0/0"]
-         },
-		#vpc_ingress_spec{
-          ip_protocol = udp,
-          from_port = 0,
-          to_port = 65535, 
-          cidr_ip= ["0.0.0.0/0"]
-         }
-    ].
+%default_remove_ingress_rules() ->	
+%    [
+%		#vpc_ingress_spec{
+%          ip_protocol = tcp,
+%          from_port = 0,
+%          to_port = 65535, 
+%          cidr_ip= ["0.0.0.0/0"]
+%         },
+%		#vpc_ingress_spec{
+%          ip_protocol = udp,
+%          from_port = 0,
+%          to_port = 65535, 
+%          cidr_ip= ["0.0.0.0/0"]
+%         }
+%    ].
 
+-spec publish_ec2_sg(DogGroupName :: string()) -> {ok|error,DetailedResults :: list()}.
 publish_ec2_sg(DogGroupName) ->
     %{ok,DogGroupId} = dog_group:get_id_by_name(DogGroupName),
     AnywhereIngressRules = create_port_anywhere_ingress_rules(DogGroupName),
@@ -80,13 +81,24 @@ publish_ec2_sg(DogGroupName) ->
     Ec2SecurityGroupInfo = dog_group:get_ec2_security_group_ids(DogGroupName),
     Results = lists:map(fun(Group) ->
                       lager:info("DogGroup: ~p, SecurityGroup: ~p",[DogGroupName,Group]),
-                      {update_sg(
+                      Result = {update_sg(
                             binary:bin_to_list(maps:get(<<"sgid">>,Group)),
                             binary:bin_to_list(maps:get(<<"region">>,Group)),
-                            AnywhereIngressRules)}
+                            AnywhereIngressRules)},
+                      case Result of
+                          {{error,_}} ->
+                              lager:error("Result: ~p",[Result]);
+                          {{ok,_}} ->
+                              lager:info("Result: ~p",[Result])
+                      end, 
+                      Result
                   end,Ec2SecurityGroupInfo),
-    lager:info("Results: ~p",[Results]),
-    Results.
+    AllResultTrueFalse = lists:all(fun({{Result,_Details}}) -> Result == ok end, Results),
+    AllResult = case AllResultTrueFalse of
+        true -> ok;
+        false -> error
+    end,
+    {AllResult,Results}.
 
 create_port_anywhere_ingress_rules(DogGroupName) ->
     ProtocolPorts = dog_group:get_all_inbound_ports_by_protocol(DogGroupName),
@@ -108,6 +120,7 @@ create_port_anywhere_ingress_rules(DogGroupName) ->
               end, ProtocolPorts),
     lists:flatten(AnywhereIngressRules).
 
+-spec parse_authorize_response(AuthorizeResponse :: tuple()) -> ok | string().
 parse_authorize_response(AuthorizeResponse) ->
 		case AuthorizeResponse of
             {error,{_ErrorType,_ErrorCode,_ErrorHeader,ErrorDescription}} ->
@@ -140,7 +153,7 @@ parse_authorize_response(AuthorizeResponse) ->
         end.
 
 
--spec update_sg(Ec2SecurityGroupId :: string(), Region :: string(), AnywhereIngressRules :: list()) -> ok | error.
+-spec update_sg(Ec2SecurityGroupId :: string(), Region :: string(), AnywhereIngressRules :: list()) -> {ok,tuple()} | {error, tuple()}.
 update_sg(Ec2SecurityGroupId, Region, AnywhereIngressRules) ->
     ExistingRules = ip_permissions(Region, Ec2SecurityGroupId),
     AddVpcIngressSpecs = ordsets:to_list(ordsets:from_list(default_ingress_rules(Ec2SecurityGroupId) ++ AnywhereIngressRules)),
@@ -175,7 +188,7 @@ update_sg(Ec2SecurityGroupId, Region, AnywhereIngressRules) ->
         true -> ok;
         false -> error
     end,
-    {AllResult,{add_results,Results},{remove_results,RemoveResults}}.
+    {AllResult,{{add_results,Results},{remove_results,RemoveResults}}}.
     %lager:debug("~p~n",[erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config)]).
 
 %-spec get_instance_id(InstanceName :: string()) -> InstanceId :: string().

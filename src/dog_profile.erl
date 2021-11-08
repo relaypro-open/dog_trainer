@@ -723,7 +723,7 @@ in_active_profile(Id) ->
     end.
 
 %TODO: Phase 1 of ec2 sg management: only control ports, allow any source address
--spec get_all_inbound_ports_by_protocol(ProfileJson :: list()) -> ProtocolPorts :: list().
+-spec get_all_inbound_ports_by_protocol(ProfileJson :: map()) -> ProtocolPorts :: list().
 get_all_inbound_ports_by_protocol(ProfileJson) ->
     Inbound = nested:get([<<"rules">>,<<"inbound">>], ProfileJson),
     ActiveInbound = [Rule || Rule <- Inbound, maps:get(<<"active">>,Rule) == true],
