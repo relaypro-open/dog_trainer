@@ -99,6 +99,8 @@
         inverse_map_of_lists/1,
         maps_append/3,
         set_ec2_group_mappings_from_members/0,
+        set_ec2_group_mappings_from_members/1,
+        set_ec2_group_mappings_from_members/2,
         tuple_pairs_to_map_of_lists/1
         ]).
 
@@ -1204,11 +1206,23 @@ all_ec2_sg_mappings() ->
 set_ec2_group_mappings_from_members() ->
     Ec2SgMappings = all_ec2_sg_mappings(),
           lists:map(fun({GroupName,SgList}) ->
-                                        {ok, GroupId} = dog_group:get_id_by_name(GroupName),
-                                        io:format("GroupId: ~p, SgList: ~p~n",[GroupId,maps:from_list(SgList)]),
-                                        {ok,CurrentGroupMap} = dog_group:get_by_id(GroupId),
-                                        UpdateMap = maps:merge(CurrentGroupMap,
-                                                         #{<<"ec2_security_group_ids">> =>
-                                                           maps:from_list(SgList)}),
-                                        dog_group:replace(GroupId,UpdateMap)
+                set_ec2_group_mappings_from_members(GroupName,SgList)
               end, Ec2SgMappings).
+
+set_ec2_group_mappings_from_members(GroupName) ->
+    SgList = dog_group:get_ec2_security_group_ids_from_members(GroupName),
+    set_ec2_group_mappings_from_members(GroupName,SgList).
+
+set_ec2_group_mappings_from_members(GroupName,SgList) ->
+        {ok, GroupId} = dog_group:get_id_by_name(GroupName),
+        io:format("GroupId: ~p, SgList: ~p~n",[GroupId,maps:from_list(SgList)]),
+        {ok,CurrentGroupMap} = dog_group:get_by_id(GroupId),
+        SgListOfMaps = lists:map(fun({Region,SgId}) ->
+                                  #{<<"region">> => Region,
+                                    <<"sgid">> => SgId}
+                          end,SgList),
+        UpdateMap = maps:merge(CurrentGroupMap,
+                         #{<<"ec2_security_group_ids">> =>
+                           SgListOfMaps}),
+        dog_group:replace(GroupId,UpdateMap).
+

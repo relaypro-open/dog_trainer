@@ -14,6 +14,7 @@
 %test
 -export([
         %default_ingress_rules/1,
+        config/1,
         tuple_to_ingress_records/1
         ]).
 
@@ -210,6 +211,7 @@ ip_permissions(Ec2Region, Ec2SecurityGroupId) ->
     IpPermissionSpecs = [tuple_to_ingress_records(T) || T <- IpPermissions],
     lists:flatten(IpPermissionSpecs).
 
+%Only creates ingress_specs for rules with ip_ranges, so doesn't create/delete rules with SGs as source
 tuple_to_ingress_records(Keyvalpairs) ->
     IpRanges = proplists:get_value(ip_ranges,Keyvalpairs),
     Keyvalpairs1 = proplists:delete(ip_ranges,Keyvalpairs),
