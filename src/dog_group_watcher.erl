@@ -85,7 +85,7 @@ handle_connection_up(Connection, State) ->
 %% requests during this time.
 handle_connection_down(State) ->
     lager:info("handle_connection_down"),
-    noreply, State}.
+    {noreply, State}.
 
 handle_query_result(Result, State) ->
     lager:info("Result: ~p", [Result]),
