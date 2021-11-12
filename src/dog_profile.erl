@@ -34,6 +34,7 @@
          get_role_groups_in_profile/1,
          get_zone_groups_in_profile/1,
          get_all_inbound_ports_by_protocol/1,
+         get_spp_inbound_ec2/2,
          init/0,
          in_active_profile/1,
          is_active/1,
@@ -747,32 +748,67 @@ get_all_inbound_ports_by_protocol(ProfileJson) ->
                       end,ActiveInbound),
     merge_lists_in_tuples(lists:flatten(RawPortsProtocols)).
 
+expand_services(Source,Services) ->
+      lists:nth(1,lists:map(fun(S) ->
+                        Ports = maps:get(<<"ports">>,S),
+                        Protocol = maps:get(<<"protocol">>,S),
+                        case Protocol of
+                            <<"any">> ->
+                                    [
+                                     {Source, <<"tcp">>, Ports},
+                                     {Source, <<"udp">>, Ports}
+                                    ];
+                                _ ->
+                                    {Source, Protocol,Ports}
+                        end
+                end,Services)).
+
+
 %TODO: Add security group source to rules
-%-spec get_all_inbound_rule_specs(ProfileJson :: list()) -> Rules :: list().
-%get_all_inbound_rule_specs(ProfileJson) ->
-%    Inbound = nested:get([<<"rules">>,<<"inbound">>], ProfileJson),
-%    RawPortsProtocols = lists:map(fun(Rule) ->
-%                              ServiceId = maps:get(<<"service">>,Rule),
-%                              {ok,Service} = dog_service:get_by_id(ServiceId),
-%                              Services = maps:get(<<"services">>,Service),
-%                              lists:nth(1,lists:map(fun(S) ->
-%                                                Ports = maps:get(<<"ports">>,S),
-%                                                Protocol = maps:get(<<"protocol">>,S),
-%                                                Users
-%                                                IpRanges
-%                                                Groups
-%                                                case Protocol of
-%                                                    <<"any">> ->
-%                                                            [
-%                                                             {<<"tcp">>, Ports},
-%                                                             {<<"udp">>, Ports}
-%                                                            ];
-%                                                        _ ->
-%                                                            {Protocol,Ports}
-%                                                end
-%                                        end,Services))
-%                      end,Inbound),
-%    merge_lists_in_tuples(lists:flatten(RawPortsProtocols)).
+-spec get_spp_inbound_ec2(ProfileJson :: map(), DestinationRegion :: string()) -> SourcePortProtocol :: list().
+get_spp_inbound_ec2(ProfileJson,DestinationRegion) ->
+    Inbound = nested:get([<<"rules">>,<<"inbound">>], ProfileJson),
+    ActiveInbound = [Rule || Rule <- Inbound, maps:get(<<"active">>,Rule) == true],
+    SourceProtocolPorts = lists:map(fun(Rule) ->
+          ServiceId = maps:get(<<"service">>,Rule),
+          {ok,Service} = dog_service:get_by_id(ServiceId),
+          Services = maps:get(<<"services">>,Service),
+          GroupType = maps:get(<<"group_type">>,Rule),
+          case GroupType of
+              <<"ANY">> ->
+                  Sources = [{cidr_ip,"0.0.0.0/0"}],
+                  lists:map(fun(Source) ->
+                                    expand_services(Source,Services)
+                            end, Sources);
+              <<"ROLE">> ->
+                  GroupId = maps:get(<<"group">>,Rule),
+                  Sources = case dog_group:get_ec2_security_group_ids_by_id(GroupId) of
+                                [] ->
+                                    [{cidr_ip,"0.0.0.0/0"}];
+                                Ec2GroupIds ->
+                                    lists:map(fun(Ec2Group) ->
+                                                      SgRegion = maps:get(<<"region">>,Ec2Group),
+                                                      SgId = maps:get(<<"sgid">>,Ec2Group),
+                                                      case SgRegion == DestinationRegion of
+                                                          false ->
+                                                              {cidr_ip,"0.0.0.0/0"}; %TODO maybe get list of public+private IPs?
+                                                          true ->
+                                                              {group_id, SgId}
+                                                      end
+                                              end, Ec2GroupIds)
+                            end,
+                  lists:map(fun(Source) ->
+                                    expand_services(Source,Services)
+                            end, Sources);
+              <<"ZONE">> ->
+                  Sources = [{cidr_ip,"0.0.0.0/0"}], %TODO If not too long, list public+private IPs of Zone
+                  lists:map(fun(Source) ->
+                                    expand_services(Source,Services)
+                            end, Sources)
+          end
+    end,ActiveInbound),
+    lists:flatten(SourceProtocolPorts).
+    %merge_lists_in_tuples(lists:flatten(RawPortsProtocols)).
     
 %%--------------------------------------------------------------------
 %% Helpers

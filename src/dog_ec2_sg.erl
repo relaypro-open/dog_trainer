@@ -8,13 +8,16 @@
 -export([
         %create_port_anywhere_ingress_rules/1,
         ip_permissions/2,
-        publish_ec2_sg/1,
+        publish_ec2_sg_by_id/1,
+        publish_ec2_sg_by_name/1,
         update_sg/3
         ]).
 %test
 -export([
         %default_ingress_rules/1,
         config/1,
+        create_ingress_rules_by_id/1,
+        create_port_anywhere_ingress_rules/1,
         tuple_to_ingress_records/1
         ]).
 
@@ -73,19 +76,25 @@ default_ingress_rules(Ec2SecurityGroupId) ->
 %          cidr_ip= ["0.0.0.0/0"]
 %         }
 %    ].
+%
+%TODO: Trigger when dependent Groups change ec2_instances_ids
+publish_ec2_sg_by_name(DogGroupName) ->
+    {ok,DogGroupId} = dog_group:get_id_by_name(DogGroupName),
+    publish_ec2_sg_by_id(DogGroupId).
 
--spec publish_ec2_sg(DogGroupName :: string()) -> {ok|error,DetailedResults :: list()}.
-publish_ec2_sg(DogGroupName) ->
+-spec publish_ec2_sg_by_id(DogGroupId :: string()) -> {ok|error,DetailedResults :: list()}.
+publish_ec2_sg_by_id(DogGroupId) ->
     %{ok,DogGroupId} = dog_group:get_id_by_name(DogGroupName),
-    AnywhereIngressRules = create_port_anywhere_ingress_rules(DogGroupName),
-    lager:debug("AnywhereIngressRules: ~p~n",[AnywhereIngressRules]),
-    Ec2SecurityGroupInfo = dog_group:get_ec2_security_group_ids(DogGroupName),
-    Results = lists:map(fun(Group) ->
-                      lager:info("DogGroup: ~p, SecurityGroup: ~p",[DogGroupName,Group]),
+    %AnywhereIngressRules = create_port_anywhere_ingress_rules(DogGroupName),
+    IngressRules = create_ingress_rules_by_id(DogGroupId),
+    lager:debug("IngressRules: ~p~n",[IngressRules]),
+    %Ec2SecurityGroupInfo = dog_group:get_ec2_security_group_ids_by_id(DogGroupId),
+    Results = lists:map(fun({Region,SgId,Rules}) ->
+                      lager:info("DogGroupId: ~p, SecurityGroup: ~p",[DogGroupId,SgId]),
                       Result = {update_sg(
-                            binary:bin_to_list(maps:get(<<"sgid">>,Group)),
-                            binary:bin_to_list(maps:get(<<"region">>,Group)),
-                            AnywhereIngressRules)},
+                            binary:bin_to_list(SgId),
+                            binary:bin_to_list(Region),
+                            Rules)},
                       case Result of
                           {{error,_}} ->
                               lager:error("Result: ~p",[Result]);
@@ -93,7 +102,7 @@ publish_ec2_sg(DogGroupName) ->
                               lager:info("Result: ~p",[Result])
                       end, 
                       Result
-                  end,Ec2SecurityGroupInfo),
+                  end,IngressRules),
     AllResultTrueFalse = lists:all(fun({{Result,_Details}}) -> Result == ok end, Results),
     AllResult = case AllResultTrueFalse of
         true -> ok;
@@ -120,6 +129,41 @@ create_port_anywhere_ingress_rules(DogGroupName) ->
                                 end, Ports)
               end, ProtocolPorts),
     lists:flatten(AnywhereIngressRules).
+
+create_ingress_rules_by_id(DogGroupId) ->
+    SppList = dog_group:get_spp_inbound_ec2(DogGroupId),
+    IngressRules = 
+            lists:map(fun({Region,SgId,Spps}) ->
+                Rules = lists:map(fun({{SourceType,Source},Protocol,Ports}) ->
+                      PortRule = lists:map(fun(Port) ->
+                          {From,To} = case string:split(Port,":") of
+                                          [F,T] ->
+                                              {F,T};
+                                          [F] ->
+                                              {F,F}
+                                      end,
+                          case SourceType of
+                              cidr_ip ->
+                                  #vpc_ingress_spec{
+                                     ip_protocol = binary_to_atom(Protocol),
+                                     from_port = binary_to_integer(From),
+                                     to_port = binary_to_integer(To),
+                                     cidr_ip = [Source]
+                                    };
+                              group_id ->
+                                  #vpc_ingress_spec{
+                                     ip_protocol = binary_to_atom(Protocol),
+                                     from_port = binary_to_integer(From),
+                                     to_port = binary_to_integer(To),
+                                     group_id = [Source]
+                                    }
+                          end
+                        end, Ports),
+                      lists:flatten(PortRule)
+              end, Spps),
+                 {Region,SgId,lists:flatten(Rules)}
+          end,SppList),
+    lists:flatten(IngressRules).
 
 -spec parse_authorize_response(AuthorizeResponse :: tuple()) -> ok | string().
 parse_authorize_response(AuthorizeResponse) ->
@@ -164,6 +208,7 @@ update_sg(Ec2SecurityGroupId, Region, AnywhereIngressRules) ->
     Config = config(Region),
     lager:debug("~p~n",[erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config)]),
     Results = lists:map(fun(RuleSpec) ->
+        io:format("RuleSpec: ~p~n",[RuleSpec]),
         AuthorizeResponse = erlcloud_ec2:authorize_security_group_ingress(Ec2SecurityGroupId, [RuleSpec], Config),
         lager:debug("AuthorizeResponse: ~p~n",[AuthorizeResponse]),
         parse_authorize_response(AuthorizeResponse)
@@ -214,11 +259,25 @@ ip_permissions(Ec2Region, Ec2SecurityGroupId) ->
 %Only creates ingress_specs for rules with ip_ranges, so doesn't create/delete rules with SGs as source
 tuple_to_ingress_records(Keyvalpairs) ->
     IpRanges = proplists:get_value(ip_ranges,Keyvalpairs),
-    Keyvalpairs1 = proplists:delete(ip_ranges,Keyvalpairs),
-    IngressRecords = lists:map(fun(IpRange) ->
-        Keyvalpairs2 = Keyvalpairs1 ++ [{cidr_ip, [IpRange]}],
-        Foorecord = list_to_tuple([vpc_ingress_spec|[proplists:get_value(X, Keyvalpairs2)
-                                                    || X <- record_info(fields, vpc_ingress_spec)]]),
-        Foorecord
-              end, IpRanges),
-    IngressRecords.
+    Groups = proplists:get_value(groups, Keyvalpairs),
+    case Groups of
+        [] ->
+            Keyvalpairs1 = proplists:delete(ip_ranges,Keyvalpairs),
+            IngressRecords = lists:map(fun(IpRange) ->
+                Keyvalpairs2 = Keyvalpairs1 ++ [{cidr_ip, [IpRange]}],
+                Foorecord = list_to_tuple([vpc_ingress_spec|[proplists:get_value(X, Keyvalpairs2)
+                                                            || X <- record_info(fields, vpc_ingress_spec)]]),
+                Foorecord
+                      end, IpRanges),
+            IngressRecords;
+        _ ->
+            Keyvalpairs1 = proplists:delete(groups,Keyvalpairs),
+            IngressRecords = lists:map(fun(Group) ->
+                Keyvalpairs2 = Keyvalpairs1 ++ [{group_id, [proplists:get_value(group_id,Group)]}],
+                Foorecord = list_to_tuple([vpc_ingress_spec|[proplists:get_value(X, Keyvalpairs2)
+                                                            || X <- record_info(fields, vpc_ingress_spec)]]),
+                Foorecord
+                      end, Groups),
+            IngressRecords
+    end.
+

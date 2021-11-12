@@ -116,7 +116,7 @@ handle_query_result(Result, State) ->
                 {ok, _} = dog_group:set_hash6_ipsets(GroupName, Hash6Ipsets),
                 {ok, _} = dog_group:set_hash4_iptables(GroupName, Hash4Iptables),
                 {ok, _} = dog_group:set_hash6_iptables(GroupName, Hash6Iptables),
-                dog_ec2_sg:publish_ec2_sg(GroupName)
+                dog_ec2_sg:publish_ec2_sg_by_name(GroupName)
               end, Result)
     end,
     {noreply, [Result|State]}.
