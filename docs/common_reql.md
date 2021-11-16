@@ -131,5 +131,27 @@ List Host ec2_security_groups by associated Groups:
 r.db('dog').table('host')
   .filter(r.row("active").eq("active"))
   .eqJoin('group', r.db('dog').table('group'), {index: 'name'})
-  .zip().group("name").getField("ec2_security_group_ids").distinct()
+  .zip().group("name").pluck(["ec2_security_group_ids","ec2_availability_zone"]).distinct()
+```
+
+ec2 SG info by group without ec2_security_group_ids defined, useful to figure why they are not defined:
+```
+r.db('dog').table('host')
+  .filter(r.row("active").eq("active"))
+  .eqJoin('group', r.db('dog').table('group'), {index: 'name'})
+  .filter(
+  r.row("right").hasFields('ec2_security_group_ids').not()
+  )
+  .group(function(host) {
+    return host('right')('name')
+  })
+  .pluck([{"left": ["ec2_security_group_ids","name"]}])
+```
+
+zones by count of IPs:
+```
+r.db('dog').table('zone').map
+   (function(zone) {
+     return {count: zone('ipv4_addresses').count(),name: zone('name')}
+   }).group("count")
 ```

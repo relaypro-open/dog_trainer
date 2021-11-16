@@ -90,6 +90,8 @@
         set_hash4_iptables/2,
         set_hash6_ipsets/2,
         set_hash6_iptables/2,
+        update_group_ec2_security_groups/2,
+        where_ec2_sg_id_used/1,
         where_zone_used/1,
         zone_group_effects_groups/1,
         zone_groups_in_groups_profiles/0
@@ -1161,19 +1163,23 @@ get_all_inbound_ports_by_protocol(GroupName) ->
 
 -spec get_spp_inbound_ec2(GroupId :: string()) -> list().
 get_spp_inbound_ec2(GroupId) ->
-    {ok,Group} = get_by_id(GroupId),
-    Ec2SecurityGroupList = maps:get(<<"ec2_security_group_ids">>,Group,[]),
-    case Ec2SecurityGroupList of
-        [] ->
-            [];
+    case get_by_id(GroupId) of
+        {ok,Group} ->
+            Ec2SecurityGroupList = maps:get(<<"ec2_security_group_ids">>,Group,[]),
+            case Ec2SecurityGroupList of
+                [] ->
+                    [];
+                _ ->
+                    lists:map(fun(Ec2Sg) ->
+                                      Region = maps:get(<<"region">>,Ec2Sg),
+                                      SgId = maps:get(<<"sgid">>,Ec2Sg),
+                                      ProfileId = maps:get(<<"profile_id">>,Group),
+                                      {ok,ProfileJson} = dog_profile:get_by_id(ProfileId),
+                                      {Region,SgId,dog_profile:get_spp_inbound_ec2(ProfileJson,Region)}
+                              end, Ec2SecurityGroupList)
+            end;
         _ ->
-            lists:map(fun(Ec2Sg) ->
-                              Region = maps:get(<<"region">>,Ec2Sg),
-                              SgId = maps:get(<<"sgid">>,Ec2Sg),
-                              ProfileId = maps:get(<<"profile_id">>,Group),
-                              {ok,ProfileJson} = dog_profile:get_by_id(ProfileId),
-                              {Region,SgId,dog_profile:get_spp_inbound_ec2(ProfileJson,Region)}
-                      end, Ec2SecurityGroupList)
+            []
     end.
 
 
@@ -1189,13 +1195,17 @@ get_ec2_security_group_ids_by_id(GroupId) ->
                    end.
 
 get_ec2_security_group_ids(GroupName) ->
-    {ok,Group} = get_by_name(GroupName),
-    case maps:get(<<"ec2_security_group_ids">>,Group,[]) of
-                       [] ->
-                           [];
-                       RegionGroups ->
-                        RegionGroups
-                   end.
+    case get_by_name(GroupName) of
+        {ok,Group} ->
+            case maps:get(<<"ec2_security_group_ids">>,Group,[]) of
+                               {error,notfound} ->
+                                   [];
+                               RegionGroups ->
+                                RegionGroups
+                           end;
+        _ ->
+            []
+    end.
 
 %HOST BASED EC2 INFO
 get_ec2_security_group_ids_from_members(GroupName) ->
@@ -1246,3 +1256,45 @@ set_ec2_group_mappings_from_members(GroupName,SgList) ->
                            SgListOfMaps}),
         dog_group:replace(GroupId,UpdateMap).
 
+-spec where_ec2_sg_id_used(SgId :: binary()) -> {ok, list()}.
+where_ec2_sg_id_used(SgId) ->
+    {ok, R} = dog_rethink:run(fun(X) -> 
+                                      reql:db(X,dog),
+                                      reql:table(X,group),
+                                      reql:has_fields(X,[<<"ec2_security_group_ids">>]),
+                                      reql:filter(X,fun(Y) -> 
+                                                            reql:match(
+                                                              reql:to_json_string(
+                                                                reql:bracket(Y,<<"ec2_security_group_ids">>)),SgId)
+                                                                                                                                                                     end),
+                                     reql:get_field(X,<<"id">>) 
+                              end),
+    {ok, Result} = rethink_cursor:all(R),
+    Groups = case lists:flatten(Result) of
+                 [] -> [];
+                 Else -> Else
+             end,
+    {ok, Groups}.
+
+-spec update_group_ec2_security_groups(Group :: binary(), GroupType :: binary() ) -> 'ok'.
+update_group_ec2_security_groups(GroupName, GroupType) ->
+    lager:info("GroupName: ~p",[GroupName]),
+    {ok,Groups} = case GroupType of
+                <<"role">> -> 
+                    dog_group:role_group_effects_groups(GroupName);
+                <<"zone">> -> 
+                    dog_group:zone_group_effects_groups(GroupName)
+            end,
+    GroupsWithEc2SgIds = lists:filter(fun(Group) ->
+                                              case dog_group:get_ec2_security_group_ids(Group) of
+                                                  [] ->
+                                                      false;
+                                                  _ ->
+                                                      true
+                                              end
+                                      end, Groups),
+    lager:info("Effected Groups: ~p",[GroupsWithEc2SgIds]),
+    lists:foreach(fun(Group) ->
+       dog_ec2_sg:publish_ec2_sg_by_name(Group)
+                  end, GroupsWithEc2SgIds),
+    ok.

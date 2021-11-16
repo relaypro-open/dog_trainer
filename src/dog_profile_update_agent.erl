@@ -184,7 +184,8 @@ do_periodic_publish(State) ->
                         {Group, dog_iptables:publish_to_queue(RoutingKey, R4IpsetsRuleset, R6IpsetsRuleset, R4IptablesRuleset, R6IptablesRuleset, EmptyIpsets)};
                       error ->
                         {Group, error}
-                    end
+                    end,
+                    dog_ec2_sg:publish_ec2_sg_by_name(Group)
                 catch 
                     profile_not_found ->
                         lager:info("profile_not_found in group: ~p",[Group]),
