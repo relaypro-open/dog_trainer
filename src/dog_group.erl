@@ -157,16 +157,38 @@ role_groups_in_groups_profiles() ->
     {ok, Groups} = get_active_groups(),
     Profiles = lists:map(fun(Group) ->
                                  Name = maps:get(<<"name">>,Group),
+                                 lager:debug("Name: ~p~n",[Name]),
                                  {ok, Profile} = get_profile_by_name(Name),
-                                 {Name, Profile} end, Groups),
+                                 {Name, Profile}
+                                 end, Groups),
     lager:debug("Profiles: ~p",[Profiles]),
     GroupNamesInGroups = lists:map(fun({Name, Profile}) ->
                                GroupIdsInProfile = dog_profile:get_role_groups_in_profile(Profile),
                                %lager:info("GroupIdsInProfile: ~p",[GroupIdsInProfile]),
                                GroupNamesInProfile = [element(2,get_name_by_id(Id)) || Id <- GroupIdsInProfile],
-                               {Name, GroupNamesInProfile} end, Profiles),
+                               {Name, GroupNamesInProfile} end, lists:flatten(Profiles)),
     lager:debug("GroupNamesInGroups: ~p",[GroupNamesInGroups]),
     maps:from_list(GroupNamesInGroups).
+
+%role_groups_in_groups_profiles() ->
+%    {ok, Groups} = get_active_groups(),
+%    Profiles = lists:map(fun(Group) ->
+%                                 Name = maps:get(<<"name">>,Group),
+%                                 case get_profile_by_name(Name) of
+%                                 {ok, Profile} ->
+%                                     {Name, Profile};
+%                                 _ ->
+%                                         []
+%                                 end
+%                                 end, Groups),
+%    lager:debug("Profiles: ~p",[Profiles]),
+%    GroupNamesInGroups = lists:map(fun({Name, Profile}) ->
+%                               GroupIdsInProfile = dog_profile:get_role_groups_in_profile(Profile),
+%                               %lager:info("GroupIdsInProfile: ~p",[GroupIdsInProfile]),
+%                               GroupNamesInProfile = [element(2,get_name_by_id(Id)) || Id <- GroupIdsInProfile],
+%                               {Name, GroupNamesInProfile} end, lists:flatten(Profiles)),
+%    lager:debug("GroupNamesInGroups: ~p",[GroupNamesInGroups]),
+%    maps:from_list(GroupNamesInGroups).
 
 inverse_map_of_lists(Map) ->
     MapList = maps:to_list(Map),
