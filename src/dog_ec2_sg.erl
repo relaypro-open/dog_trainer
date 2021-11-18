@@ -208,7 +208,6 @@ update_sg(Ec2SecurityGroupId, Region, AnywhereIngressRules) ->
     Config = config(Region),
     lager:debug("~p~n",[erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config)]),
     Results = lists:map(fun(RuleSpec) ->
-        io:format("RuleSpec: ~p~n",[RuleSpec]),
         AuthorizeResponse = erlcloud_ec2:authorize_security_group_ingress(Ec2SecurityGroupId, [RuleSpec], Config),
         lager:debug("AuthorizeResponse: ~p~n",[AuthorizeResponse]),
         parse_authorize_response(AuthorizeResponse)

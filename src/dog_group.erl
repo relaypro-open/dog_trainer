@@ -42,8 +42,9 @@
         get_all_ipv4s_by_name/1,
         get_all_ipv6s_by_id/1,
         get_all_ipv6s_by_name/1,
-        get_ec2_security_group_ids/1,
+        get_all_ec2_security_group_ids/0,
         get_ec2_security_group_ids_by_id/1,
+        get_ec2_security_group_ids_by_name/1,
         get_ec2_security_group_ids_from_members/1,
         get_external_ips_by_id/1,
         get_external_ipv4s_by_id/1,
@@ -262,7 +263,7 @@ get_all() ->
     fun(X) ->
         reql:db(X, dog),
         reql:table(X, ?TYPE_TABLE),
-        reql:pluck(X, [<<"name">>,<<"id">>,<<"profile_id">>,<<"profile_name">>, <<"profile_version">>])
+        reql:pluck(X, [<<"name">>,<<"id">>,<<"profile_id">>,<<"profile_name">>, <<"profile_version">>,<<"ec2_security_group_ids">>])
     end),
     {ok, Result} = rethink_cursor:all(R),
     Groups = case lists:flatten(Result) of
@@ -1204,6 +1205,19 @@ get_spp_inbound_ec2(GroupId) ->
             []
     end.
 
+-spec get_all_ec2_security_group_ids() -> IdsByGroup :: map().
+get_all_ec2_security_group_ids() ->
+    {ok, AllGroups} = get_all(),
+    IdsByGroup = lists:map(fun(Group) ->
+                      GroupName = maps:get(<<"name">>,Group),
+                      case maps:get(<<"ec2_security_group_ids">>,Group,[]) of
+                          [] ->
+                              {GroupName,[]};
+                          RegionGroups ->
+                              {GroupName, RegionGroups}
+                      end
+              end, AllGroups),
+    maps:from_list(IdsByGroup).
 
 
 %GROUP BASED EC2 INFO
@@ -1216,7 +1230,7 @@ get_ec2_security_group_ids_by_id(GroupId) ->
                         RegionGroups
                    end.
 
-get_ec2_security_group_ids(GroupName) ->
+get_ec2_security_group_ids_by_name(GroupName) ->
     case get_by_name(GroupName) of
         {ok,Group} ->
             case maps:get(<<"ec2_security_group_ids">>,Group,[]) of
@@ -1308,7 +1322,7 @@ update_group_ec2_security_groups(GroupName, GroupType) ->
                     dog_group:zone_group_effects_groups(GroupName)
             end,
     GroupsWithEc2SgIds = lists:filter(fun(Group) ->
-                                              case dog_group:get_ec2_security_group_ids(Group) of
+                                              case dog_group:get_ec2_security_group_ids_by_name(Group) of
                                                   [] ->
                                                       false;
                                                   _ ->
