@@ -1217,7 +1217,9 @@ get_all_ec2_security_group_ids() ->
                               {GroupName, RegionGroups}
                       end
               end, AllGroups),
-    maps:from_list(IdsByGroup).
+    IdsByGroupMap = maps:from_list(IdsByGroup),
+    AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
+    dog_common:merge_maps_of_lists([IdsByGroupMap,AllActiveUnionEc2Sgs]).
 
 
 %GROUP BASED EC2 INFO
@@ -1229,19 +1231,10 @@ get_ec2_security_group_ids_by_id(GroupId) ->
                        RegionGroups ->
                         RegionGroups
                    end.
-
+%TODO
 get_ec2_security_group_ids_by_name(GroupName) ->
-    case get_by_name(GroupName) of
-        {ok,Group} ->
-            case maps:get(<<"ec2_security_group_ids">>,Group,[]) of
-                               {error,notfound} ->
-                                   [];
-                               RegionGroups ->
-                                RegionGroups
-                           end;
-        _ ->
-            []
-    end.
+    {ok, GroupId} = get_id_by_name(GroupName),
+    get_ec2_security_group_ids_by_id(GroupId).
 
 %HOST BASED EC2 INFO
 get_ec2_security_group_ids_from_members(GroupName) ->
@@ -1321,10 +1314,16 @@ update_group_ec2_security_groups(GroupName, GroupType) ->
                 <<"zone">> -> 
                     dog_group:zone_group_effects_groups(GroupName)
             end,
+    AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
     GroupsWithEc2SgIds = lists:filter(fun(Group) ->
                                               case dog_group:get_ec2_security_group_ids_by_name(Group) of
                                                   [] ->
-                                                      false;
+                                                      case maps:get(Group,AllActiveUnionEc2Sgs) of
+                                                          [] ->
+                                                              false;
+                                                          _ ->
+                                                              true
+                                                      end;
                                                   _ ->
                                                       true
                                               end

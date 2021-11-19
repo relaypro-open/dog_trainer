@@ -15,8 +15,6 @@
          get_all/0,
          get_all_active/0,
          get_schema/0,
-         lmm/2,
-         rkmm/3,
          update/2,
          update_by_hostkey/2,
          update_by_name/2
@@ -167,38 +165,6 @@ host_hashes() ->
     R1 = lists:flatten(HostResult),
     Hosts = [ A || A <- R1],
     Hosts.
-
-lmm(ListOfMaps, Key) ->
-    list_of_maps_to_map(ListOfMaps, Key, #{}).
-
-list_of_maps_to_map([],_Key,MapAcc) ->
-    MapAcc;
-list_of_maps_to_map(ListOfMaps,Key,MapAcc) ->
-    KeyValue = maps:get(Key,hd(ListOfMaps)),
-    NewMap = maps:remove(Key,hd(ListOfMaps)),
-    MapAcc@1 = maps:put(KeyValue,NewMap,MapAcc),
-    list_of_maps_to_map(tl(ListOfMaps),Key,MapAcc@1).
-
-%> MM = #{drew => #{test => rest, a => b}, bob => #{test => zest, a=> c}}.
-%> rkmm(MM,a,name).                                           
-% #{b => #{name => drew,test => rest},
-%   c => #{name => bob,test => zest}}
-rkmm(MapOfMaps,NewKey,OldKeysNewKey) ->
-    Iterator = maps:iterator(MapOfMaps),
-    Next = maps:next(Iterator),
-    rekey_map_of_maps(Next,NewKey,OldKeysNewKey,#{}).
-
-rekey_map_of_maps(none,_NewKey,_OldKeysNewKey,MapAcc) ->
-    MapAcc;
-rekey_map_of_maps(Iterator,NewKey,OldKeysNewKey,MapAcc) ->
-    {OldKey,OldValue,ThisIterator} = Iterator,
-    io:format("Iterator: ~p~n",[Iterator]),
-    NewKeyValue = maps:get(NewKey,OldValue),
-    NewMap@0 = maps:remove(NewKey,OldValue),
-    NewMap@1 = maps:put(OldKeysNewKey,OldKey,NewMap@0),
-    MapAcc@1 = maps:put(NewKeyValue,NewMap@1,MapAcc),
-    NewIterator = maps:next(ThisIterator),
-    rekey_map_of_maps(NewIterator,NewKey,OldKeysNewKey,MapAcc@1).
 
 -spec hash_fail_count_check(HostId :: binary(), HashCheck :: (true | false), HashStatus :: map()) -> {true | false, map()}.
 hash_fail_count_check(HostId, HashCheck, HashStatus) ->
