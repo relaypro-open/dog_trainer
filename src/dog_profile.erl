@@ -447,7 +447,7 @@ get_by_id(Id) ->
                                  end),
     case R of
         {ok, null} ->
-            lager:error("profile id null return value: ~p",[Id]),
+            lager:debug("profile id null return value: ~p",[Id]),
             {error, notfound};
         {ok, Result} ->
             {ok, Result}
