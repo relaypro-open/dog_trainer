@@ -156,17 +156,30 @@ all_groups_in_group_profiles() ->
 
 role_groups_in_groups_profiles() ->
     {ok, Groups} = get_active_groups(),
-    Profiles = lists:map(fun(Group) ->
+    ProfilesRaw = lists:map(fun(Group) ->
                                  Name = maps:get(<<"name">>,Group),
                                  lager:debug("Name: ~p~n",[Name]),
-                                 {ok, Profile} = get_profile_by_name(Name),
-                                 {Name, Profile}
+                                 case get_profile_by_name(Name) of
+                                    {ok, Profile} ->
+                                         {Name, Profile};
+                                    _ ->
+                                        []
+                                 end
                                  end, Groups),
+    Profiles = lists:flatten(ProfilesRaw),
     lager:debug("Profiles: ~p",[Profiles]),
     GroupNamesInGroups = lists:map(fun({Name, Profile}) ->
                                GroupIdsInProfile = dog_profile:get_role_groups_in_profile(Profile),
                                %lager:info("GroupIdsInProfile: ~p",[GroupIdsInProfile]),
-                               GroupNamesInProfile = [element(2,get_name_by_id(Id)) || Id <- GroupIdsInProfile],
+                               %GroupNamesInProfile = [element(2,get_name_by_id(Id)) || Id <- GroupIdsInProfile],
+                               GroupNamesInProfile = lists:map(fun(GroupId) ->
+                                                                       case get_name_by_id(GroupId) of
+                                                                           {ok,GroupName} ->
+                                                                               GroupName;
+                                                                           _ ->
+                                                                               []
+                                                                       end
+                                                                       end, GroupIdsInProfile),
                                {Name, GroupNamesInProfile} end, lists:flatten(Profiles)),
     lager:debug("GroupNamesInGroups: ~p",[GroupNamesInGroups]),
     maps:from_list(GroupNamesInGroups).
