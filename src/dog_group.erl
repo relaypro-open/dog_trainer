@@ -1260,7 +1260,9 @@ get_ec2_security_group_ids_by_name(GroupName) ->
                             [];
                         SgIds ->
                             SgIds
-                    end
+                    end;
+                SgIds ->
+                    SgIds
             end;
         {error,notfound} ->
             AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
