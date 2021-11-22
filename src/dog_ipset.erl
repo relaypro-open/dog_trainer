@@ -391,10 +391,12 @@ publish_to_queue(Ipsets) ->
 -spec publish_to_outbound_exchanges(IpsetExternalMap :: map()) -> any().
 publish_to_outbound_exchanges(IpsetExternalMap) ->
   {ok, ExternalEnvs} = dog_link:get_all_active_outbound(),
+  IdsByGroup = dog_group:get_all_internal_ec2_security_group_ids(),
+    %dog_common:merge_maps_of_lists([IdsByGroupMap,AllActiveUnionEc2Sgs]).
   lists:foreach(fun(Env) ->
     EnvName = maps:get(<<"name">>,Env),
-    IdsByGroup = dog_group:get_all_ec2_security_group_ids(),
     ExternalMap = maps:put(<<"ec2">>,IdsByGroup,IpsetExternalMap),
+    %ExternalMap = maps:put(<<"ec2">>,jsx:encode(#{}),IpsetExternalMap),
     lager:debug("ExternalMap: ~p~n",[ExternalMap]),
     publish_to_outbound_exchange(EnvName,ExternalMap)
                     end, ExternalEnvs).

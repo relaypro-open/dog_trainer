@@ -42,7 +42,8 @@
         get_all_ipv4s_by_name/1,
         get_all_ipv6s_by_id/1,
         get_all_ipv6s_by_name/1,
-        get_all_ec2_security_group_ids/0,
+        get_all_external_ec2_security_group_ids/0,
+        get_all_internal_ec2_security_group_ids/0,
         get_ec2_security_group_ids_by_id/1,
         get_ec2_security_group_ids_by_name/1,
         get_ec2_security_group_ids_from_members/1,
@@ -1218,8 +1219,8 @@ get_spp_inbound_ec2(GroupId) ->
             []
     end.
 
--spec get_all_ec2_security_group_ids() -> IdsByGroup :: map().
-get_all_ec2_security_group_ids() ->
+-spec get_all_internal_ec2_security_group_ids() -> IdsByGroup :: map().
+get_all_internal_ec2_security_group_ids() ->
     {ok, AllGroups} = get_all(),
     IdsByGroup = lists:map(fun(Group) ->
                       GroupName = maps:get(<<"name">>,Group),
@@ -1231,9 +1232,12 @@ get_all_ec2_security_group_ids() ->
                       end
               end, AllGroups),
     IdsByGroupMap = maps:from_list(IdsByGroup),
-    AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
-    dog_common:merge_maps_of_lists([IdsByGroupMap,AllActiveUnionEc2Sgs]).
+    IdsByGroupMap.
 
+-spec get_all_external_ec2_security_group_ids() -> IdsByGroup :: map().
+get_all_external_ec2_security_group_ids() ->
+    AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
+    AllActiveUnionEc2Sgs.
 
 %GROUP BASED EC2 INFO
 get_ec2_security_group_ids_by_id(GroupId) ->
@@ -1246,8 +1250,18 @@ get_ec2_security_group_ids_by_id(GroupId) ->
                    end.
 %TODO
 get_ec2_security_group_ids_by_name(GroupName) ->
-    {ok, GroupId} = get_id_by_name(GroupName),
-    get_ec2_security_group_ids_by_id(GroupId).
+    case get_id_by_name(GroupName) of
+        {ok, GroupId} ->
+            get_ec2_security_group_ids_by_id(GroupId);
+        {error,notfound} ->
+            AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
+            case maps:get(GroupName, AllActiveUnionEc2Sgs,[]) of
+                [] ->
+                    [];
+                SgIds ->
+                    SgIds
+            end
+    end.
 
 %HOST BASED EC2 INFO
 get_ec2_security_group_ids_from_members(GroupName) ->

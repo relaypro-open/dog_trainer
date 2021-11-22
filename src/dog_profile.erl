@@ -782,7 +782,9 @@ get_spp_inbound_ec2(ProfileJson,DestinationRegion) ->
                             end, Sources);
               <<"ROLE">> ->
                   GroupId = maps:get(<<"group">>,Rule),
-                  Sources = case dog_group:get_ec2_security_group_ids_by_id(GroupId) of
+                  {ok,Group} = dog_group:get_by_id(GroupId),
+                  GroupName = maps:get(<<"name">>,Group),
+                  Sources = case dog_group:get_ec2_security_group_ids_by_name(GroupName) of
                                 [] ->
                                     [{cidr_ip,"0.0.0.0/0"}];
                                 Ec2GroupIds ->
