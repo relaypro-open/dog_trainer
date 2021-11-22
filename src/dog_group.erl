@@ -1331,7 +1331,7 @@ update_group_ec2_security_groups(GroupName, GroupType) ->
     GroupsWithEc2SgIds = lists:filter(fun(Group) ->
                                               case dog_group:get_ec2_security_group_ids_by_name(Group) of
                                                   [] ->
-                                                      case maps:get(Group,AllActiveUnionEc2Sgs) of
+                                                      case maps:get(Group,AllActiveUnionEc2Sgs,[]) of
                                                           [] ->
                                                               false;
                                                           _ ->

@@ -394,7 +394,7 @@ publish_to_outbound_exchanges(IpsetExternalMap) ->
   lists:foreach(fun(Env) ->
     EnvName = maps:get(<<"name">>,Env),
     IdsByGroup = dog_group:get_all_ec2_security_group_ids(),
-    ExternalMap = maps:merge(IpsetExternalMap,#{ec2 => IdsByGroup}),
+    ExternalMap = maps:put(<<"ec2">>,IdsByGroup,IpsetExternalMap),
     publish_to_outbound_exchange(EnvName,ExternalMap)
                     end, ExternalEnvs).
 

@@ -177,6 +177,7 @@ empty_external(EnvName) ->
   #{
    <<"name">> => EnvName,
    <<"state">> => <<"inactive">>,
+   <<"ec2">> => #{}, 
    <<"v4">> => #{ <<"groups">> => #{}, <<"zones">> => #{} },
    <<"v6">> => #{ <<"groups">> => #{}, <<"zones">> => #{} },
    <<"address_handling">> => <<"union">>
