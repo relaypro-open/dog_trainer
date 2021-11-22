@@ -395,6 +395,7 @@ publish_to_outbound_exchanges(IpsetExternalMap) ->
     EnvName = maps:get(<<"name">>,Env),
     IdsByGroup = dog_group:get_all_ec2_security_group_ids(),
     ExternalMap = maps:put(<<"ec2">>,IdsByGroup,IpsetExternalMap),
+    lager:debug("ExternalMap: ~p~n",[ExternalMap]),
     publish_to_outbound_exchange(EnvName,ExternalMap)
                     end, ExternalEnvs).
 

@@ -96,10 +96,10 @@ publish_ec2_sg_by_id(DogGroupId) ->
                             binary:bin_to_list(Region),
                             Rules)},
                       case Result of
-                          {{error,_}} ->
-                              lager:error("Result: ~p",[Result]);
                           {{ok,_}} ->
-                              lager:info("Result: ~p",[Result])
+                              lager:info("Result: ~p",[Result]);
+                          _ ->
+                              lager:error("Result: ~p",[Result])
                       end, 
                       Result
                   end,IngressRules),
@@ -248,12 +248,16 @@ update_sg(Ec2SecurityGroupId, Region, AnywhereIngressRules) ->
 -spec ip_permissions(Ec2Region :: string(), Ec2SecurityGroupId :: string()) -> IpPermisions :: list().
 ip_permissions(Ec2Region, Ec2SecurityGroupId) ->
     Config = config(Ec2Region),
-    {ok, Permissions} = erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config),
-    %lager:debug("Permissions: ~p~n",[Permissions]),
-    IpPermissions = maps:get(ip_permissions, maps:from_list(hd(Permissions))),
-    %IpPermissions.
-    IpPermissionSpecs = [tuple_to_ingress_records(T) || T <- IpPermissions],
-    lists:flatten(IpPermissionSpecs).
+    case erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config) of
+        {ok, Permissions} ->
+            %lager:debug("Permissions: ~p~n",[Permissions]),
+            IpPermissions = maps:get(ip_permissions, maps:from_list(hd(Permissions))),
+            %IpPermissions.
+            IpPermissionSpecs = [tuple_to_ingress_records(T) || T <- IpPermissions],
+            lists:flatten(IpPermissionSpecs);
+        _ ->
+            []
+    end.
 
 %Only creates ingress_specs for rules with ip_ranges, so doesn't create/delete rules with SGs as source
 tuple_to_ingress_records(Keyvalpairs) ->

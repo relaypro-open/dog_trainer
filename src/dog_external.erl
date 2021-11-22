@@ -562,10 +562,10 @@ get_all_ips() ->
                    end, Externals),
     {ok, lists:flatten(E1)}.
 
--spec get_all_active_union_ec2_sgs() -> list().
+-spec get_all_active_union_ec2_sgs() -> map().
 get_all_active_union_ec2_sgs() ->
     {ok, ExternalUnionEnvs, _ExternalPrefixEnvs} = dump_all_active(), 
     AllGroups = lists:map(fun(Env) ->
-                      maps:get(<<"ec2">>,Env,#{})
+                      maps:get(<<"ec2">>,Env,[])
                       end, ExternalUnionEnvs),
-    dog_common:merge_maps_of_lists(AllGroups).
+    dog_common:merge_maps_of_lists(lists:flatten(AllGroups)).
