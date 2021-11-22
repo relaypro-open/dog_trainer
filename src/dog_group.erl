@@ -44,7 +44,7 @@
         get_all_ipv6s_by_name/1,
         get_all_external_ec2_security_group_ids/0,
         get_all_internal_ec2_security_group_ids/0,
-        get_ec2_security_group_ids_by_id/1,
+        get_internal_ec2_security_group_ids_by_id/1,
         get_ec2_security_group_ids_by_name/1,
         get_ec2_security_group_ids_from_members/1,
         get_external_ips_by_id/1,
@@ -1240,7 +1240,7 @@ get_all_external_ec2_security_group_ids() ->
     AllActiveUnionEc2Sgs.
 
 %GROUP BASED EC2 INFO
-get_ec2_security_group_ids_by_id(GroupId) ->
+get_internal_ec2_security_group_ids_by_id(GroupId) ->
     {ok,Group} = get_by_id(GroupId),
     case maps:get(<<"ec2_security_group_ids">>,Group,[]) of
                        [] ->
@@ -1252,7 +1252,16 @@ get_ec2_security_group_ids_by_id(GroupId) ->
 get_ec2_security_group_ids_by_name(GroupName) ->
     case get_id_by_name(GroupName) of
         {ok, GroupId} ->
-            get_ec2_security_group_ids_by_id(GroupId);
+            case get_internal_ec2_security_group_ids_by_id(GroupId) of
+                [] ->
+                    AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
+                    case maps:get(GroupName, AllActiveUnionEc2Sgs,[]) of
+                        [] ->
+                            [];
+                        SgIds ->
+                            SgIds
+                    end
+            end;
         {error,notfound} ->
             AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
             case maps:get(GroupName, AllActiveUnionEc2Sgs,[]) of

@@ -88,7 +88,6 @@ publish_ec2_sg_by_id(DogGroupId) ->
     %AnywhereIngressRules = create_port_anywhere_ingress_rules(DogGroupName),
     IngressRules = create_ingress_rules_by_id(DogGroupId),
     lager:debug("IngressRules: ~p~n",[IngressRules]),
-    %Ec2SecurityGroupInfo = dog_group:get_ec2_security_group_ids_by_id(DogGroupId),
     Results = lists:map(fun({Region,SgId,Rules}) ->
                       lager:info("DogGroupId: ~p, SecurityGroup: ~p",[DogGroupId,SgId]),
                       Result = {update_sg(
