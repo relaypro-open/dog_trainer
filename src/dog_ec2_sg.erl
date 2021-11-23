@@ -166,6 +166,7 @@ create_ingress_rules_by_id(DogGroupId) ->
 
 -spec parse_authorize_response(AuthorizeResponse :: tuple()) -> ok | string().
 parse_authorize_response(AuthorizeResponse) ->
+    lager:debug("AuthorizeResponse: ~p~n",[AuthorizeResponse]),
 		case AuthorizeResponse of
             {error,{_ErrorType,_ErrorCode,_ErrorHeader,ErrorDescription}} ->
 			%{error,Error} ->
