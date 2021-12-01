@@ -115,12 +115,13 @@ publish_ec2_sg_by_id(DogGroupId) ->
 -spec publish_ec2_sgs(DogGroup :: map()) -> {ok|error,DetailedResults :: list()}.
 publish_ec2_sgs(DogGroup) ->
     Ec2SecurityGroupList = maps:get(<<"ec2_security_group_ids">>,DogGroup,[]),
+    DogGroupName = maps:get(<<"name">>,DogGroup),
     Results = lists:map(fun(Ec2Sg) ->
                       Region = maps:get(<<"region">>,Ec2Sg),
                       SgId = maps:get(<<"sgid">>,Ec2Sg),
-                      publish_ec2_sg(DogGroup, Region, SgId)
+                      {DogGroupName,Region,SgId,publish_ec2_sg(DogGroup, Region, SgId)}
               end, Ec2SecurityGroupList),
-    AllResultTrueFalse = lists:all(fun({{Result,_Details}}) -> Result == ok end, Results),
+    AllResultTrueFalse = lists:all(fun({_DogGroupName,_Region,_SgId,{{Result,_Details}}}) -> Result == ok end, Results),
     AllResult = case AllResultTrueFalse of
         true -> ok;
         false -> error
