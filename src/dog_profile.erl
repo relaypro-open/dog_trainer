@@ -827,8 +827,9 @@ get_ppps_inbound_ec2(ProfileJson,DestinationRegion) ->
                   {ok, Zone} = dog_zone:get_by_id(maps:get(<<"group">>,Rule)),
                   lager:debug("Zone: ~p~n",[Zone]),
                   Ip4Addresses = maps:get(<<"ipv4_addresses">>,Zone),
+                  MaxEc2ZoneSize = application:get_env(dog_trainer,max_ec2_zone_size,5),
                   case length(Ip4Addresses) of
-                      Length when Length >= 5 ->
+                      Length when Length >= MaxEc2ZoneSize ->
                           Sources = [{cidr_ip,"0.0.0.0/0"}], %TODO If not too long, list public+private IPs of Zone
                           lists:map(fun(Source) ->
                                             expand_services(Source,Services)

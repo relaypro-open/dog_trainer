@@ -396,11 +396,10 @@ update_sg(Ec2SecurityGroupId, Region, AddRemoveMap) ->
             end, RequestResults),
             RemoveVpcIngressSpecs = maps:get(<<"Remove">>,AddRemoveMap),
 
-            %RemoveResults = lists:map(fun(RuleSpec) ->
-            %    AuthorizeResponse = erlcloud_ec2:revoke_security_group_ingress(Ec2SecurityGroupIdList, [RuleSpec], Config),
-            %    parse_authorize_response(AuthorizeResponse)
-            %end, RemoveVpcIngressSpecs),
-            RemoveResults = [],
+            RemoveResults = lists:map(fun(RuleSpec) ->
+                AuthorizeResponse = erlcloud_ec2:revoke_security_group_ingress(Ec2SecurityGroupIdList, [RuleSpec], Config),
+                parse_authorize_response(AuthorizeResponse)
+            end, RemoveVpcIngressSpecs),
             AllResults = lists:flatten([Results ++ RemoveResults]),
             lager:debug("AllResults: ~p~n",[AllResults]),
             AllResultTrueFalse = lists:all(fun(X) -> X == ok end, AllResults),
