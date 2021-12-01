@@ -1,8 +1,11 @@
 -module(dog_common).
 
 -export([
+        list_of_maps_to_map/2,
         lmm/2,
+        rekey_map_of_maps/3,
         rkmm/3,
+        merge_lists_in_tuples/1,
         merge_maps_of_lists/1,
         re_filter/2,
         to_list/1
@@ -51,6 +54,9 @@ merge_maps_of_lists(ListOfMapsOfLists,Acc) ->
     merge_maps_of_lists(Rest,maps:from_list(NewAcc)).
 
 lmm(ListOfMaps, Key) ->
+    list_of_maps_to_map(ListOfMaps, Key).
+
+list_of_maps_to_map(ListOfMaps, Key) ->
     list_of_maps_to_map(ListOfMaps, Key, #{}).
 
 list_of_maps_to_map([],_Key,MapAcc) ->
@@ -65,6 +71,10 @@ list_of_maps_to_map(ListOfMaps,Key,MapAcc) ->
 %> rkmm(MM,a,name).                                           
 % #{b => #{name => drew,test => rest},
 %   c => #{name => bob,test => zest}}
+
+rekey_map_of_maps(MapOfMaps,NewKey,OldKeysNewKey) ->
+    rkmm(MapOfMaps,NewKey,OldKeysNewKey).
+
 rkmm(MapOfMaps,NewKey,OldKeysNewKey) ->
     Iterator = maps:iterator(MapOfMaps),
     Next = maps:next(Iterator),
@@ -81,3 +91,20 @@ rekey_map_of_maps(Iterator,NewKey,OldKeysNewKey,MapAcc) ->
     MapAcc@1 = maps:put(NewKeyValue,NewMap@1,MapAcc),
     NewIterator = maps:next(ThisIterator),
     rekey_map_of_maps(NewIterator,NewKey,OldKeysNewKey,MapAcc@1).
+
+merge_lists_in_tuples(List) ->
+    Map = lists:foldl(fun fun_merge_lists_in_tuples/2, maps:new(), List),
+    lists:map(fun({K,V}) ->
+                      UniqueV = lists:usort(lists:flatten(V)),
+                      {K,UniqueV}
+              end,maps:to_list(Map)).
+
+fun_merge_lists_in_tuples(H, A) ->
+    K = element(1, H),
+    case maps:is_key(K, A) of
+        true ->
+            V = maps:get(K, A),
+            maps:put(K, [element(2,H) | V], A);
+        false ->
+            maps:put(K, element(2,H), A)
+    end.

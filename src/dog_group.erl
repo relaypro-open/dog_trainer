@@ -78,7 +78,7 @@
         get_name_by_id/1,
         get_profile_by_id/1,
         get_profile_by_name/1,
-        get_spp_inbound_ec2/1,
+        get_ppps_inbound_ec2/2,
         group_name_exists/1,
         init/0,
         in_active_profile/1,
@@ -1198,26 +1198,22 @@ get_all_inbound_ports_by_protocol(GroupName) ->
             dog_profile:get_all_inbound_ports_by_protocol(ProfileJson)
     end.
 
--spec get_spp_inbound_ec2(GroupId :: string()) -> list().
-get_spp_inbound_ec2(GroupId) ->
-    case get_by_id(GroupId) of
-        {ok,Group} ->
+-spec get_ppps_inbound_ec2(Group :: map(), Region :: string()) -> list().
+get_ppps_inbound_ec2(Group, Region) ->
             Ec2SecurityGroupList = maps:get(<<"ec2_security_group_ids">>,Group,[]),
-            case Ec2SecurityGroupList of
+            Ec2SecurityGroupMap = dog_common:lmm(Ec2SecurityGroupList,<<"region">>),
+            Ec2Sg = maps:get(Region,Ec2SecurityGroupMap,[]),
+            case Ec2Sg of
                 [] ->
                     [];
                 _ ->
-                    lists:map(fun(Ec2Sg) ->
-                                      Region = maps:get(<<"region">>,Ec2Sg),
-                                      SgId = maps:get(<<"sgid">>,Ec2Sg),
-                                      ProfileId = maps:get(<<"profile_id">>,Group),
-                                      {ok,ProfileJson} = dog_profile:get_by_id(ProfileId),
-                                      {Region,SgId,dog_profile:get_spp_inbound_ec2(ProfileJson,Region)}
-                              end, Ec2SecurityGroupList)
-            end;
-        _ ->
-            []
-    end.
+                  %Region = maps:get(<<"region">>,Ec2Sg),
+                  %SgId = maps:get(<<"sgid">>,Ec2Sg),
+                  ProfileId = maps:get(<<"profile_id">>,Group),
+                  {ok,ProfileJson} = dog_profile:get_by_id(ProfileId),
+                  %{Region,SgId,dog_profile:get_spp_inbound_ec2(ProfileJson,Region)}
+                  dog_profile:get_ppps_inbound_ec2(ProfileJson,Region)
+            end.
 
 -spec get_all_internal_ec2_security_group_ids() -> IdsByGroup :: map().
 get_all_internal_ec2_security_group_ids() ->

@@ -1,6 +1,7 @@
 -module(dog_profile).
 
 -include("dog_trainer.hrl").
+-include_lib("erlcloud/include/erlcloud_ec2.hrl").
 
 -define(VALIDATION_TYPE, <<"profile">>).
 -define(TYPE_TABLE, profile).
@@ -34,7 +35,7 @@
          get_role_groups_in_profile/1,
          get_zone_groups_in_profile/1,
          get_all_inbound_ports_by_protocol/1,
-         get_spp_inbound_ec2/2,
+         get_ppps_inbound_ec2/2,
          init/0,
          in_active_profile/1,
          is_active/1,
@@ -746,34 +747,53 @@ get_all_inbound_ports_by_protocol(ProfileJson) ->
                                                 end
                                         end,Services))
                       end,ActiveInbound),
-    merge_lists_in_tuples(lists:flatten(RawPortsProtocols)).
+    dog_common:merge_lists_in_tuples(lists:flatten(RawPortsProtocols)).
 
+-spec expand_services(Source :: binary(), Services :: binary()) -> 
+    {Protocol :: binary(), FromPort :: binary(), ToPort :: binary(), Source :: binary() }.
 expand_services(Source,Services) ->
       lists:nth(1,lists:map(fun(S) ->
-                        Ports = maps:get(<<"ports">>,S),
-                        Protocol = maps:get(<<"protocol">>,S),
-                        case Protocol of
-                            <<"any">> ->
-                                    [
-                                     {Source, <<"tcp">>, Ports},
-                                     {Source, <<"udp">>, Ports}
-                                    ];
-                                _ ->
-                                    {Source, Protocol,Ports}
-                        end
+                        PortsList = maps:get(<<"ports">>,S),
+                        lists:map(fun(Ports) ->
+                            {From,To} = case split(Ports,":") of
+                                            [F,T] ->
+                                                {F,T};
+                                            [F] ->
+                                                {F,F}
+                                        end,
+                            FromPort = list_to_integer(From),
+                            ToPort = list_to_integer(To),
+                            Protocol = maps:get(<<"protocol">>,S),
+                            case Protocol of
+                                <<"any">> ->
+                                        [
+                                         {tcp, FromPort, ToPort, Source},
+                                         {udp, FromPort, ToPort, Source}
+                                        ]
+                                        ;
+                                <<"udp">> ->
+                                         {udp, FromPort, ToPort, Source};
+                                <<"tcp">> ->
+                                         {tcp, FromPort, ToPort, Source};
+                                <<"icmp">>   ->
+                                         {icmp, FromPort, ToPort, Source}
+                            end
+                                  end,PortsList)
                 end,Services)).
 
 
 %TODO: Add security group source to rules
--spec get_spp_inbound_ec2(ProfileJson :: map(), DestinationRegion :: string()) -> SourcePortProtocol :: list().
-get_spp_inbound_ec2(ProfileJson,DestinationRegion) ->
+%protocol port port source
+-spec get_ppps_inbound_ec2(ProfileJson :: map(), DestinationRegion :: string()) -> SourcePortProtocol :: list().
+get_ppps_inbound_ec2(ProfileJson,DestinationRegion) ->
     Inbound = nested:get([<<"rules">>,<<"inbound">>], ProfileJson),
-    ActiveInbound = [Rule || Rule <- Inbound, maps:get(<<"active">>,Rule) == true],
+    ActiveInbound = [Rule || Rule <- Inbound, (maps:get(<<"active">>,Rule) == true) and (maps:get(<<"action">>,Rule) == <<"ACCEPT">>)],
     SourceProtocolPorts = lists:map(fun(Rule) ->
           ServiceId = maps:get(<<"service">>,Rule),
           {ok,Service} = dog_service:get_by_id(ServiceId),
           Services = maps:get(<<"services">>,Service),
           GroupType = maps:get(<<"group_type">>,Rule),
+          %TODO: Description = maps:get(<<"comment">>,Rule), %Not supported by erlcloud
           case GroupType of
               <<"ANY">> ->
                   Sources = [{cidr_ip,"0.0.0.0/0"}],
@@ -795,7 +815,7 @@ get_spp_inbound_ec2(ProfileJson,DestinationRegion) ->
                                                           false ->
                                                               {cidr_ip,"0.0.0.0/0"}; %TODO maybe get list of public+private IPs?
                                                           true ->
-                                                              {group_id, SgId}
+                                                              {group_id, binary:bin_to_list(SgId)}
                                                       end
                                               end, Ec2GroupIds)
                             end,
@@ -803,14 +823,31 @@ get_spp_inbound_ec2(ProfileJson,DestinationRegion) ->
                                     expand_services(Source,Services)
                             end, Sources);
               <<"ZONE">> ->
-                  Sources = [{cidr_ip,"0.0.0.0/0"}], %TODO If not too long, list public+private IPs of Zone
-                  lists:map(fun(Source) ->
-                                    expand_services(Source,Services)
-                            end, Sources)
+                  %Sources = [{cidr_ip,"0.0.0.0/0"}], %TODO If not too long, list public+private IPs of Zone
+                  {ok, Zone} = dog_zone:get_by_id(maps:get(<<"group">>,Rule)),
+                  lager:debug("Zone: ~p~n",[Zone]),
+                  Ip4Addresses = maps:get(<<"ipv4_addresses">>,Zone),
+                  case length(Ip4Addresses) of
+                      Length when Length >= 5 ->
+                          Sources = [{cidr_ip,"0.0.0.0/0"}], %TODO If not too long, list public+private IPs of Zone
+                          lists:map(fun(Source) ->
+                                            expand_services(Source,Services)
+                                    end, Sources);
+                      _Length ->
+                          ZoneRules =  lists:map(fun(Ipv4) ->
+                              Sources = [{cidr_ip,binary:bin_to_list(dog_ips:add_net_to_ipv4(Ipv4))}],
+                              lists:map(fun(Source) ->
+                                                expand_services(Source,Services)
+                                        end, Sources)
+                          end,Ip4Addresses),
+                          lists:flatten(ZoneRules)
+                  end
           end
     end,ActiveInbound),
+    %[tuple_to_list(X) || X <- lists:flatten(SourceProtocolPorts)].
     lists:flatten(SourceProtocolPorts).
     %merge_lists_in_tuples(lists:flatten(RawPortsProtocols)).
+    %dog_common:merge_lists_in_tuples(lists:flatten(SourceProtocolPorts)).
     
 %%--------------------------------------------------------------------
 %% Helpers
@@ -835,19 +872,3 @@ replace(String,SearchPattern,Replacement,all) ->
     Replaced = re:replace(String,SearchPattern,Replacement,[global,{return,list}]),
     [Replaced].
 
-merge_lists_in_tuples(List) ->
-    Map = lists:foldl(fun fun_merge_lists_in_tuples/2, maps:new(), List),
-    lists:map(fun({K,V}) ->
-                      UniqueV = lists:usort(lists:flatten(V)),
-                      {K,UniqueV}
-              end,maps:to_list(Map)).
-
-fun_merge_lists_in_tuples(H, A) ->
-    K = element(1, H),
-    case maps:is_key(K, A) of
-        true ->
-            V = maps:get(K, A),
-            maps:put(K, [element(2,H) | V], A);
-        false ->
-            maps:put(K, element(2,H), A)
-    end.

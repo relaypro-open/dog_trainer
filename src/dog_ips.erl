@@ -12,6 +12,7 @@
         ]).
 
 -export([
+        add_net_to_ipv4/1,
         addresses_from_interfaces/1, 
         remove_local_ips/1,
         remove_local_ipv4_ips/1,
