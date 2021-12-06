@@ -823,26 +823,30 @@ get_ppps_inbound_ec2(ProfileJson,DestinationRegion) ->
                                     expand_services(Source,Services)
                             end, Sources);
               <<"ZONE">> ->
-                  %Sources = [{cidr_ip,"0.0.0.0/0"}], %TODO If not too long, list public+private IPs of Zone
-                  {ok, Zone} = dog_zone:get_by_id(maps:get(<<"group">>,Rule)),
-                  lager:debug("Zone: ~p~n",[Zone]),
-                  Ip4Addresses = maps:get(<<"ipv4_addresses">>,Zone),
-                  MaxEc2ZoneSize = application:get_env(dog_trainer,max_ec2_zone_size,5),
-                  case length(Ip4Addresses) of
-                      Length when Length >= MaxEc2ZoneSize ->
-                          Sources = [{cidr_ip,"0.0.0.0/0"}], %TODO If not too long, list public+private IPs of Zone
-                          lists:map(fun(Source) ->
-                                            expand_services(Source,Services)
-                                    end, Sources);
-                      _Length ->
-                          ZoneRules =  lists:map(fun(Ipv4) ->
-                              Sources = [{cidr_ip,binary:bin_to_list(dog_ips:add_net_to_ipv4(Ipv4))}],
-                              lists:map(fun(Source) ->
-                                                expand_services(Source,Services)
-                                        end, Sources)
-                          end,Ip4Addresses),
-                          lists:flatten(ZoneRules)
-                  end
+                  Sources = [{cidr_ip,"0.0.0.0/0"}], 
+                  lists:map(fun(Source) ->
+                                    expand_services(Source,Services)
+                            end, Sources)
+                  %TODO If not too long, list public+private IPs of Zone
+                  %{ok, Zone} = dog_zone:get_by_id(maps:get(<<"group">>,Rule)),
+                  %lager:debug("Zone: ~p~n",[Zone]),
+                  %Ip4Addresses = maps:get(<<"ipv4_addresses">>,Zone),
+                  %MaxEc2ZoneSize = application:get_env(dog_trainer,max_ec2_zone_size,5),
+                  %case length(Ip4Addresses) of
+                  %    Length when Length > MaxEc2ZoneSize ->
+                  %        Sources = [{cidr_ip,"0.0.0.0/0"}], %TODO If not too long, list public+private IPs of Zone
+                  %        lists:map(fun(Source) ->
+                  %                          expand_services(Source,Services)
+                  %                  end, Sources);
+                  %    _Length ->
+                  %        ZoneRules =  lists:map(fun(Ipv4) ->
+                  %            Sources = [{cidr_ip,binary:bin_to_list(dog_ips:add_net_to_ipv4(Ipv4))}],
+                  %            lists:map(fun(Source) ->
+                  %                              expand_services(Source,Services)
+                  %                      end, Sources)
+                  %        end,Ip4Addresses),
+                  %        lists:flatten(ZoneRules)
+                  %end
           end
     end,ActiveInbound),
     %[tuple_to_list(X) || X <- lists:flatten(SourceProtocolPorts)].

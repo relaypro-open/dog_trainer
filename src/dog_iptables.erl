@@ -11,20 +11,32 @@
 -export([chunk_list/1,
          chunk_list/2]).
 
--spec update_group_iptables(Group :: binary(), GroupType :: binary() ) -> 'ok'.
-update_group_iptables(GroupName, GroupType) ->
-    lager:info("GroupName: ~p",[GroupName]),
+-spec update_group_iptables(GroupZoneName :: binary(), GroupType :: binary() ) -> 'ok'.
+update_group_iptables(GroupZoneName, GroupType) ->
+    lager:info("GroupZoneName: ~p",[GroupZoneName]),
     Groups = case application:get_env(dog_trainer,generate_unset_tables,true) of 
         true -> 
             {ok, GroupsList} = case GroupType of
                 <<"role">> -> 
-                    dog_group:role_group_effects_groups(GroupName);
+                    dog_group:role_group_effects_groups(GroupZoneName);
                 <<"zone">> -> 
-                    dog_group:zone_group_effects_groups(GroupName)
+                    dog_group:zone_group_effects_groups(GroupZoneName)
             end,
             GroupsList;
         false ->
-            [GroupName]
+            {ok, GroupsList} = case GroupType of
+                <<"role">> -> 
+                   {ok, [GroupZoneName]};
+                <<"zone">> -> 
+                    case dog_zone:get_by_name(GroupZoneName) of
+                        {ok,Zone} ->
+                            ZoneId = maps:get(<<"id">>,Zone),
+                            dog_group:zone_group_effects_groups(ZoneId);
+                        _ ->
+                            {ok, []}
+                    end
+            end,
+            GroupsList
     end,
     lager:info("Effected Groups: ~p",[Groups]),
     lager:info("add_to_queue: ~p",[Groups]),

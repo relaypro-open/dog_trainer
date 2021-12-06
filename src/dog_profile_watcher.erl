@@ -110,8 +110,7 @@ handle_query_result(Result, State) ->
                     {ok, GroupName} = dog_group:get_name_by_id(GroupId),
                     lager:info(GroupName),
                     GroupType = <<"role">>,
-                    dog_iptables:update_group_iptables(GroupName, GroupType),
-                    dog_ec2_sg:publish_ec2_sg_by_name(GroupName)
+                    dog_iptables:update_group_iptables(GroupName, GroupType)
                 end, GroupIds)
             end, Result)
     end,

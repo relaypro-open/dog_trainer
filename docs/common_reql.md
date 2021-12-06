@@ -155,3 +155,17 @@ r.db('dog').table('zone').map
      return {count: zone('ipv4_addresses').count(),name: zone('name')}
    }).group("count")
 ```
+
+list non-existent groups in active profiles (pathological case) (ignore 'all-active'):
+```
+r.db('dog').table('group').withFields(['profile_id']).innerJoin(
+  r.db('dog').table('profile'), 
+  function(groupRow, profileRow) {
+    return groupRow('profile_id').eq(profileRow('id'))})('right')('rules')('inbound')
+  .concatMap(function(rule) {
+    return rule.pluck(["group","group_type"])
+  })
+  .filter(function(rule) {
+    return rule('group_type').eq('ROLE')
+  }).getField('group').distinct().setDifference(r.db('dog').table('group')('id').distinct())
+```

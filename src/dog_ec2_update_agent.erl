@@ -1,4 +1,4 @@
--module(dog_profile_update_agent).
+-module(dog_ec2_update_agent).
 -behaviour(gen_server).
 
 %% ------------------------------------------------------------------
@@ -10,22 +10,28 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/0,
+-export([
          add_to_queue/1,
+         ec2_security_group/2,
+         ec2_security_group_ids/1,
+         ec2_security_groups/1,
          periodic_publish/0,
-         queue_length/0
+         queue_length/0,
+         start_link/0
         ]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
 %% ------------------------------------------------------------------
 
--export([init/1,
+-export([
+         code_change/3,
          handle_call/3,
          handle_cast/2,
          handle_info/2,
-         terminate/2,
-         code_change/3]).
+         init/1,
+         terminate/2
+        ]).
 
 %% ------------------------------------------------------------------
 %% test Function Exports
@@ -64,7 +70,9 @@ periodic_publish() ->
 
 -spec init(_) -> {'ok', []}.
 init(_Args) ->
-    {ok, PeriodicPublishInterval} = application:get_env(dog_trainer,profile_periodic_publish_interval_seconds),
+    Ec2SgCacheSeconds = application:get_env(dog_trainer,ec2_sg_cache_seconds,60),
+    cache_tab:new(ec2_sgs, [{life_time, Ec2SgCacheSeconds}]),
+    PeriodicPublishInterval = application:get_env(dog_trainer,ec2_periodic_publish_interval_seconds,5),
     _PublishTimer = erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     State = ordsets:new(),
     {ok, State}.
@@ -114,7 +122,7 @@ handle_cast(Msg, State) ->
 -spec handle_info(_,_) -> {'noreply',_}.
 handle_info(periodic_publish, State) ->
     {ok, NewState} = do_periodic_publish(State),
-    {ok, PeriodicPublishInterval} = application:get_env(dog_trainer,profile_periodic_publish_interval_seconds),
+    PeriodicPublishInterval = application:get_env(dog_trainer,ec2_periodic_publish_interval_seconds,5),
     erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     {noreply, NewState};
 handle_info(Info, State) ->
@@ -138,6 +146,30 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
+-spec get_ec2_security_groups(Region :: binary()) -> {ok, Ec2Sgs :: map()}.
+get_ec2_security_groups(Region) ->
+    Config = dog_ec2_sg:config(Region),
+    {ok, Ec2Sgs} = erlcloud_ec2:describe_security_groups([],[],[],Config),
+    ListOfMaps = [maps:from_list(X) || X <- Ec2Sgs],
+    Ec2SgsMap = dog_common:list_of_maps_to_map(ListOfMaps,group_id),
+    {ok, Ec2SgsMap}.
+
+-spec ec2_security_groups(Region :: binary()) -> Ec2Sgs :: list().
+ec2_security_groups(Region) ->
+    {ok, Ec2Sgs} = cache_tab:lookup(ec2_sgs, Region, fun() -> get_ec2_security_groups(Region) end),
+    Ec2Sgs.
+
+-spec ec2_security_group(Ec2SecurityGroupId :: binary(), Region :: binary()) -> {ok, Ec2Sgs :: list()}.
+ec2_security_group(Ec2SecurityGroupId, Region) ->
+    Ec2SgsMap = ec2_security_groups(Region),
+    Ec2Sg = maps:get(binary:bin_to_list(Ec2SecurityGroupId), Ec2SgsMap,{error,notfound}),
+    Ec2Sg.
+
+-spec ec2_security_group_ids(Region :: binary()) -> SgIds :: list().
+ec2_security_group_ids(Region) ->
+    Ec2Sgs = ec2_security_groups(Region),
+    SgIds = maps:keys(Ec2Sgs),
+    SgIds.
 
 -spec do_periodic_publish(_) -> OldServers :: {ok, list()}.
 do_periodic_publish([]) ->
@@ -147,53 +179,23 @@ do_periodic_publish(State) ->
     case dog_agent_checker:check() of
         true ->
             lager:info("State: ~p",[State]),
-            Groups = ordsets:to_list(State),
-            imetrics:set_gauge(publish_queue_length, length(Groups)),
-            PeriodicPublishMax = application:get_env(dog_trainer,periodic_publish_max,10),
-            {_ConsumedGroups, LeftoverGroups} = case Groups of
+            Sgs = ordsets:to_list(State),
+            imetrics:set_gauge(publish_queue_length, length(Sgs)),
+            PeriodicPublishMax = application:get_env(dog_trainer,ec2_periodic_publish_max,10),
+            {_ConsumedSgs, LeftoverSgs} = case Sgs of
                 [] ->
                     {[],[]};
-                _ when length(Groups) >= PeriodicPublishMax ->
-                    lists:split(PeriodicPublishMax,Groups); %only consume N per run
-                _ when length(Groups) < PeriodicPublishMax ->
-                    {Groups,[]}
+                _ when length(Sgs) >= PeriodicPublishMax ->
+                    lists:split(PeriodicPublishMax,Sgs); %only consume N per run
+                _ when length(Sgs) < PeriodicPublishMax ->
+                    {Sgs,[]}
             end,
-            {Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap} = dog_ipset:id_maps(),
-            {MergedIpsets, _InternalIpsets} = dog_ipset:create_ipsets(),
-            %Publish ipsets even if the Group doesn't have an associated Profile:
-            %NonBlankGroups = lists:filter(fun(Group) -> Group =/= <<>> end, Groups),
-            %lager:info("NonBlankGroups: ~p",[NonBlankGroups]),
-            %case length(NonBlankGroups) > 0 of
-            %  true ->
-            %    dog_ipset:update_ipsets(all_envs);
-            %  false ->
-            %    dog_ipset:update_ipsets(local_env)
-            %end,
-            dog_ipset:update_ipsets(all_envs),
-            EmptyIpsets = [], % Deliberately set to empty set, so agent will not update ipsets.
-            GroupsWithoutEmptyProfiles = ordsets:subtract(ordsets:from_list(Groups),[<<>>]),
-            PublishList = lists:map(fun(Group) -> 
-                Environment = <<"*">>,
-                Location = <<"*">>,
-                HostKey = <<"*">>,
-                RoutingKey = binary:list_to_bin([Environment,<<".">>,Location,<<".">>,Group,<<".">>,HostKey]),
-                try 
-                    case dog_profile:create_ruleset(RoutingKey, Group, Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,
-                                                    Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap,MergedIpsets) of
-                      {R4IpsetsRuleset, R6IpsetsRuleset, R4IptablesRuleset, R6IptablesRuleset} ->
-                        {Group, dog_iptables:publish_to_queue(RoutingKey, R4IpsetsRuleset, R6IpsetsRuleset, R4IptablesRuleset, R6IptablesRuleset, EmptyIpsets)};
-                      error ->
-                        {Group, error}
-                    end
-                catch 
-                    profile_not_found ->
-                        lager:info("profile_not_found in group: ~p",[Group]),
-                        {Group, profile_not_found}
-                end,
-                dog_ec2_sg:publish_ec2_sg_by_name(Group)
-                          end, GroupsWithoutEmptyProfiles),
+            SgsWithoutEmptyProfiles = ordsets:subtract(ordsets:from_list(Sgs),[<<>>]),
+            PublishList = lists:map(fun({DogGroup, Region, SgId}) -> 
+                dog_ec2_sg:publish_ec2_sg({DogGroup, Region, SgId})
+                          end, SgsWithoutEmptyProfiles),
             lager:info("PublishList: ~p",[PublishList]),
-            {ok, ordsets:from_list(LeftoverGroups) };
+            {ok, ordsets:from_list(LeftoverSgs) };
         false ->
             lager:info("Skipping, dog_agent_checker:check() false"),
             {ok, State }

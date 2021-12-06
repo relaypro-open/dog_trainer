@@ -45,7 +45,13 @@ init([]) ->
             permanent,
             5000,
             worker,
-            [dog_agent_checker]}
+            [dog_agent_checker]},
+	{dog_ec2_update_agent,
+            {dog_ec2_update_agent, start_link, []},
+            permanent,
+            5000,
+            worker,
+            [dog_ec2_update_agent]}
 	]	
 	}}.
 

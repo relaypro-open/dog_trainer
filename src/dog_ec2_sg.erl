@@ -9,13 +9,12 @@
         ip_permissions/2,
         publish_ec2_sg_by_id/1,
         publish_ec2_sg_by_name/1,
-        publish_ec2_sg/3,
+        publish_ec2_sg/1,
         publish_ec2_sgs/1,
         update_sg/3
         ]).
 %test
 -export([
-        %default_ingress_rules/1,
         config/1,
         compare_sg/3,
         create_ingress_rules/1,
@@ -35,41 +34,6 @@ config(Region) ->
     erlcloud_ec2:new(Key,
                      Secret, Url).
 
-%-record(vpc_ingress_spec, {
-%          ip_protocol::tcp|udp|icmp,
-%          from_port::-1 | 0..65535,
-%          to_port::-1 | 0..65535,
-%          user_id::undefined|[string()],
-%          group_name::undefined|[string()],
-%          group_id::undefined|[string()],
-%          cidr_ip::undefined|[string()]
-%         }).
-
-default_ingress_rules(Ec2SecurityGroupId) ->	
-    [
-		#vpc_ingress_spec{
-          ip_protocol = icmp,
-          from_port = 8,
-          to_port = -1,
-          cidr_ip= ["0.0.0.0/0"],
-          group_id = []
-         },
-		#vpc_ingress_spec{
-          ip_protocol = tcp,
-          from_port = 0,
-          to_port = 65535, 
-          group_id = [binary:bin_to_list(Ec2SecurityGroupId)],
-          cidr_ip = []
-         },
-		#vpc_ingress_spec{
-          ip_protocol = udp,
-          from_port = 0,
-          to_port = 65535, 
-          group_id = [binary:bin_to_list(Ec2SecurityGroupId)],
-          cidr_ip = []
-         }
-    ].
-
 default_spps_rules(Ec2SecurityGroupId) ->
     [
     {icmp,8,8,{cidr_ip,"0.0.0.0/0"}},
@@ -77,23 +41,6 @@ default_spps_rules(Ec2SecurityGroupId) ->
     {udp,0,65535,{group_id,binary:bin_to_list(Ec2SecurityGroupId)}}
      ].
 
-
-%default_remove_ingress_rules() ->	
-%    [
-%		#vpc_ingress_spec{
-%          ip_protocol = tcp,
-%          from_port = 0,
-%          to_port = 65535, 
-%          cidr_ip= ["0.0.0.0/0"]
-%         },
-%		#vpc_ingress_spec{
-%          ip_protocol = udp,
-%          from_port = 0,
-%          to_port = 65535, 
-%          cidr_ip= ["0.0.0.0/0"]
-%         }
-%    ].
-%
 %TODO: Trigger when dependent Groups change ec2_instances_ids
 publish_ec2_sg_by_name(DogGroupName) ->
     case dog_group:get_by_name(DogGroupName) of
@@ -111,26 +58,31 @@ publish_ec2_sg_by_id(DogGroupId) ->
         _ ->
             []
     end.
-    
+   
 -spec publish_ec2_sgs(DogGroup :: map()) -> {ok|error,DetailedResults :: list()}.
 publish_ec2_sgs(DogGroup) ->
     Ec2SecurityGroupList = maps:get(<<"ec2_security_group_ids">>,DogGroup,[]),
     DogGroupName = maps:get(<<"name">>,DogGroup),
-    Results = lists:map(fun(Ec2Sg) ->
+    Results = plists:map(fun(Ec2Sg) ->
                       Region = maps:get(<<"region">>,Ec2Sg),
                       SgId = maps:get(<<"sgid">>,Ec2Sg),
-                      {DogGroupName,Region,SgId,publish_ec2_sg(DogGroup, Region, SgId)}
+                      lager:debug("Region, SgId: ~p, ~p~n",[Region,SgId]),
+                      Ec2SgIds = dog_ec2_update_agent:ec2_security_group_ids(Region),
+                      case lists:member(binary:bin_to_list(SgId),Ec2SgIds) of
+                          true ->
+                              %{DogGroupName,Region,SgId,publish_to_queue({DogGroup, Region, SgId})};
+                              {DogGroupName,Region,SgId,dog_ec2_sg:publish_ec2_sg({DogGroup, Region, SgId})};
+                          false ->
+                              {DogGroupName,Region,SgId,{error,<<"ec2 security group not found">>}}
+                      end
               end, Ec2SecurityGroupList),
-    AllResultTrueFalse = lists:all(fun({_DogGroupName,_Region,_SgId,{{Result,_Details}}}) -> Result == ok end, Results),
-    AllResult = case AllResultTrueFalse of
-        true -> ok;
-        false -> error
-    end,
-    {AllResult,Results}.
+    Results.
 
+publish_to_queue({DogGroup, Region, SgId}) ->
+    dog_ec2_update_agent:add_to_queue([{DogGroup, Region, SgId}]).
 
--spec publish_ec2_sg(DogGroup :: map(), Region :: string(), SgId :: string() ) -> {ok|error,DetailedResults :: list()}.
-publish_ec2_sg(DogGroup, Region, SgId) ->
+-spec publish_ec2_sg({DogGroup :: map(), Region :: string(), SgId :: string()} ) -> {ok|error,DetailedResults :: list()}.
+publish_ec2_sg({DogGroup, Region, SgId}) ->
             DogGroupId = maps:get(<<"id">>,DogGroup),
             AddRemoveMap = compare_sg(SgId, Region, DogGroupId),
             Results = {update_sg(
@@ -140,6 +92,90 @@ publish_ec2_sg(DogGroup, Region, SgId) ->
                   )},
             lager:debug("Results: ~p~n",[Results]),
             Results.
+
+compare_sg(Ec2SecurityGroupId, Region, DogGroupId) ->
+    {ok,DogGroup} = dog_group:get_by_id(DogGroupId),
+    Ppps = dog_group:get_ppps_inbound_ec2(DogGroup,Region),
+    DefaultPpps = default_spps_rules(Ec2SecurityGroupId),
+    IngressRulesSpecs = ppps_to_spps(Ppps ++ DefaultPpps),
+    lager:debug("IngressRulesSpecs: ~p~n",[IngressRulesSpecs]),
+    %case erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config) of
+    case dog_ec2_update_agent:ec2_security_group(Ec2SecurityGroupId,Region) of
+        {error,Reason} ->
+            lager:error("Ec2SecurityGroupId doesn't exist: ~p~n",[Ec2SecurityGroupId]),
+            {error,Reason};
+        _ ->
+            ExistingRules = ip_permissions(Region, Ec2SecurityGroupId),
+            lager:debug("ExistingRules: ~p~n",[ExistingRules]),
+            NewAddVpcIngressSpecs = ordsets:subtract(ordsets:from_list(IngressRulesSpecs),ordsets:from_list(ExistingRules)), 
+            lager:debug("NewAddVpcIngressSpecs: ~p~n",[NewAddVpcIngressSpecs]),
+            RemoveVpcIngressSpecs = ordsets:subtract(ordsets:from_list(ExistingRules),ordsets:from_list(IngressRulesSpecs)), 
+            lager:debug("RemoveVpcIngressSpecs: ~p~n",[RemoveVpcIngressSpecs]),
+            #{<<"Add">> => NewAddVpcIngressSpecs, 
+              <<"Remove">> => RemoveVpcIngressSpecs}
+    end.
+
+-spec update_sg(Ec2SecurityGroupId :: string(), Region :: string(), AddRemoveMap :: map()) -> {ok,tuple()} | {error, tuple()}.
+update_sg(Ec2SecurityGroupId, Region, AddRemoveMap) ->
+    Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),
+    Config = config(Region),
+    NewAddVpcIngressSpecs = maps:get(<<"Add">>,AddRemoveMap),
+    lager:debug("NewAddVpcIngressSpecs: ~p~n",[NewAddVpcIngressSpecs]),
+    AddResults = case NewAddVpcIngressSpecs of
+                  [] ->
+                      [];
+                  _ ->
+                    parse_authorize_response(erlcloud_ec2:authorize_security_group_ingress(Ec2SecurityGroupIdList, NewAddVpcIngressSpecs, Config))
+              end,
+    lager:debug("~p~n",[AddResults]),
+    RemoveVpcIngressSpecs = maps:get(<<"Remove">>,AddRemoveMap),
+    RemoveResults = case RemoveVpcIngressSpecs of
+                  [] ->
+                      [];
+                  _ ->
+                    parse_authorize_response(erlcloud_ec2:revoke_security_group_ingress(Ec2SecurityGroupIdList, RemoveVpcIngressSpecs, Config))
+              end,
+    AllResults = [AddResults,RemoveResults],
+    lager:debug("AllResults: ~p~n",[AllResults]),
+    AllResultTrueFalse = lists:all(fun(X) -> X == ok end, AllResults),
+    AllResult = case AllResultTrueFalse of
+        true -> ok;
+        false -> error
+    end,
+    {AllResult,{{add_results,AddResults},{remove_results,RemoveResults}}}.
+
+-spec parse_authorize_response(AuthorizeResponse :: tuple()) -> ok | string().
+parse_authorize_response(AuthorizeResponse) ->
+    lager:debug("AuthorizeResponse: ~p~n",[AuthorizeResponse]),
+		case AuthorizeResponse of
+            {error,{_ErrorType,_ErrorCode,_ErrorHeader,ErrorDescription}} ->
+			%{error,Error} ->
+                %{error,{http_error,400,"Bad Request",<<"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response><Errors><Error><Code>InvalidPermission.Duplicate</Code><Message>the specified rule \"peer: sg-0d741a6be4fa9691d, UDP, from port: 0, to port: 65535, ALLOW\" already exists</Message></Error></Errors><RequestID>3cbe6e0d-179d-4481-8589-34eea28bfc65</RequestID></Response>">>}}
+                Xml = element(2,(erlsom:simple_form(ErrorDescription))),
+                %{"Response",[],
+                % [{"Errors",[],
+                %    [{"Error",[],
+                %         [{"Code",[],["InvalidPermission.Duplicate"]},
+                %               {"Message",[],
+                %                      ["the specified rule \"peer: sg-0d741  a6be4fa9691d, UDP, from port: 0, to port: 65535, ALLOW\" already exists"]}]}]},
+                %                        {"RequestID",[],["3cbe6e0d-179d-4481-8589-34eea28bfc65"]}]}     
+                {"Response",[],
+                 [{"Errors",[],
+                   [{"Error",[],
+                     [{"Code",[],[Code]},
+                      {"Message",[],
+                       [_Message]}]}]},
+                  {"RequestID",[],[_RequestId]}]} = Xml,
+               case Code of
+                   %Ignore duplicate entry error
+                   "InvalidPermission.Duplicate" -> 
+                       ok;
+                   _ ->
+                       Code
+               end;
+			Other ->
+				Other
+        end.
 
 create_port_anywhere_ingress_rule(Protocol, Ports) ->
     lists:map(fun(Port) ->
@@ -204,91 +240,6 @@ create_ingress_port_rules(SourceType,Source,Protocol,Ports) ->
                          end, Ports),
     lists:flatten(PortRule).
 
--spec parse_authorize_response(AuthorizeResponse :: tuple()) -> ok | string().
-parse_authorize_response(AuthorizeResponse) ->
-    lager:debug("AuthorizeResponse: ~p~n",[AuthorizeResponse]),
-		case AuthorizeResponse of
-            {error,{_ErrorType,_ErrorCode,_ErrorHeader,ErrorDescription}} ->
-			%{error,Error} ->
-                %{error,{http_error,400,"Bad Request",<<"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response><Errors><Error><Code>InvalidPermission.Duplicate</Code><Message>the specified rule \"peer: sg-0d741a6be4fa9691d, UDP, from port: 0, to port: 65535, ALLOW\" already exists</Message></Error></Errors><RequestID>3cbe6e0d-179d-4481-8589-34eea28bfc65</RequestID></Response>">>}}
-                Xml = element(2,(erlsom:simple_form(ErrorDescription))),
-                %{"Response",[],
-                % [{"Errors",[],
-                %    [{"Error",[],
-                %         [{"Code",[],["InvalidPermission.Duplicate"]},
-                %               {"Message",[],
-                %                      ["the specified rule \"peer: sg-0d741  a6be4fa9691d, UDP, from port: 0, to port: 65535, ALLOW\" already exists"]}]}]},
-                %                        {"RequestID",[],["3cbe6e0d-179d-4481-8589-34eea28bfc65"]}]}     
-                {"Response",[],
-                 [{"Errors",[],
-                   [{"Error",[],
-                     [{"Code",[],[Code]},
-                      {"Message",[],
-                       [_Message]}]}]},
-                  {"RequestID",[],[_RequestId]}]} = Xml,
-               case Code of
-                   %Ignore duplicate entry error
-                   "InvalidPermission.Duplicate" -> 
-                       ok;
-                   _ ->
-                       Code
-               end;
-			Other ->
-				Other
-        end.
-        
-create_ingress_rule(Ec2SecurityGroupId, RuleSpec, Config) ->
-    Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),
-        AuthorizeResponse = erlcloud_ec2:authorize_security_group_ingress(Ec2SecurityGroupIdList, [RuleSpec], Config),
-        lager:debug("AuthorizeResponse: ~p~n",[AuthorizeResponse]),
-        AnywhereRuleSpec = #vpc_ingress_spec{
-           ip_protocol = RuleSpec#vpc_ingress_spec.ip_protocol,
-           from_port = RuleSpec#vpc_ingress_spec.from_port,
-           to_port = RuleSpec#vpc_ingress_spec.to_port,
-           cidr_ip= ["0.0.0.0/0"]
-           },
-        case parse_authorize_response(AuthorizeResponse) of
-            "InvalidGroup.NotFound" ->
-                lager:debug("AnywhereRuleSpec: ~p~n",[AnywhereRuleSpec]),
-                AnywhereRuleResponse = erlcloud_ec2:authorize_security_group_ingress(Ec2SecurityGroupIdList, [AnywhereRuleSpec], Config),
-                parse_authorize_response(AnywhereRuleResponse);
-            Response ->
-                %erlcloud_ec2:revoke_security_group_ingress(Ec2SecurityGroupIdList, [AnywhereRuleSpec], Config),
-                Response
-        end.
-
-compare_sg(Ec2SecurityGroupId, Region, DogGroupId) ->
-    Config = config(Region),
-    {ok,DogGroup} = dog_group:get_by_id(DogGroupId),
-    Ppps = dog_group:get_ppps_inbound_ec2(DogGroup,Region),
-    DefaultPpps = default_spps_rules(Ec2SecurityGroupId),
-    IngressRulesSpecs = ppps_to_spps(Ppps ++ DefaultPpps),
-    %IngressRulesSpecs = create_ingress_rules(Spps),
-    lager:debug("IngressRulesSpecs: ~p~n",[IngressRulesSpecs]),
-    case erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config) of
-        {error,Reason} ->
-            lager:error("Ec2SecurityGroupId doesn't exist: ~p~n",[Ec2SecurityGroupId]),
-            {error,Reason};
-        _ ->
-            ExistingRules = ip_permissions(Region, Ec2SecurityGroupId),
-            lager:debug("ExistingRules: ~p~n",[ExistingRules]),
-            %DefaultIngressRules = default_ingress_rules(Ec2SecurityGroupId),
-            %lager:debug("DefaultIngressRules: ~p~n",[DefaultIngressRules]),
-            %AddVpcIngressSpecs = ordsets:to_list(
-            %                       ordsets:union(
-            %                         ordsets:from_list(DefaultIngressRules),
-            %                         ordsets:from_list(IngressRulesSpecs) 
-            %                        )
-            %                      ),
-            %lager:debug("AddVpcIngressSpecs: ~p~n",[AddVpcIngressSpecs]),
-            NewAddVpcIngressSpecs = ordsets:subtract(ordsets:from_list(IngressRulesSpecs),ordsets:from_list(ExistingRules)), 
-            lager:debug("NewAddVpcIngressSpecs: ~p~n",[NewAddVpcIngressSpecs]),
-            RemoveVpcIngressSpecs = ordsets:subtract(ordsets:from_list(ExistingRules),ordsets:from_list(IngressRulesSpecs)), 
-            lager:debug("RemoveVpcIngressSpecs: ~p~n",[RemoveVpcIngressSpecs]),
-            #{<<"Add">> => NewAddVpcIngressSpecs, 
-              <<"Remove">> => RemoveVpcIngressSpecs}
-    end.
-
 ppps_to_spps(Ppps) ->
     ppps_to_spps(Ppps,#{}).
 
@@ -349,7 +300,6 @@ ppps_to_spps(Ppps,Accum) ->
     AccumNew = maps:put(Key,NewValue,Accum),
     ppps_to_spps(Rest,AccumNew).
 
-
 %-record(vpc_ingress_spec, {
 %          ip_protocol::tcp|udp|icmp,
 %          from_port::-1 | 0..65535,
@@ -359,57 +309,6 @@ ppps_to_spps(Ppps,Accum) ->
 %          group_id::undefined|[string()],
 %          cidr_ip::undefined|[string()]
 %         }).
-
-%spps_to_specs(Spps) ->
-%    lists:map(fun(Proplist) ->
-%                    NewProplist = [
-%                     {ip_protocol, proplists:get_value(ip_protocol,Proplist)},
-%                     {from_port, proplists:get_value(from_port,Proplist)},
-%                     {to_port,proplists:get_value(to_port,Proplist)}
-%                    ],
-%                      Groups = proplists:get_value(groups,Proplist,[]),
-%                      lists:map(fun(Group) ->
-%
-%                                end,Groups),
-%                      IpRanges = proplists:get_value(ip_ranges,Proplist,[]),
-%                      lists:map(fun(IpRange) ->
-%                                end,IpRanges)
-%              end,Spps).
-
-
--spec update_sg(Ec2SecurityGroupId :: string(), Region :: string(), AddRemoveMap :: map()) -> {ok,tuple()} | {error, tuple()}.
-update_sg(Ec2SecurityGroupId, Region, AddRemoveMap) ->
-    Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),
-    Config = config(Region),
-    case erlcloud_ec2:describe_security_groups([Ec2SecurityGroupIdList],[],[],Config) of
-        {error,Reason} ->
-            lager:error("Ec2SecurityGroupId doesn't exist: ~p~n",[Ec2SecurityGroupId]),
-            {error,Reason};
-        _ ->
-            lager:debug("~p~n",[erlcloud_ec2:describe_security_groups([Ec2SecurityGroupIdList],[],[],Config)]),
-            NewAddVpcIngressSpecs = maps:get(<<"Add">>,AddRemoveMap),
-            Results = lists:map(fun(RuleSpec) ->
-                create_ingress_rule(Ec2SecurityGroupId,RuleSpec, Config)
-            end, NewAddVpcIngressSpecs),
-            RequestResults = lists:zip(NewAddVpcIngressSpecs,Results),
-            lists:foreach(fun({Rule,Result}) ->
-                lager:debug("~p~n~p~n",[Rule,Result])
-            end, RequestResults),
-            RemoveVpcIngressSpecs = maps:get(<<"Remove">>,AddRemoveMap),
-
-            RemoveResults = lists:map(fun(RuleSpec) ->
-                AuthorizeResponse = erlcloud_ec2:revoke_security_group_ingress(Ec2SecurityGroupIdList, [RuleSpec], Config),
-                parse_authorize_response(AuthorizeResponse)
-            end, RemoveVpcIngressSpecs),
-            AllResults = lists:flatten([Results ++ RemoveResults]),
-            lager:debug("AllResults: ~p~n",[AllResults]),
-            AllResultTrueFalse = lists:all(fun(X) -> X == ok end, AllResults),
-            AllResult = case AllResultTrueFalse of
-                true -> ok;
-                false -> error
-            end,
-            {AllResult,{{add_results,Results},{remove_results,RemoveResults}}}
-    end.
 
 -spec ip_permissions(Ec2Region :: string(), Ec2SecurityGroupId :: string()) -> IpPermisions :: list().
 ip_permissions(Ec2Region, Ec2SecurityGroupId) ->

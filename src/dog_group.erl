@@ -135,11 +135,17 @@ zone_groups_in_groups_profiles() ->
     {ok, Groups} = get_active_groups(),
     Profiles = lists:map(fun(Group) ->
                                  Name = maps:get(<<"name">>,Group),
-                                 {ok, Profile} = get_profile_by_name(Name),
-                                 {Name, Profile} end, Groups),
+                                 lager:debug("Name: ~p~n",[Name]),
+                                 case get_profile_by_name(Name) of 
+                                     {ok, Profile} ->
+                                         {Name, Profile};
+                                     {error,notfound} ->
+                                        []
+                                 end
+                 end, Groups),
     GroupsInGroups = lists:map(fun({Name, Profile}) ->
                                GroupsInProfile = dog_profile:get_zone_groups_in_profile(Profile),
-                               {Name, GroupsInProfile} end, Profiles),
+                               {Name, GroupsInProfile} end, lists:flatten(Profiles)),
     maps:from_list(GroupsInGroups).
 
 all_zones_in_group_profiles() ->
@@ -233,12 +239,12 @@ role_group_effects_groups(GroupName) ->
         Else -> Else
     end.
 
--spec zone_group_effects_groups(GroupName :: binary()) -> ({ok, list()} | error).
-zone_group_effects_groups(GroupName) ->
+-spec zone_group_effects_groups(ZoneId :: binary()) -> ({ok, list()} | error).
+zone_group_effects_groups(ZoneId) ->
     GroupsInGroups = zone_groups_in_groups_profiles(),
     TupleList = inverse_map_of_lists(GroupsInGroups),
     GroupeEffectingGroups = tuple_pairs_to_map_of_lists(TupleList),
-    case maps:find(GroupName,GroupeEffectingGroups) of
+    case maps:find(ZoneId,GroupeEffectingGroups) of
         error -> {ok,[]};
         Else -> Else
     end.
@@ -1339,14 +1345,18 @@ where_ec2_sg_id_used(SgId) ->
              end,
     {ok, Groups}.
 
--spec update_group_ec2_security_groups(Group :: binary(), GroupType :: binary() ) -> 'ok'.
-update_group_ec2_security_groups(GroupName, GroupType) ->
-    lager:info("GroupName: ~p",[GroupName]),
-    {ok,Groups} = case GroupType of
+-spec update_group_ec2_security_groups(GroupZoneIdentifier :: binary(), GroupType :: binary() ) -> 'ok'.
+update_group_ec2_security_groups(GroupZoneIdentifier, GroupType) ->
+    lager:info("GroupZoneIdentifier: ~p",[GroupZoneIdentifier]),
+    Groups = case GroupType of
                 <<"role">> -> 
-                    dog_group:role_group_effects_groups(GroupName);
+                    {ok,G} = dog_group:role_group_effects_groups(GroupZoneIdentifier),
+                    G;
                 <<"zone">> -> 
-                    dog_group:zone_group_effects_groups(GroupName)
+                    %TODO: Zone support in Ec2
+                    %{ok, G} = dog_group:zone_group_effects_groups(GroupZoneIdentifier),
+                    %G
+                    []
             end,
     AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
     GroupsWithEc2SgIds = lists:filter(fun(Group) ->
@@ -1361,7 +1371,7 @@ update_group_ec2_security_groups(GroupName, GroupType) ->
                                                   _ ->
                                                       true
                                               end
-                                      end, Groups),
+                                      end, lists:flatten(Groups)),
     lager:info("Effected Groups: ~p",[GroupsWithEc2SgIds]),
     lists:foreach(fun(Group) ->
        dog_ec2_sg:publish_ec2_sg_by_name(Group)
