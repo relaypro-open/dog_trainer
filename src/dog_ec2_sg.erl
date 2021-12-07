@@ -70,16 +70,12 @@ publish_ec2_sgs(DogGroup) ->
                       Ec2SgIds = dog_ec2_update_agent:ec2_security_group_ids(Region),
                       case lists:member(binary:bin_to_list(SgId),Ec2SgIds) of
                           true ->
-                              %{DogGroupName,Region,SgId,publish_to_queue({DogGroup, Region, SgId})};
                               {DogGroupName,Region,SgId,dog_ec2_sg:publish_ec2_sg({DogGroup, Region, SgId})};
                           false ->
                               {DogGroupName,Region,SgId,{error,<<"ec2 security group not found">>}}
                       end
               end, Ec2SecurityGroupList),
     Results.
-
-publish_to_queue({DogGroup, Region, SgId}) ->
-    dog_ec2_update_agent:add_to_queue([{DogGroup, Region, SgId}]).
 
 -spec publish_ec2_sg({DogGroup :: map(), Region :: string(), SgId :: string()} ) -> {ok|error,DetailedResults :: list()}.
 publish_ec2_sg({DogGroup, Region, SgId}) ->
@@ -99,7 +95,6 @@ compare_sg(Ec2SecurityGroupId, Region, DogGroupId) ->
     DefaultPpps = default_spps_rules(Ec2SecurityGroupId),
     IngressRulesSpecs = ppps_to_spps(Ppps ++ DefaultPpps),
     lager:debug("IngressRulesSpecs: ~p~n",[IngressRulesSpecs]),
-    %case erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId],[],[],Config) of
     case dog_ec2_update_agent:ec2_security_group(Ec2SecurityGroupId,Region) of
         {error,Reason} ->
             lager:error("Ec2SecurityGroupId doesn't exist: ~p~n",[Ec2SecurityGroupId]),
@@ -137,7 +132,7 @@ update_sg(Ec2SecurityGroupId, Region, AddRemoveMap) ->
               end,
     AllResults = [AddResults,RemoveResults],
     lager:debug("AllResults: ~p~n",[AllResults]),
-    AllResultTrueFalse = lists:all(fun(X) -> X == ok end, AllResults),
+    AllResultTrueFalse = lists:all(fun(X) -> (X == ok) or (X == []) end, AllResults),
     AllResult = case AllResultTrueFalse of
         true -> ok;
         false -> error
@@ -151,6 +146,7 @@ parse_authorize_response(AuthorizeResponse) ->
             {error,{_ErrorType,_ErrorCode,_ErrorHeader,ErrorDescription}} ->
 			%{error,Error} ->
                 %{error,{http_error,400,"Bad Request",<<"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response><Errors><Error><Code>InvalidPermission.Duplicate</Code><Message>the specified rule \"peer: sg-0d741a6be4fa9691d, UDP, from port: 0, to port: 65535, ALLOW\" already exists</Message></Error></Errors><RequestID>3cbe6e0d-179d-4481-8589-34eea28bfc65</RequestID></Response>">>}}
+                %{error,{http_error,503,"Service Unavailable",<<"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response><Errors><Error><Code>Unavailable</Code><Message>The service is unavailable. Please try again shortly.</Message></Error></Errors><RequestID>c7413e5f-800a-4bdc-8f96-24c69ea1ad9e</RequestID></Response>">>}}}
                 Xml = element(2,(erlsom:simple_form(ErrorDescription))),
                 %{"Response",[],
                 % [{"Errors",[],

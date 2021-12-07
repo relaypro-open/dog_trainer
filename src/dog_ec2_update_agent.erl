@@ -11,12 +11,9 @@
 %% ------------------------------------------------------------------
 
 -export([
-         add_to_queue/1,
          ec2_security_group/2,
          ec2_security_group_ids/1,
          ec2_security_groups/1,
-         periodic_publish/0,
-         queue_length/0,
          start_link/0
         ]).
 
@@ -47,15 +44,6 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
--spec add_to_queue(Groups :: list()) -> OldServer :: ok.
-add_to_queue(Groups) ->
-    gen_server:cast(?MODULE, {add_to_queue, Groups}).
-
-queue_length() ->
-    gen_server:call(?MODULE, queue_length, 10000).
-
-periodic_publish() ->
-  gen_server:call(?MODULE, periodic_publish,20000).
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
@@ -87,12 +75,6 @@ init(_Args) ->
 %%          {stop, Reason, State} (terminate/2 is called)
 %%----------------------------------------------------------------------
 -spec handle_call(term(), {pid(), term()}, State::ips_state()) -> {reply, ok, any()}.
-handle_call({periodic_publish}, _From, State) ->
-  {ok, NewState} = do_periodic_publish(State),
-  {reply, ok, NewState};
-handle_call(queue_length, _from, State) ->
-    QueueLength = length(State),
-    {reply, QueueLength, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -120,11 +102,6 @@ handle_cast(Msg, State) ->
 %%----------------------------------------------------------------------
 % TODO: be more specific about Info in spec
 -spec handle_info(_,_) -> {'noreply',_}.
-handle_info(periodic_publish, State) ->
-    {ok, NewState} = do_periodic_publish(State),
-    PeriodicPublishInterval = application:get_env(dog_trainer,ec2_periodic_publish_interval_seconds,5),
-    erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
-    {noreply, NewState};
 handle_info(Info, State) ->
   lager:error("unknown_message: Info: ~p, State: ~p",[Info, State]),
   {noreply, State}.
@@ -149,15 +126,25 @@ code_change(_OldVsn, State, _Extra) ->
 -spec get_ec2_security_groups(Region :: binary()) -> {ok, Ec2Sgs :: map()}.
 get_ec2_security_groups(Region) ->
     Config = dog_ec2_sg:config(Region),
-    {ok, Ec2Sgs} = erlcloud_ec2:describe_security_groups([],[],[],Config),
-    ListOfMaps = [maps:from_list(X) || X <- Ec2Sgs],
-    Ec2SgsMap = dog_common:list_of_maps_to_map(ListOfMaps,group_id),
-    {ok, Ec2SgsMap}.
+    Result = erlcloud_ec2:describe_security_groups([],[],[],Config),
+    lager:debug("Result: ~p~n",[Result]),
+    case Result of
+        {ok,R} ->
+            ListOfMaps = [maps:from_list(X) || X <- R],
+            Ec2SgsMap = dog_common:list_of_maps_to_map(ListOfMaps,group_id),
+            {ok, Ec2SgsMap};
+        _ ->
+            {error, #{}}
+    end.
 
 -spec ec2_security_groups(Region :: binary()) -> Ec2Sgs :: list().
 ec2_security_groups(Region) ->
-    {ok, Ec2Sgs} = cache_tab:lookup(ec2_sgs, Region, fun() -> get_ec2_security_groups(Region) end),
-    Ec2Sgs.
+    case cache_tab:lookup(ec2_sgs, Region, fun() -> get_ec2_security_groups(Region) end) of
+    {ok, Ec2Sgs} ->
+        Ec2Sgs;
+    _ ->
+        #{}
+    end.
 
 -spec ec2_security_group(Ec2SecurityGroupId :: binary(), Region :: binary()) -> {ok, Ec2Sgs :: list()}.
 ec2_security_group(Ec2SecurityGroupId, Region) ->
@@ -170,33 +157,3 @@ ec2_security_group_ids(Region) ->
     Ec2Sgs = ec2_security_groups(Region),
     SgIds = maps:keys(Ec2Sgs),
     SgIds.
-
--spec do_periodic_publish(_) -> OldServers :: {ok, list()}.
-do_periodic_publish([]) ->
-    imetrics:set_gauge(publish_queue_length, 0),
-    {ok, []};
-do_periodic_publish(State) ->
-    case dog_agent_checker:check() of
-        true ->
-            lager:info("State: ~p",[State]),
-            Sgs = ordsets:to_list(State),
-            imetrics:set_gauge(publish_queue_length, length(Sgs)),
-            PeriodicPublishMax = application:get_env(dog_trainer,ec2_periodic_publish_max,10),
-            {_ConsumedSgs, LeftoverSgs} = case Sgs of
-                [] ->
-                    {[],[]};
-                _ when length(Sgs) >= PeriodicPublishMax ->
-                    lists:split(PeriodicPublishMax,Sgs); %only consume N per run
-                _ when length(Sgs) < PeriodicPublishMax ->
-                    {Sgs,[]}
-            end,
-            SgsWithoutEmptyProfiles = ordsets:subtract(ordsets:from_list(Sgs),[<<>>]),
-            PublishList = lists:map(fun({DogGroup, Region, SgId}) -> 
-                dog_ec2_sg:publish_ec2_sg({DogGroup, Region, SgId})
-                          end, SgsWithoutEmptyProfiles),
-            lager:info("PublishList: ~p",[PublishList]),
-            {ok, ordsets:from_list(LeftoverSgs) };
-        false ->
-            lager:info("Skipping, dog_agent_checker:check() false"),
-            {ok, State }
-    end.
