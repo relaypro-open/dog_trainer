@@ -2,14 +2,19 @@
 
 -include("dog_trainer.hrl").
 
--export([ write_temp_iptables/1, 
-          publish_to_queue/6,
-          valid_iptables/0, update_group_iptables/2,
-          update_all_iptables/0
+-export([ 
+         publish_to_queue/6,
+         update_all_iptables/0,
+         update_group_iptables/2,
+         valid_iptables/0, 
+         update_group_ec2_sgs/1,
+         write_temp_iptables/1 
         ]).
 
--export([chunk_list/1,
-         chunk_list/2]).
+-export([
+         chunk_list/1,
+         chunk_list/2
+        ]).
 
 -spec update_group_iptables(GroupZoneName :: binary(), GroupType :: binary() ) -> 'ok'.
 update_group_iptables(GroupZoneName, GroupType) ->
@@ -42,6 +47,14 @@ update_group_iptables(GroupZoneName, GroupType) ->
     lager:info("add_to_queue: ~p",[Groups]),
     dog_profile_update_agent:add_to_queue(Groups),
     ok.
+
+-spec update_group_ec2_sgs(GroupZoneName :: binary()) -> 'ok'.
+update_group_ec2_sgs(GroupZoneName) ->
+    {ok, GroupList} = dog_group:role_group_effects_groups(GroupZoneName),
+    lager:debug("GroupList: ~p~n",[GroupList]),
+    plists:map(fun(Group) ->
+                dog_ec2_sg:publish_ec2_sg_by_name(Group)
+              end,GroupList).
 
 -spec update_all_iptables() -> 'ok'.
 update_all_iptables() ->

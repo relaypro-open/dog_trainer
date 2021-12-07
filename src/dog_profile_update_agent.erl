@@ -189,8 +189,7 @@ do_periodic_publish(State) ->
                     profile_not_found ->
                         lager:info("profile_not_found in group: ~p",[Group]),
                         {Group, profile_not_found}
-                end,
-                dog_ec2_sg:publish_ec2_sg_by_name(Group)
+                end
                           end, GroupsWithoutEmptyProfiles),
             lager:info("PublishList: ~p",[PublishList]),
             {ok, ordsets:from_list(LeftoverGroups) };

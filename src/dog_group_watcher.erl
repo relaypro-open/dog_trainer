@@ -104,6 +104,7 @@ handle_query_result(Result, State) ->
                 GroupType = <<"role">>,
                 lager:info("calling update_group_iptables: ~p",[GroupName]),
                 dog_iptables:update_group_iptables(GroupName, GroupType),
+                dog_iptables:update_group_ec2_sgs(GroupName),
                 {ok, R4IpsetsRuleset} = dog_ruleset:read_ruleset_set_v4_from_file(GroupName),
                 {ok, R6IpsetsRuleset} = dog_ruleset:read_ruleset_set_v6_from_file(GroupName),
                 {ok, R4IptablesRuleset} = dog_ruleset:read_ruleset_unset_v4_from_file(GroupName),

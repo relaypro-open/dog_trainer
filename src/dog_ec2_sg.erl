@@ -21,6 +21,8 @@
         create_ingress_port_rules/4,
         create_port_anywhere_ingress_rules/1,
         create_port_anywhere_ingress_rules_by_id/1,
+        ingress_record_to_ppps/1,
+        ingress_records_to_ppps/1,
         ppps_to_spps/1,
         tuple_to_ingress_records/1
         ]).
@@ -93,21 +95,31 @@ compare_sg(Ec2SecurityGroupId, Region, DogGroupId) ->
     {ok,DogGroup} = dog_group:get_by_id(DogGroupId),
     Ppps = dog_group:get_ppps_inbound_ec2(DogGroup,Region),
     DefaultPpps = default_spps_rules(Ec2SecurityGroupId),
-    IngressRulesSpecs = ppps_to_spps(Ppps ++ DefaultPpps),
-    lager:debug("IngressRulesSpecs: ~p~n",[IngressRulesSpecs]),
+    IngressRulesPpps = Ppps ++ DefaultPpps,
+    IngressRulesSpps = ppps_to_spps(IngressRulesPpps),
+    lager:debug("IngressRulesSpecs: ~p~n",[IngressRulesSpps]),
     case dog_ec2_update_agent:ec2_security_group(Ec2SecurityGroupId,Region) of
         {error,Reason} ->
             lager:error("Ec2SecurityGroupId doesn't exist: ~p~n",[Ec2SecurityGroupId]),
             {error,Reason};
         _ ->
-            ExistingRules = ip_permissions(Region, Ec2SecurityGroupId),
-            lager:debug("ExistingRules: ~p~n",[ExistingRules]),
-            NewAddVpcIngressSpecs = ordsets:subtract(ordsets:from_list(IngressRulesSpecs),ordsets:from_list(ExistingRules)), 
-            lager:debug("NewAddVpcIngressSpecs: ~p~n",[NewAddVpcIngressSpecs]),
-            RemoveVpcIngressSpecs = ordsets:subtract(ordsets:from_list(ExistingRules),ordsets:from_list(IngressRulesSpecs)), 
-            lager:debug("RemoveVpcIngressSpecs: ~p~n",[RemoveVpcIngressSpecs]),
-            #{<<"Add">> => NewAddVpcIngressSpecs, 
-              <<"Remove">> => RemoveVpcIngressSpecs}
+            ExistingRulesSpps = ip_permissions(Region, Ec2SecurityGroupId),
+            lager:debug("ExistingRulesSpps: ~p~n",[ExistingRulesSpps]),
+            ExistingRulesPpps = ingress_records_to_ppps(ExistingRulesSpps),
+            NewAddVpcIngressPpps = ordsets:subtract(ordsets:from_list(IngressRulesPpps),ordsets:from_list(ExistingRulesPpps)), 
+            lager:debug("ExistingRulesPpps: ~p~n",[ExistingRulesPpps]),
+            RemoveVpcIngressPpps = ordsets:subtract(ordsets:from_list(ExistingRulesPpps),ordsets:from_list(IngressRulesPpps)), 
+            lager:debug("NewAddVpcIngressPpps: ~p~n",[NewAddVpcIngressPpps]),
+            lager:debug("RemoveVpcIngressPpps: ~p~n",[RemoveVpcIngressPpps]),
+            NewAddVpcIngressSpps = ppps_to_spps(NewAddVpcIngressPpps),
+            RemoveVpcIngressSpps = ppps_to_spps(RemoveVpcIngressPpps),
+            %RemoveVpcIngressSpps = ordsets:subtract(ordsets:from_list(ExistingRulesSpps),ordsets:from_list(IngressRulesSpps)), 
+            %NewAddVpcIngressSpps = ordsets:subtract(ordsets:from_list(IngressRulesSpps),ordsets:from_list(ExistingRulesSpps)), 
+            %RemoveVpcIngressSpps = ordsets:subtract(ordsets:from_list(ExistingRulesSpps),ordsets:from_list(IngressRulesSpps)), 
+            SgCompare = #{<<"Add">> => NewAddVpcIngressSpps, 
+              <<"Remove">> => RemoveVpcIngressSpps},
+            lager:debug("SgCompare: ~p~n",[SgCompare]),
+            SgCompare
     end.
 
 -spec update_sg(Ec2SecurityGroupId :: string(), Region :: string(), AddRemoveMap :: map()) -> {ok,tuple()} | {error, tuple()}.
@@ -160,14 +172,14 @@ parse_authorize_response(AuthorizeResponse) ->
                    [{"Error",[],
                      [{"Code",[],[Code]},
                       {"Message",[],
-                       [_Message]}]}]},
+                       [Message]}]}]},
                   {"RequestID",[],[_RequestId]}]} = Xml,
                case Code of
                    %Ignore duplicate entry error
                    "InvalidPermission.Duplicate" -> 
                        ok;
                    _ ->
-                       Code
+                       {Code,Message}
                end;
 			Other ->
 				Other
@@ -330,6 +342,33 @@ tuple_to_ingress_records(Keyvalpairs) ->
                                                             || X <- record_info(fields, vpc_ingress_spec)]]),
     Foorecord.
 
+%-record(vpc_ingress_spec, {
+%          ip_protocol::tcp|udp|icmp,
+%          from_port::-1 | 0..65535,
+%          to_port::-1 | 0..65535,
+%          user_id::undefined|[string()],
+%          group_name::undefined|[string()],
+%          group_id::undefined|[string()],
+%          cidr_ip::undefined|[string()]
+%         }).
+
+ingress_records_to_ppps(IngressRecords) ->
+   lists:flatten([ingress_record_to_ppps(Record) || Record <- IngressRecords]).
+
+ingress_record_to_ppps(IpPermissionSpecs) ->
+    Protocol = IpPermissionSpecs#vpc_ingress_spec.ip_protocol,
+    FromPort = IpPermissionSpecs#vpc_ingress_spec.from_port,
+    ToPort = IpPermissionSpecs#vpc_ingress_spec.to_port,
+    GroupIds = IpPermissionSpecs#vpc_ingress_spec.group_id,
+    CidrIps = IpPermissionSpecs#vpc_ingress_spec.cidr_ip,
+    GroupIdsList = lists:map(fun(GroupId) ->
+                       {Protocol,FromPort,ToPort,{group_id, GroupId}}
+              end, GroupIds),
+    CidrIpsList = lists:map(fun(CidrIp) ->
+                       {Protocol,FromPort,ToPort,{cidr_ip, CidrIp}}
+              end, CidrIps),
+    lists:flatten(GroupIdsList ++ CidrIpsList).
+                       
 %erlcoud describe_security_groups returns more info on group_id, must simplify to compare to add specs.
 from_describe_tuple_to_ingress_records(Keyvalpairs) ->
     IpRanges = proplists:get_value(ip_ranges,Keyvalpairs),
