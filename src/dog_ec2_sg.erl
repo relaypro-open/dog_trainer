@@ -44,14 +44,13 @@ default_spps_rules(Ec2SecurityGroupId) ->
      ].
 
 publish_ec2_sg_by_name(DogGroupName) ->
-    UpdateEc2SgResults = case dog_group:get_by_name(DogGroupName) of
+    case dog_group:get_by_name(DogGroupName) of
         {ok,DogGroup} ->
             publish_ec2_sgs(DogGroup);
         _ ->
+            lager:error("Group not found: ~p~n",[DogGroupName]),
             []
-    end,
-    lager:info("UpdateEc2SgResults: ~p~n",[UpdateEc2SgResults]),
-    UpdateEc2SgResults.
+    end.
 
 -spec publish_ec2_sg_by_id(DogGroupId :: string()) -> {ok|error,DetailedResults :: list()}.
 publish_ec2_sg_by_id(DogGroupId) ->
@@ -59,6 +58,7 @@ publish_ec2_sg_by_id(DogGroupId) ->
         {ok,DogGroup} ->
             publish_ec2_sgs(DogGroup);
         _ ->
+            lager:error("Group not found: ~p~n",[DogGroupId]),
             []
     end.
    
@@ -73,12 +73,24 @@ publish_ec2_sgs(DogGroup) ->
                       Ec2SgIds = dog_ec2_update_agent:ec2_security_group_ids(Region),
                       case lists:member(binary:bin_to_list(SgId),Ec2SgIds) of
                           true ->
-                              {DogGroupName,Region,SgId,dog_ec2_sg:publish_ec2_sg({DogGroup, Region, SgId})};
+                              {dog_ec2_sg:publish_ec2_sg({DogGroup, Region, SgId}),DogGroupName,Region,SgId};
                           false ->
-                              {DogGroupName,Region,SgId,{error,<<"ec2 security group not found">>}}
+                              {{error,<<"ec2 security group not found">>},DogGroupName,Region,SgId}
                       end
               end, Ec2SecurityGroupList),
-    Results.
+    AllResultTrueFalse = lists:all(fun({{{R,_}},_GroupName,_Region,_SgId}) -> R == ok end, Results),
+    AllResult = case AllResultTrueFalse of
+        true -> ok;
+        false -> error
+    end,
+    UpdateEc2SgResults = {AllResult,Results},
+    case UpdateEc2SgResults of
+        {ok,_} ->
+            lager:info("UpdateEc2SgResults: ~p~n",[UpdateEc2SgResults]);
+        {error,_} ->
+            lager:error("UpdateEc2SgResults: ~p~n",[UpdateEc2SgResults])
+    end,
+    UpdateEc2SgResults.
 
 -spec publish_ec2_sg({DogGroup :: map(), Region :: string(), SgId :: string()} ) -> {ok|error,DetailedResults :: list()}.
 publish_ec2_sg({DogGroup, Region, SgId}) ->
