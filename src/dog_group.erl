@@ -101,12 +101,9 @@
 
 -export([
         get_document_by_id/1,
-        inverse_map_of_lists/1,
-        maps_append/3,
         set_ec2_group_mappings_from_members/0,
         set_ec2_group_mappings_from_members/1,
-        set_ec2_group_mappings_from_members/2,
-        tuple_pairs_to_map_of_lists/1
+        set_ec2_group_mappings_from_members/2
         ]).
 
 %test
@@ -211,29 +208,11 @@ role_groups_in_groups_profiles() ->
 %    lager:debug("GroupNamesInGroups: ~p",[GroupNamesInGroups]),
 %    maps:from_list(GroupNamesInGroups).
 
-inverse_map_of_lists(Map) ->
-    MapList = maps:to_list(Map),
-    Tuplelist = lists:map(fun({Key,Values}) ->
-                 lists:map(fun(Value) -> {Value,Key} end, Values)
-                  end, MapList),
-    lists:flatten(Tuplelist).
-
-tuple_pairs_to_map_of_lists(TupleList) ->
-    tuple_pairs_to_map_of_lists(TupleList,#{}).
-
-tuple_pairs_to_map_of_lists([],Accum) ->
-    Accum;
-tuple_pairs_to_map_of_lists(TupleList,Accum) ->
-    [Head|Tail] = TupleList,
-    {Key,Value} = Head,
-    Accum@1 = maps_append(Key,Value,Accum),
-    tuple_pairs_to_map_of_lists(Tail,Accum@1).
-
 -spec role_group_effects_groups(GroupName :: binary()) -> ({ok, list()} | error).
 role_group_effects_groups(GroupName) ->
     GroupsInGroups = role_groups_in_groups_profiles(),
-    TupleList = inverse_map_of_lists(GroupsInGroups),
-    GroupEffectingGroups = tuple_pairs_to_map_of_lists(TupleList),
+    TupleList = dog_common:inverse_map_of_lists(GroupsInGroups),
+    GroupEffectingGroups = dog_common:tuple_pairs_to_map_of_lists(TupleList),
     {ok,OtherGroupsEffected} = case maps:find(GroupName,GroupEffectingGroups) of
         error -> {ok,[]};
         Else -> Else
@@ -243,22 +222,12 @@ role_group_effects_groups(GroupName) ->
 -spec zone_group_effects_groups(ZoneId :: binary()) -> ({ok, list()} | error).
 zone_group_effects_groups(ZoneId) ->
     GroupsInGroups = zone_groups_in_groups_profiles(),
-    TupleList = inverse_map_of_lists(GroupsInGroups),
-    GroupEffectingGroups = tuple_pairs_to_map_of_lists(TupleList),
+    TupleList = dog_common:inverse_map_of_lists(GroupsInGroups),
+    GroupEffectingGroups = dog_common:tuple_pairs_to_map_of_lists(TupleList),
     case maps:find(ZoneId,GroupEffectingGroups) of
         error -> {ok,[]};
         Else -> Else
     end.
-
--spec maps_append(Key::_, Value::_, Map::map()) -> map().
-maps_append(Key,Value,Map) ->
-    Map@1 = case maps:find(Key,Map) of
-        error ->
-            maps:put(Key,[Value],Map);
-        {ok, Values} ->
-            maps:put(Key,lists:append(Values,[Value]),Map)
-    end,
-    Map@1.
 
 -spec get_active_groups() -> {ok, list()}.
 get_active_groups() ->

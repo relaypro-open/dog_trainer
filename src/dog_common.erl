@@ -1,14 +1,16 @@
 -module(dog_common).
 
 -export([
+        inverse_map_of_lists/1,
         list_of_maps_to_map/2,
         lmm/2,
-        rekey_map_of_maps/3,
-        rkmm/3,
         merge_lists_in_tuples/1,
         merge_maps_of_lists/1,
         re_filter/2,
-        to_list/1
+        rekey_map_of_maps/3,
+        rkmm/3,
+        to_list/1,
+        tuple_pairs_to_map_of_lists/1
         ]).
 
 -spec to_list(Item :: iolist() | atom() | tuple() | map() | binary() | integer() | float() ) -> list().
@@ -108,3 +110,32 @@ fun_merge_lists_in_tuples(H, A) ->
         false ->
             maps:put(K, element(2,H), A)
     end.
+
+inverse_map_of_lists(Map) ->
+    MapList = maps:to_list(Map),
+    Tuplelist = lists:map(fun({Key,Values}) ->
+                 lists:map(fun(Value) -> {Value,Key} end, Values)
+                  end, MapList),
+    lists:flatten(Tuplelist).
+
+tuple_pairs_to_map_of_lists(TupleList) ->
+    tuple_pairs_to_map_of_lists(TupleList,#{}).
+
+tuple_pairs_to_map_of_lists([],Accum) ->
+    Accum;
+tuple_pairs_to_map_of_lists(TupleList,Accum) ->
+    [Head|Tail] = TupleList,
+    {Key,Value} = Head,
+    Accum@1 = maps_append(Key,Value,Accum),
+    tuple_pairs_to_map_of_lists(Tail,Accum@1).
+
+-spec maps_append(Key::_, Value::_, Map::map()) -> map().
+maps_append(Key,Value,Map) ->
+    Map@1 = case maps:find(Key,Map) of
+        error ->
+            maps:put(Key,[Value],Map);
+        {ok, Values} ->
+            maps:put(Key,lists:append(Values,[Value]),Map)
+    end,
+    Map@1.
+

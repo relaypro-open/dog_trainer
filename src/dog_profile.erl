@@ -811,11 +811,18 @@ get_ppps_inbound_ec2(ProfileJson,DestinationRegion) ->
                                     lists:map(fun(Ec2Group) ->
                                                       SgRegion = maps:get(<<"region">>,Ec2Group),
                                                       SgId = maps:get(<<"sgid">>,Ec2Group),
-                                                      case SgRegion == DestinationRegion of
-                                                          false ->
-                                                              {cidr_ip,"0.0.0.0/0"}; %TODO maybe get list of public+private IPs?
+                                                      Ec2ClassicSgIds = dog_ec2_update_agent:ec2_classic_security_group(SgId, SgRegion),
+
+                                                      case lists:member(binary:bin_to_list(SgId),Ec2ClassicSgIds) of
                                                           true ->
-                                                              {group_id, binary:bin_to_list(SgId)}
+                                                              case SgRegion == DestinationRegion of
+                                                                  false ->
+                                                                      {cidr_ip,"0.0.0.0/0"}; 
+                                                                  true ->
+                                                                      {group_id, binary:bin_to_list(SgId)}
+                                                              end;
+                                                          false ->
+                                                                      {cidr_ip,"0.0.0.0/0"}
                                                       end
                                               end, Ec2GroupIds)
                             end,
