@@ -811,7 +811,7 @@ get_ppps_inbound_ec2(ProfileJson,DestinationRegion) ->
                                     lists:map(fun(Ec2Group) ->
                                                       SgRegion = maps:get(<<"region">>,Ec2Group),
                                                       SgId = maps:get(<<"sgid">>,Ec2Group),
-                                                      Ec2ClassicSgIds = dog_ec2_update_agent:ec2_classic_security_group(SgId, SgRegion),
+                                                      Ec2ClassicSgIds = dog_ec2_update_agent:ec2_classic_security_group_ids(SgRegion),
 
                                                       case lists:member(binary:bin_to_list(SgId),Ec2ClassicSgIds) of
                                                           true ->
