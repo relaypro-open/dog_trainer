@@ -43,14 +43,15 @@ default_spps_rules(Ec2SecurityGroupId) ->
     {udp,0,65535,{group_id,binary:bin_to_list(Ec2SecurityGroupId)}}
      ].
 
-%TODO: Trigger when dependent Groups change ec2_instances_ids
 publish_ec2_sg_by_name(DogGroupName) ->
-    case dog_group:get_by_name(DogGroupName) of
+    UpdateEc2SgResults = case dog_group:get_by_name(DogGroupName) of
         {ok,DogGroup} ->
             publish_ec2_sgs(DogGroup);
         _ ->
             []
-    end.
+    end,
+    lager:info("UpdateEc2SgResults: ~p~n",[UpdateEc2SgResults]),
+    UpdateEc2SgResults.
 
 -spec publish_ec2_sg_by_id(DogGroupId :: string()) -> {ok|error,DetailedResults :: list()}.
 publish_ec2_sg_by_id(DogGroupId) ->
