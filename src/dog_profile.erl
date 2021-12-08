@@ -815,14 +815,14 @@ get_ppps_inbound_ec2(ProfileJson,DestinationRegion) ->
 
                                                       case lists:member(binary:bin_to_list(SgId),Ec2ClassicSgIds) of
                                                           true ->
+                                                                      {cidr_ip,"0.0.0.0/0"};
+                                                          false ->
                                                               case SgRegion == DestinationRegion of
                                                                   false ->
                                                                       {cidr_ip,"0.0.0.0/0"}; 
                                                                   true ->
                                                                       {group_id, binary:bin_to_list(SgId)}
-                                                              end;
-                                                          false ->
-                                                                      {cidr_ip,"0.0.0.0/0"}
+                                                              end
                                                       end
                                               end, Ec2GroupIds)
                             end,
