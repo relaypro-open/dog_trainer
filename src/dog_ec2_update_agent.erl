@@ -60,8 +60,6 @@ start_link() ->
 init(_Args) ->
     Ec2SgCacheSeconds = application:get_env(dog_trainer,ec2_sg_cache_seconds,60),
     cache_tab:new(ec2_sgs, [{life_time, Ec2SgCacheSeconds}]),
-    PeriodicPublishInterval = application:get_env(dog_trainer,ec2_periodic_publish_interval_seconds,5),
-    _PublishTimer = erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     State = ordsets:new(),
     {ok, State}.
 
