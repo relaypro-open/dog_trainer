@@ -233,18 +233,19 @@ tuple_pairs_to_map_of_lists(TupleList,Accum) ->
 role_group_effects_groups(GroupName) ->
     GroupsInGroups = role_groups_in_groups_profiles(),
     TupleList = inverse_map_of_lists(GroupsInGroups),
-    GroupeEffectingGroups = tuple_pairs_to_map_of_lists(TupleList),
-    case maps:find(GroupName,GroupeEffectingGroups) of
+    GroupEffectingGroups = tuple_pairs_to_map_of_lists(TupleList),
+    {ok,OtherGroupsEffected} = case maps:find(GroupName,GroupEffectingGroups) of
         error -> {ok,[]};
         Else -> Else
-    end.
+    end,
+    {ok,sets:to_list(sets:from_list(lists:flatten([OtherGroupsEffected,GroupName])))}.
 
 -spec zone_group_effects_groups(ZoneId :: binary()) -> ({ok, list()} | error).
 zone_group_effects_groups(ZoneId) ->
     GroupsInGroups = zone_groups_in_groups_profiles(),
     TupleList = inverse_map_of_lists(GroupsInGroups),
-    GroupeEffectingGroups = tuple_pairs_to_map_of_lists(TupleList),
-    case maps:find(ZoneId,GroupeEffectingGroups) of
+    GroupEffectingGroups = tuple_pairs_to_map_of_lists(TupleList),
+    case maps:find(ZoneId,GroupEffectingGroups) of
         error -> {ok,[]};
         Else -> Else
     end.
