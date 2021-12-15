@@ -12,6 +12,7 @@
         ]).
 
 -export([
+        add_net_to_ipv4/1,
         addresses_from_interfaces/1, 
         remove_local_ips/1,
         remove_local_ipv4_ips/1,
@@ -31,19 +32,21 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
       UpdateType = maps:get(<<"updatetype">>, Config),
       imetrics:add_m(ips_update,erlang:atom_to_list(UpdateType)),
       lager:info("UpdateType: ~p",[UpdateType]),
-      Hash4Ipsets = maps:get(<<"hash4_ipsets">>,Config),
-      Hash6Ipsets = maps:get(<<"hash6_ipsets">>,Config),
-      Hash4Iptables = maps:get(<<"hash4_iptables">>,Config),
-      Hash6Iptables = maps:get(<<"hash6_iptables">>,Config),
-      IpsetHash = maps:get(<<"ipset_hash">>,Config,<<"">>),
       Hostname = maps:get(<<"name">>,Config),
       Hostkey = maps:get(<<"hostkey">>,Config),
-      lager:info("Hostname: ~p",[Hostname]),
-      dog_config:update_host_keepalive(Hostname),
+      lager:info("Hostname: ~p, Hostkey: ~p",[Hostname,Hostkey]),
+      dog_config:update_host_keepalive(Hostkey),
       case dog_host:get_by_hostkey(Hostkey) of
-          {ok, Host} -> 
-              HostId = maps:get(<<"id">>, Host),
-              dog_host:set_active_by_id(HostId),
+          {ok, HostExists} -> 
+              %HostId = maps:get(<<"id">>, HostExists),
+              Host = maps:merge(HostExists,Config),
+              %Host = dog_state:to_map(dog_state:from_map(UpdatedHost)),
+              case dog_host:hash_check(Host) of
+                  {pass,HashStatus} ->
+                      dog_host:state_event(Host, pass_hashcheck, HashStatus);
+                  {fail,HashStatus} ->
+                      dog_host:state_event(Host, fail_hashcheck, HashStatus)
+              end,
               case UpdateType of
                   force ->
                       lager:info("got force: ~p",[Hostkey]),
@@ -53,12 +56,11 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
                   update -> 
                       lager:info("got update: ~p",[Hostkey]),
                       dog_host:update_by_hostkey(Hostkey, Config),
-                      dog_config:update_host_hashes(Hostkey,Hash4Ipsets,Hash6Ipsets,Hash4Iptables,Hash6Iptables,IpsetHash),
                       dog_ipset_update_agent:queue_update(),
                       dog_iptables:update_group_iptables(GroupName, <<"role">>);
                   keepalive ->
                       lager:info("got keepalive: ~p",[Hostkey]),
-                      dog_config:update_host_hashes(Hostkey,Hash4Ipsets,Hash6Ipsets,Hash4Iptables,Hash6Iptables,IpsetHash)
+                      dog_host:update_by_hostkey(Hostkey, Config)
               end;
           {error, Reason} ->
               case UpdateType of
@@ -150,7 +152,7 @@ filter_ipv6(IPs) ->
 is_ipv4_localhost(IP) ->
     Match = re:run(IP,"^127(?:\.[0-9]+){0,2}\.[0-9]+$|^(?:0*\:)*?:?0*1$",[]),
     case Match of
-       {match, _} = Match ->
+       {match, _} ->
            false;
         _  ->
            true
@@ -160,7 +162,7 @@ is_ipv4_localhost(IP) ->
 is_ipv6_localhost(IP) ->
     Match = re:run(IP,"^fe80::",[caseless]),
     case Match of
-       {match, _} = Match ->
+       {match, _} ->
            false;
         _  ->
            true

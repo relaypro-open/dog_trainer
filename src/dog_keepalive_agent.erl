@@ -126,58 +126,36 @@ do_watch_keepalives(_State) ->
     case dog_agent_checker:check() of
         true ->
             {ok,HostsRetirementCheck} = dog_host:retirement_check(),
-            RetiredHosts = [ maps:get(<<"name">>,H) || H <- HostsRetirementCheck],
-            lager:info("RetiredHosts: ~p",[RetiredHosts]),
-            case RetiredHosts of
+            RetiredHostIds = [ maps:get(<<"id">>,H) || H <- HostsRetirementCheck],
+            lager:debug("RetiredHostIds: ~p",[RetiredHostIds]),
+            case RetiredHostIds of
                 [] ->
                     imetrics:set_gauge_m(<<"host_keepalive">>,<<"retirement">>,0),
                     ok;
                 _ ->
-                    imetrics:set_gauge_m(<<"host_keepalive">>,<<"retirement">>,length(RetiredHosts)),
-                    dog_host:send_retirement_alert(ordsets:to_list(RetiredHosts)),
-                    lists:foreach(fun(HostName) -> dog_host:set_retired_by_name(HostName) end, RetiredHosts),
-                    ok
+                    imetrics:set_gauge_m(<<"host_keepalive">>,<<"retirement">>,length(RetiredHostIds)),
+                    lists:foreach(fun(HostId) -> 
+                                          {ok,Host} = dog_host:get_by_id(HostId),
+                                          dog_host:state_event(Host,retirement_timeout,[]) end, RetiredHostIds)
             end,
 
-            AlertedHosts = dog_host:all_keepalive_alerted(),
-            lager:info("AlertedHosts: ~p",[AlertedHosts]),
             {ok,HostsFailedKeepaliveCheck} = dog_host:keepalive_age_check(),
             HostsFailedKeepaliveCheckIds = [ maps:get(<<"id">>,H) || H <- HostsFailedKeepaliveCheck],
-            dog_host:set_hosts_inactive(HostsFailedKeepaliveCheckIds),
-
-            FailedHosts = [ maps:get(<<"name">>,H) || H <- HostsFailedKeepaliveCheck],
-            lager:info("FailedHosts: ~p",[FailedHosts]),
-            NewAlertHosts@0 = ordsets:subtract(lists:sort(FailedHosts),lists:sort(AlertedHosts)),
-            lager:info("NewAlertHosts@1: ~p",[NewAlertHosts@0]),
-            case NewAlertHosts@0 of
+            case HostsFailedKeepaliveCheckIds of
                 [] ->
-                    imetrics:set_gauge_m(<<"host_keepalive">>,<<"failure">>,0),
+                    imetrics:set_gauge_m(<<"host_keepalive">>,<<"inactive">>,0),
                     ok;
                 _ ->
-                    imetrics:set_gauge_m(<<"host_keepalive">>,<<"failure">>,length(NewAlertHosts@0)),
-                    dog_host:send_keepalive_alert(ordsets:to_list(NewAlertHosts@0)),
-                    lists:foreach(fun(HostName) -> dog_host:update_keepalive_alert_sent(HostName,true) end, NewAlertHosts@0)
-            end,
-
-            {ok,ActiveHosts} = dog_host:get_all_active(),
-            ActiveHostNames = [ maps:get(<<"name">>,H) || H <- ActiveHosts],
-            NewRecoverHosts = ordsets:intersection(lists:sort(AlertedHosts),lists:sort(ActiveHostNames)),
-            lager:info("NewRecoverHosts: ~p",[NewRecoverHosts]),
-            case NewRecoverHosts of
-                [] ->
-                    imetrics:set_gauge_m(<<"host_keepalive">>,<<"recovery">>,0),
-                    ok;
-                _ ->
-                    imetrics:set_gauge_m(<<"host_keepalive">>,<<"recovery">>,length(NewRecoverHosts)),
-                    dog_host:send_keepalive_recover(ordsets:to_list(NewRecoverHosts)),
-                    lists:foreach(fun(HostName) -> dog_host:update_keepalive_alert_sent(HostName,false) end, NewRecoverHosts)
+                    imetrics:set_gauge_m(<<"host_keepalive">>,<<"inactive">>,length(HostsFailedKeepaliveCheckIds)),
+                    lists:foreach(fun(HostId) -> 
+                                          {ok,Host} = dog_host:get_by_id(HostId),
+                                          dog_host:state_event(Host,keepalive_timeout,[]) end, HostsFailedKeepaliveCheckIds)
             end,
 
             ok;
         false ->
             imetrics:set_gauge_m(<<"host_keepalive">>,<<"retirement">>,0),
-            imetrics:set_gauge_m(<<"host_keepalive">>,<<"failure">>,0),
-            imetrics:set_gauge_m(<<"host_keepalive">>,<<"recovery">>,0),
+            imetrics:set_gauge_m(<<"host_keepalive">>,<<"inactive">>,0),
             lager:info("Skipping, dog_agent_checker:check() false"),
             ok
     end.

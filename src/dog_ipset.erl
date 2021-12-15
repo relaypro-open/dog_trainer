@@ -3,13 +3,23 @@
 -include("dog_trainer.hrl").
 
 -export([
+        create/1%,
+        %delete/1,
+        %replace/2,
+        %update/2
+        ]).
+
+-export([
          create_hash/1,
          create_ipset/4,
          create_ipsets/0,
          create_ipsets/2,
+         delete_old/0,
          force_update_ipsets/0,
-         get_hash/0,
+         get_hashes/0,
+         hash_check/1,
          id_maps/0,
+         latest_hash/0,
          %ipsets_map/4,
          normalize_ipset/1,
          persist_ipset/0,
@@ -18,7 +28,7 @@
          publish_to_external/1,
          read_current_ipset/0,
          read_hash/0,
-         set_hash/1,
+         %set_hash/1,
          %update_ipsets/0,
          update_ipsets/1
         ]).
@@ -138,34 +148,79 @@ ip_ipset_format(Ip) ->
             Ip
     end.
 
--spec get_hash() -> {ok, binary()}.
-get_hash() ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
+-spec get_hashes() -> {ok, binary()}.
+get_hashes() ->
+    Now =  erlang:system_time(second),
+    IpsetHashValidSeconds = application:get_env(dog_trainer,ipset_hash_valid_seconds,600),
+    TimeCutoff = Now - IpsetHashValidSeconds,
     {ok, R} = dog_rethink:run(
     fun(X) ->
         reql:db(X, dog),
         reql:table(X, ipset),
-        reql:get_all(X, <<"global">>, #{index => <<"name">>}),
-        reql:get_field(X, <<"hash">>)
+        reql:order_by(X,reql:desc(<<"timestamp">>))
     end),
-    {ok, Result} = rethink_cursor:all(R),
-    Hash = hd(lists:flatten(Result)),
-    {ok, Hash}.
+    Result = R,
+    Hashes = lists:flatten(Result),
+    LastHash = maps:get(<<"hash">>,hd(Hashes)),
+    ValidIpsets = lists:filter(fun(X) -> 
+                            TimeStamp = maps:get(<<"timestamp">>,X,0),
+                            TimeStamp > TimeCutoff
+                    end, Hashes),
+    ValidHashes = [maps:get(<<"hash">>,Hash) || Hash <- ValidIpsets, maps:get(<<"hash">>,Hash) =/= <<"initial">>],
+    UniqueValidHashes = sets:to_list(sets:from_list(ValidHashes)),
+    case UniqueValidHashes of
+        [] -> 
+            {ok, [LastHash] };
+        _ -> 
+            {ok, UniqueValidHashes }
+    end.
 
--spec set_hash(Hash :: binary()) -> {ok, pid()}.
-set_hash(Hash) ->
+-spec latest_hash() -> {ok, binary()}.
+latest_hash() ->
+    {ok, R} = dog_rethink:run(
+    fun(X) ->
+        reql:db(X, dog),
+        reql:table(X, ipset),
+        reql:order_by(X, reql:desc(<<"timestamp">>)),
+        %reql:order_by(X,<<"timestamp">>,#{index => <<"timestamp">>}),
+        %reql:desc(X),
+        reql:nth(X,0)
+    end),
+    {ok, maps:get(<<"hash">>,R)}.
+
+-spec create(IpsetHash :: binary()) -> {ok, pid()}.
+create(Hash) ->
     lager:info("hash: ~p",[Hash]),
     %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
     %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
+    Timestamp = dog_time:timestamp(),
     {ok, R} = dog_rethink:run(
     fun(X) ->
         reql:db(X, dog),
         reql:table(X, ipset),
-        reql:get_all(X, <<"global">>, #{index => <<"name">>}),
-        reql:update(X, #{<<"hash">> => Hash})
+        %reql:get_all(X, <<"global">>, #{index => <<"name">>}),
+        reql:insert(X, 
+                    #{
+                      <<"hash">> => Hash,
+                      <<"timestamp">> => Timestamp
+                     })
     end),
     {ok, R}.
+
+-spec delete_old() -> ok.
+delete_old() ->
+    %r.db('dog').table('ipset').orderBy({index: r.desc("timestamp")}).slice(10).delete()
+    IpsetNumberToKeep = application:get_env(dog_trainer,ipset_number_to_keep,60),
+    {ok, _R} = dog_rethink:run(
+    fun(X) ->
+        reql:db(X, dog),
+        reql:table(X, ipset),
+        reql:order_by(X, reql:desc(<<"timestamp">>)),
+        %reql:order_by(X,<<"timestamp">>,#{index => <<"timestamp">>}),
+        reql:slice(X,IpsetNumberToKeep),
+        reql:delete(X)
+    end),
+    ok.
 
 -spec create_hash(Ipset :: string()) -> any().
 create_hash(Ipset) ->
@@ -318,7 +373,6 @@ publish_to_external(InternalIpsetsMap) ->
 -spec publish_to_queue(Ipsets :: list()) -> any().
 publish_to_queue(Ipsets) ->
     lager:info("local publish"),
-    dog_hosts_agent_sup:restart_hash_agent(), %restart dog iptables hash check
     lager:debug("Ipsets: ~p",[Ipsets]),
     UserData = #{
       ruleset4_ipset => false,
@@ -337,9 +391,14 @@ publish_to_queue(Ipsets) ->
 -spec publish_to_outbound_exchanges(IpsetExternalMap :: map()) -> any().
 publish_to_outbound_exchanges(IpsetExternalMap) ->
   {ok, ExternalEnvs} = dog_link:get_all_active_outbound(),
+  IdsByGroup = dog_group:get_all_internal_ec2_security_group_ids(),
+    %dog_common:merge_maps_of_lists([IdsByGroupMap,AllActiveUnionEc2Sgs]).
   lists:foreach(fun(Env) ->
     EnvName = maps:get(<<"name">>,Env),
-    publish_to_outbound_exchange(EnvName,IpsetExternalMap)
+    ExternalMap = maps:put(<<"ec2">>,IdsByGroup,IpsetExternalMap),
+    %ExternalMap = maps:put(<<"ec2">>,jsx:encode(#{}),IpsetExternalMap),
+    lager:debug("ExternalMap: ~p~n",[ExternalMap]),
+    publish_to_outbound_exchange(EnvName,ExternalMap)
                     end, ExternalEnvs).
 
 -spec publish_to_outbound_exchange(TargetEnvName :: binary(), IpsetExternalMap :: map()) -> any().
@@ -366,21 +425,31 @@ publish_to_outbound_exchange(TargetEnvName, IpsetExternalMap) ->
     imetrics:add(ipset_outbound_publish),
     Response.
 
-%-spec update_ipsets() -> ok.
-%update_ipsets() ->
-%  update_ipsets(all_envs).
+-spec hash_check(AgentIpsetHash :: binary()) -> boolean().
+hash_check(AgentIpsetHash) ->
+    %{ok, IpsetHashes} = get_hashes(),
+    {ok,LatestHash} = latest_hash(),
+    case AgentIpsetHash == LatestHash of
+        false ->
+            lager:info("Host IpsetHash ~p not equal to Latest IpsetHashes: ~p",[AgentIpsetHash,LatestHash]),
+            false;
+        true ->
+            true
+    end.
 
 -spec update_ipsets(Env :: atom()) -> ok.
 update_ipsets(Env) ->
-    {ok, OldIpsetHash} = get_hash(),
+    {ok,LatestHash} = latest_hash(),
     {MergedIpsetsList, InternalIpsetsMap} = create_ipsets(),
     write_ipsets_to_file(MergedIpsetsList),
     NormalizedIpset = normalize_ipset(MergedIpsetsList),
     NewIpsetHash = create_hash(NormalizedIpset),
-    set_hash(NewIpsetHash),
-    case OldIpsetHash == NewIpsetHash of
+    delete_old(),
+    create(NewIpsetHash),
+    lager:debug("LastestHash, NewIpsetHash: ~p, ~p",[LatestHash,NewIpsetHash]),
+    case NewIpsetHash == LatestHash of
           false ->
-            lager:info("OldIpsetHash: ~p != NewIpsetHash: ~p",[OldIpsetHash,NewIpsetHash]),
+            lager:debug("false"),
             publish_to_queue(MergedIpsetsList),
             case Env of 
               local_env ->
@@ -391,6 +460,7 @@ update_ipsets(Env) ->
                 publish_to_external(InternalIpsetsMap)
             end;
          true ->
+            lager:debug("true"),
             pass
     end.
 
@@ -465,9 +535,11 @@ normalize_ipset(Ipset) ->
     IpsetSplit = string:split(Ipset,"\n",all),
     IpsetSorted = lists:sort(IpsetSplit),
     IpsetAddOnly = lists:filter(fun(X) -> match_only_add(X) end, IpsetSorted),
-    IpsetNotNew = [lists:flatten(string:replace(X,"_n "," ")) || X <- IpsetAddOnly],
-    IpsetNot32 = [lists:flatten(string:replace(X,"/32","")) || X <- IpsetNotNew],
-    IpsetNot128 = [lists:flatten(string:replace(X,"/128","")) || X <- IpsetNot32],
+    IpsetNotNew = [lists:flatten(string:replace(X,"n "," ",all)) || X <- IpsetAddOnly],
+    IpsetNot32 = [lists:flatten(string:replace(X,"/32","",all)) || X <- IpsetNotNew],
+    IpsetNot128 = [lists:flatten(string:replace(X,"/128","",all)) || X <- IpsetNot32],
     IpsetTrimmed = [string:trim(Line,trailing," ") || Line <- IpsetNot128],
     IpsetNormalized = lists:flatten(lists:join("\n",IpsetTrimmed)),
     IpsetNormalized.
+
+

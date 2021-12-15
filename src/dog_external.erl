@@ -14,6 +14,7 @@
         delete/1,
         do_nothing/2,
         dump_all/0,
+        dump_all_active/0,
         empty_external/1,
         set_active_by_id/1,
         set_inactive_by_id/1,
@@ -22,6 +23,7 @@
         get_by_name/1, 
         get_all/0,
         get_all_active/0,
+        get_all_active_union_ec2_sgs/0,
         get_schema/0,
         get_thumper_spec/1,
         grouped_by_ipset_name/0,
@@ -175,6 +177,7 @@ empty_external(EnvName) ->
   #{
    <<"name">> => EnvName,
    <<"state">> => <<"inactive">>,
+   <<"ec2">> => #{}, 
    <<"v4">> => #{ <<"groups">> => #{}, <<"zones">> => #{} },
    <<"v6">> => #{ <<"groups">> => #{}, <<"zones">> => #{} },
    <<"address_handling">> => <<"union">>
@@ -558,3 +561,11 @@ get_all_ips() ->
         lists:flatten([V4_Groups,V4_Zones,V6_Groups,V6_Zones])
                    end, Externals),
     {ok, lists:flatten(E1)}.
+
+-spec get_all_active_union_ec2_sgs() -> map().
+get_all_active_union_ec2_sgs() ->
+    {ok, ExternalUnionEnvs, _ExternalPrefixEnvs} = dump_all_active(), 
+    AllGroups = lists:map(fun(Env) ->
+                      maps:get(<<"ec2">>,Env,[])
+                      end, ExternalUnionEnvs),
+    dog_common:merge_maps_of_lists(lists:flatten(AllGroups)).

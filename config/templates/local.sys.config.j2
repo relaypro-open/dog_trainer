@@ -1,12 +1,14 @@
 [
     {dog_trainer, [
         {env, "d1"},
+        {aws_key,""},
+        {aws_secret,""},
         {version, "20180423-180410-relflow"},
         {smtp_relay, "smtp.sendgrid.net"},
         {smtp_username, "{{ lookup('credstash', 'sendgrid_alert_username', table='credential-store', region='us-east-1') }}" },
         {smtp_password, "{{ lookup('credstash', 'sendgrid_alert_password', table='credential-store', region='us-east-1') }}" },
-        {smtp_to, ["dgulino@republicwireless.com"]},
-        {smtp_from, "dog_trainer@republicwireless.com"},
+        {smtp_to, ["dgulino@relaypro.com"]},
+        {smtp_from, "dog_trainer-dev@relaydev.sh"},
         {polling_interval_seconds, 60},
         {keepalive_alert_seconds, 1800},
         {hashcheck_alert_seconds, 180},

@@ -121,8 +121,50 @@ r.db('dog').table('profile')('rules')('inbound').map(function (rule) {
   return rule('group')})
   ```
 
-non-existent groups in active profiles
-```r.db('dog').table('group').withFields(['profile_id']).innerJoin(
+All hosts who's ipv4 hash doesn't match their group's ipv4 hash:
+```
+r.db('dog').table('host')
+  .filter(r.row("active").eq("active"))
+  .eqJoin('group', r.db('dog').table('group'), {index: 'name'})
+  .filter(r.row("right")("hash4_ipsets").ne(""))
+  .filter(r.row("left")("hash4_ipsets").ne(r.row("right")("hash4_ipsets")))
+  //('left')('hostkey')
+  .pluck([{'left' : ['name', 'hash4_ipsets','version']},{'right' : ['name', 'hash4_ipsets']}])
+```
+
+List Host ec2_security_groups by associated Groups:
+```
+r.db('dog').table('host')
+  .filter(r.row("active").eq("active"))
+  .eqJoin('group', r.db('dog').table('group'), {index: 'name'})
+  .zip().group("name").pluck(["ec2_security_group_ids","ec2_availability_zone"]).distinct()
+```
+
+ec2 SG info by group without ec2_security_group_ids defined, useful to figure why they are not defined:
+```
+r.db('dog').table('host')
+  .filter(r.row("active").eq("active"))
+  .eqJoin('group', r.db('dog').table('group'), {index: 'name'})
+  .filter(
+  r.row("right").hasFields('ec2_security_group_ids').not()
+  )
+  .group(function(host) {
+    return host('right')('name')
+  })
+  .pluck([{"left": ["ec2_security_group_ids","name"]}])
+```
+
+zones by count of IPs:
+```
+r.db('dog').table('zone').map
+   (function(zone) {
+     return {count: zone('ipv4_addresses').count(),name: zone('name')}
+   }).group("count")
+```
+
+list non-existent groups in active profiles (pathological case) (ignore 'all-active'):
+```
+r.db('dog').table('group').withFields(['profile_id']).innerJoin(
   r.db('dog').table('profile'), 
   function(groupRow, profileRow) {
     return groupRow('profile_id').eq(profileRow('id'))})('right')('rules')('inbound')

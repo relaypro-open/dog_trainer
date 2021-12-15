@@ -18,6 +18,7 @@
         ]).
 
 -export([
+        all_ec2_sg_mappings/0,
         all_ips/0,
         all_ipv4s/0,
         all_ipv4s_grouped/0,
@@ -35,11 +36,17 @@
         get_all_group_interfaces/0,
         get_all_group_interfaces/1,
         get_all_grouped_by_id/0,
+        get_all_inbound_ports_by_protocol/1,
         get_all_ips_by_id/1,
         get_all_ipv4s_by_id/1,
         get_all_ipv4s_by_name/1,
         get_all_ipv6s_by_id/1,
         get_all_ipv6s_by_name/1,
+        get_all_external_ec2_security_group_ids/0,
+        get_all_internal_ec2_security_group_ids/0,
+        get_internal_ec2_security_group_ids_by_id/1,
+        get_ec2_security_group_ids_by_name/1,
+        get_ec2_security_group_ids_from_members/1,
         get_external_ips_by_id/1,
         get_external_ipv4s_by_id/1,
         get_external_ipv6s_by_id/1,
@@ -71,6 +78,7 @@
         get_name_by_id/1,
         get_profile_by_id/1,
         get_profile_by_name/1,
+        get_ppps_inbound_ec2/2,
         group_name_exists/1,
         init/0,
         in_active_profile/1,
@@ -84,6 +92,8 @@
         set_hash4_iptables/2,
         set_hash6_ipsets/2,
         set_hash6_iptables/2,
+        update_group_ec2_security_groups/2,
+        where_ec2_sg_id_used/1,
         where_zone_used/1,
         zone_group_effects_groups/1,
         zone_groups_in_groups_profiles/0
@@ -91,9 +101,9 @@
 
 -export([
         get_document_by_id/1,
-        inverse_map_of_lists/1,
-        maps_append/3,
-        tuple_pairs_to_map_of_lists/1
+        set_ec2_group_mappings_from_members/0,
+        set_ec2_group_mappings_from_members/1,
+        set_ec2_group_mappings_from_members/2
         ]).
 
 %test
@@ -122,11 +132,17 @@ zone_groups_in_groups_profiles() ->
     {ok, Groups} = get_active_groups(),
     Profiles = lists:map(fun(Group) ->
                                  Name = maps:get(<<"name">>,Group),
-                                 {ok, Profile} = get_profile_by_name(Name),
-                                 {Name, Profile} end, Groups),
+                                 lager:debug("Name: ~p~n",[Name]),
+                                 case get_profile_by_name(Name) of 
+                                     {ok, Profile} ->
+                                         {Name, Profile};
+                                     {error,notfound} ->
+                                        []
+                                 end
+                 end, Groups),
     GroupsInGroups = lists:map(fun({Name, Profile}) ->
                                GroupsInProfile = dog_profile:get_zone_groups_in_profile(Profile),
-                               {Name, GroupsInProfile} end, Profiles),
+                               {Name, GroupsInProfile} end, lists:flatten(Profiles)),
     maps:from_list(GroupsInGroups).
 
 all_zones_in_group_profiles() ->
@@ -144,66 +160,74 @@ all_groups_in_group_profiles() ->
 
 role_groups_in_groups_profiles() ->
     {ok, Groups} = get_active_groups(),
-    Profiles = lists:map(fun(Group) ->
+    ProfilesRaw = lists:map(fun(Group) ->
                                  Name = maps:get(<<"name">>,Group),
-                                 {ok, Profile} = get_profile_by_name(Name),
-                                 {Name, Profile} end, Groups),
+                                 lager:debug("Name: ~p~n",[Name]),
+                                 case get_profile_by_name(Name) of
+                                    {ok, Profile} ->
+                                         {Name, Profile};
+                                    _ ->
+                                        []
+                                 end
+                                 end, Groups),
+    Profiles = lists:flatten(ProfilesRaw),
     lager:debug("Profiles: ~p",[Profiles]),
     GroupNamesInGroups = lists:map(fun({Name, Profile}) ->
                                GroupIdsInProfile = dog_profile:get_role_groups_in_profile(Profile),
                                %lager:info("GroupIdsInProfile: ~p",[GroupIdsInProfile]),
-                               GroupNamesInProfile = [element(2,get_name_by_id(Id)) || Id <- GroupIdsInProfile],
-                               {Name, GroupNamesInProfile} end, Profiles),
+                               %GroupNamesInProfile = [element(2,get_name_by_id(Id)) || Id <- GroupIdsInProfile],
+                               GroupNamesInProfile = lists:map(fun(GroupId) ->
+                                                                       case get_name_by_id(GroupId) of
+                                                                           {ok,GroupName} ->
+                                                                               GroupName;
+                                                                           _ ->
+                                                                               []
+                                                                       end
+                                                                       end, GroupIdsInProfile),
+                               {Name, GroupNamesInProfile} end, lists:flatten(Profiles)),
     lager:debug("GroupNamesInGroups: ~p",[GroupNamesInGroups]),
     maps:from_list(GroupNamesInGroups).
 
-inverse_map_of_lists(Map) ->
-    MapList = maps:to_list(Map),
-    Tuplelist = lists:map(fun({Key,Values}) ->
-                 lists:map(fun(Value) -> {Value,Key} end, Values)
-                  end, MapList),
-    lists:flatten(Tuplelist).
-
-tuple_pairs_to_map_of_lists(TupleList) ->
-    tuple_pairs_to_map_of_lists(TupleList,#{}).
-
-tuple_pairs_to_map_of_lists([],Accum) ->
-    Accum;
-tuple_pairs_to_map_of_lists(TupleList,Accum) ->
-    [Head|Tail] = TupleList,
-    {Key,Value} = Head,
-    Accum@1 = maps_append(Key,Value,Accum),
-    tuple_pairs_to_map_of_lists(Tail,Accum@1).
+%role_groups_in_groups_profiles() ->
+%    {ok, Groups} = get_active_groups(),
+%    Profiles = lists:map(fun(Group) ->
+%                                 Name = maps:get(<<"name">>,Group),
+%                                 case get_profile_by_name(Name) of
+%                                 {ok, Profile} ->
+%                                     {Name, Profile};
+%                                 _ ->
+%                                         []
+%                                 end
+%                                 end, Groups),
+%    lager:debug("Profiles: ~p",[Profiles]),
+%    GroupNamesInGroups = lists:map(fun({Name, Profile}) ->
+%                               GroupIdsInProfile = dog_profile:get_role_groups_in_profile(Profile),
+%                               %lager:info("GroupIdsInProfile: ~p",[GroupIdsInProfile]),
+%                               GroupNamesInProfile = [element(2,get_name_by_id(Id)) || Id <- GroupIdsInProfile],
+%                               {Name, GroupNamesInProfile} end, lists:flatten(Profiles)),
+%    lager:debug("GroupNamesInGroups: ~p",[GroupNamesInGroups]),
+%    maps:from_list(GroupNamesInGroups).
 
 -spec role_group_effects_groups(GroupName :: binary()) -> ({ok, list()} | error).
 role_group_effects_groups(GroupName) ->
     GroupsInGroups = role_groups_in_groups_profiles(),
-    TupleList = inverse_map_of_lists(GroupsInGroups),
-    GroupeEffectingGroups = tuple_pairs_to_map_of_lists(TupleList),
-    case maps:find(GroupName,GroupeEffectingGroups) of
+    TupleList = dog_common:inverse_map_of_lists(GroupsInGroups),
+    GroupEffectingGroups = dog_common:tuple_pairs_to_map_of_lists(TupleList),
+    {ok,OtherGroupsEffected} = case maps:find(GroupName,GroupEffectingGroups) of
         error -> {ok,[]};
         Else -> Else
-    end.
-
--spec zone_group_effects_groups(GroupName :: binary()) -> ({ok, list()} | error).
-zone_group_effects_groups(GroupName) ->
-    GroupsInGroups = zone_groups_in_groups_profiles(),
-    TupleList = inverse_map_of_lists(GroupsInGroups),
-    GroupeEffectingGroups = tuple_pairs_to_map_of_lists(TupleList),
-    case maps:find(GroupName,GroupeEffectingGroups) of
-        error -> {ok,[]};
-        Else -> Else
-    end.
-
--spec maps_append(Key::_, Value::_, Map::map()) -> map().
-maps_append(Key,Value,Map) ->
-    Map@1 = case maps:find(Key,Map) of
-        error ->
-            maps:put(Key,[Value],Map);
-        {ok, Values} ->
-            maps:put(Key,lists:append(Values,[Value]),Map)
     end,
-    Map@1.
+    {ok,sets:to_list(sets:from_list(lists:flatten([OtherGroupsEffected,GroupName])))}.
+
+-spec zone_group_effects_groups(ZoneId :: binary()) -> ({ok, list()} | error).
+zone_group_effects_groups(ZoneId) ->
+    GroupsInGroups = zone_groups_in_groups_profiles(),
+    TupleList = dog_common:inverse_map_of_lists(GroupsInGroups),
+    GroupEffectingGroups = dog_common:tuple_pairs_to_map_of_lists(TupleList),
+    case maps:find(ZoneId,GroupEffectingGroups) of
+        error -> {ok,[]};
+        Else -> Else
+    end.
 
 -spec get_active_groups() -> {ok, list()}.
 get_active_groups() ->
@@ -229,7 +253,7 @@ get_all() ->
     fun(X) ->
         reql:db(X, dog),
         reql:table(X, ?TYPE_TABLE),
-        reql:pluck(X, [<<"name">>,<<"id">>,<<"profile_id">>,<<"profile_name">>, <<"profile_version">>])
+        reql:pluck(X, [<<"name">>,<<"id">>,<<"profile_id">>,<<"profile_name">>, <<"profile_version">>,<<"ec2_security_group_ids">>])
     end),
     {ok, Result} = rethink_cursor:all(R),
     Groups = case lists:flatten(Result) of
@@ -795,22 +819,18 @@ get_hosts_by_id(GroupId) ->
         _ ->
             {ok, Group} = get_by_id(GroupId),
             GroupName = maps:get(<<"name">>, Group),
-            %lager:info("GroupName: ~p",[GroupName]),
-            %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-            %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
                     reql:table(X, host),
                     reql:filter(X,fun(Y) -> reql:bracket(Y, <<"group">>), reql:eq(Y, GroupName) end),
-                    reql:pluck(X,[<<"name">>,<<"id">>])
+                    reql:pluck(X,[<<"name">>,<<"id">>,<<"hostkey">>])
                 end),
             {ok, Result} = rethink_cursor:all(R),
             Hosts = lists:flatten(Result),
             Hosts@1 = lists:map(fun(X) -> X end, Hosts),
             case Hosts@1 of
                 [] -> {ok, []};
-                %_ -> {ok, (Hosts@1)}
                 _ -> {ok, Hosts@1}
             end
     end.
@@ -1143,3 +1163,187 @@ where_zone_used(GroupName) ->
 -spec get_schema() -> binary().
 get_schema() ->
   dog_json_schema:get_file(?VALIDATION_TYPE).
+
+-spec get_all_inbound_ports_by_protocol(GroupName :: string()) -> ProtocolPorts :: list().
+get_all_inbound_ports_by_protocol(GroupName) ->
+    case get_profile_by_name(GroupName) of
+        {error,_Error} ->
+            lager:info("No profile associated with group: ~p",[GroupName]),
+            throw(profile_not_found);
+        {ok, ProfileJson} ->
+            dog_profile:get_all_inbound_ports_by_protocol(ProfileJson)
+    end.
+
+-spec get_ppps_inbound_ec2(Group :: map(), Region :: string()) -> list().
+get_ppps_inbound_ec2(Group, Region) ->
+            Ec2SecurityGroupList = maps:get(<<"ec2_security_group_ids">>,Group,[]),
+            Ec2SecurityGroupMap = dog_common:lmm(Ec2SecurityGroupList,<<"region">>),
+            Ec2Sg = maps:get(Region,Ec2SecurityGroupMap,[]),
+            case Ec2Sg of
+                [] ->
+                    [];
+                _ ->
+                  %Region = maps:get(<<"region">>,Ec2Sg),
+                  %SgId = maps:get(<<"sgid">>,Ec2Sg),
+                  ProfileId = maps:get(<<"profile_id">>,Group),
+                  {ok,ProfileJson} = dog_profile:get_by_id(ProfileId),
+                  %{Region,SgId,dog_profile:get_spp_inbound_ec2(ProfileJson,Region)}
+                  dog_profile:get_ppps_inbound_ec2(ProfileJson,Region)
+            end.
+
+-spec get_all_internal_ec2_security_group_ids() -> IdsByGroup :: map().
+get_all_internal_ec2_security_group_ids() ->
+    {ok, AllGroups} = get_all(),
+    IdsByGroup = lists:map(fun(Group) ->
+                      GroupName = maps:get(<<"name">>,Group),
+                      case maps:get(<<"ec2_security_group_ids">>,Group,[]) of
+                          [] ->
+                              {GroupName,[]};
+                          RegionGroups ->
+                              {GroupName, RegionGroups}
+                      end
+              end, AllGroups),
+    IdsByGroupMap = maps:from_list(IdsByGroup),
+    IdsByGroupMap.
+
+-spec get_all_external_ec2_security_group_ids() -> IdsByGroup :: map().
+get_all_external_ec2_security_group_ids() ->
+    AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
+    AllActiveUnionEc2Sgs.
+
+%GROUP BASED EC2 INFO
+get_internal_ec2_security_group_ids_by_id(GroupId) ->
+    {ok,Group} = get_by_id(GroupId),
+    case maps:get(<<"ec2_security_group_ids">>,Group,[]) of
+                       [] ->
+                           [];
+                       RegionGroups ->
+                        RegionGroups
+                   end.
+%TODO
+get_ec2_security_group_ids_by_name(GroupName) ->
+    case get_id_by_name(GroupName) of
+        {ok, GroupId} ->
+            case get_internal_ec2_security_group_ids_by_id(GroupId) of
+                [] ->
+                    AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
+                    case maps:get(GroupName, AllActiveUnionEc2Sgs,[]) of
+                        [] ->
+                            [];
+                        SgIds ->
+                            SgIds
+                    end;
+                SgIds ->
+                    SgIds
+            end;
+        {error,notfound} ->
+            AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
+            case maps:get(GroupName, AllActiveUnionEc2Sgs,[]) of
+                [] ->
+                    [];
+                SgIds ->
+                    SgIds
+            end
+    end.
+
+%HOST BASED EC2 INFO
+get_ec2_security_group_ids_from_members(GroupName) ->
+    {ok,GroupId} = get_id_by_name(GroupName),
+    {ok, HostList} = get_hosts_by_id(GroupId),
+    Ec2SecurityGroupList = lists:map(fun(Host) ->
+                                             {ok,DogHost} = dog_host:get_by_id(maps:get(<<"id">>,Host)),
+                                             Ec2SecurityGroupIds = maps:get(<<"ec2_security_group_ids">>,DogHost,[]),
+                                             Ec2AvailablityZone = maps:get(<<"ec2_availability_zone">>,DogHost,[]),
+                                             Ec2Region = case Ec2AvailablityZone of
+                                                             [] -> 
+                                                                 [];
+                                                             _ -> 
+                                                                 binary:list_to_bin(lists:droplast(binary:bin_to_list(Ec2AvailablityZone)))
+                                                         end,
+                                             lists:map(fun(Ec2SecurityGroupId) ->
+                                                               {Ec2Region,Ec2SecurityGroupId}
+                                                       end, Ec2SecurityGroupIds)
+                                     end,HostList),
+    sets:to_list(sets:from_list(lists:flatten(Ec2SecurityGroupList))).
+    %lists:flatten(Ec2SecurityGroupList).
+
+
+all_ec2_sg_mappings() ->
+    lists:filter(fun(X) -> element(2,X) =/= [] end,([{G,dog_group:get_ec2_security_group_ids_from_members(G)} || G <- dog_group:get_group_names(), G =/= <<"all-active">>])).
+
+
+set_ec2_group_mappings_from_members() ->
+    Ec2SgMappings = all_ec2_sg_mappings(),
+          lists:map(fun({GroupName,SgList}) ->
+                set_ec2_group_mappings_from_members(GroupName,SgList)
+              end, Ec2SgMappings).
+
+set_ec2_group_mappings_from_members(GroupName) ->
+    SgList = dog_group:get_ec2_security_group_ids_from_members(GroupName),
+    set_ec2_group_mappings_from_members(GroupName,SgList).
+
+set_ec2_group_mappings_from_members(GroupName,SgList) ->
+        {ok, GroupId} = dog_group:get_id_by_name(GroupName),
+        io:format("GroupId: ~p, SgList: ~p~n",[GroupId,maps:from_list(SgList)]),
+        {ok,CurrentGroupMap} = dog_group:get_by_id(GroupId),
+        SgListOfMaps = lists:map(fun({Region,SgId}) ->
+                                  #{<<"region">> => Region,
+                                    <<"sgid">> => SgId}
+                          end,SgList),
+        UpdateMap = maps:merge(CurrentGroupMap,
+                         #{<<"ec2_security_group_ids">> =>
+                           SgListOfMaps}),
+        dog_group:replace(GroupId,UpdateMap).
+
+-spec where_ec2_sg_id_used(SgId :: binary()) -> {ok, list()}.
+where_ec2_sg_id_used(SgId) ->
+    {ok, R} = dog_rethink:run(fun(X) -> 
+                                      reql:db(X,dog),
+                                      reql:table(X,group),
+                                      reql:has_fields(X,[<<"ec2_security_group_ids">>]),
+                                      reql:filter(X,fun(Y) -> 
+                                                            reql:match(
+                                                              reql:to_json_string(
+                                                                reql:bracket(Y,<<"ec2_security_group_ids">>)),SgId)
+                                                                                                                                                                     end),
+                                     reql:get_field(X,<<"id">>) 
+                              end),
+    {ok, Result} = rethink_cursor:all(R),
+    Groups = case lists:flatten(Result) of
+                 [] -> [];
+                 Else -> Else
+             end,
+    {ok, Groups}.
+
+-spec update_group_ec2_security_groups(GroupZoneIdentifier :: binary(), GroupType :: binary() ) -> 'ok'.
+update_group_ec2_security_groups(GroupZoneIdentifier, GroupType) ->
+    lager:info("GroupZoneIdentifier: ~p",[GroupZoneIdentifier]),
+    Groups = case GroupType of
+                <<"role">> -> 
+                    {ok,G} = dog_group:role_group_effects_groups(GroupZoneIdentifier),
+                    G;
+                <<"zone">> -> 
+                    %TODO: Zone support in Ec2
+                    %{ok, G} = dog_group:zone_group_effects_groups(GroupZoneIdentifier),
+                    %G
+                    []
+            end,
+    AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
+    GroupsWithEc2SgIds = lists:filter(fun(Group) ->
+                                              case dog_group:get_ec2_security_group_ids_by_name(Group) of
+                                                  [] ->
+                                                      case maps:get(Group,AllActiveUnionEc2Sgs,[]) of
+                                                          [] ->
+                                                              false;
+                                                          _ ->
+                                                              true
+                                                      end;
+                                                  _ ->
+                                                      true
+                                              end
+                                      end, lists:flatten(Groups)),
+    lager:info("Effected Groups: ~p",[GroupsWithEc2SgIds]),
+    lists:foreach(fun(Group) ->
+       dog_ec2_sg:publish_ec2_sg_by_name(Group)
+                  end, GroupsWithEc2SgIds),
+    ok.

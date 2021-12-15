@@ -267,6 +267,9 @@ to_json(Req, State) ->
                 <<"hosts">> ->
                     {ok, ObjectHosts} = dog_group:get_hosts_by_id(Id),
                     jsx:encode(ObjectHosts);
+                <<"ec2_security_group_ids">> ->
+                    ObjectHosts = dog_group:get_internal_ec2_security_group_ids_by_id(Id),
+                    jsx:encode(ObjectHosts);
                 _ ->
                     case cowboy_req:match_qs([{git_changes, [], plain}], Req) of
                         #{git_changes := plain} ->

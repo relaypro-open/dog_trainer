@@ -1,4 +1,4 @@
--module(dog_hash_agent).
+-module(dog_ec2_update_agent).
 -behaviour(gen_server).
 
 %% ------------------------------------------------------------------
@@ -10,19 +10,28 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/0
-         ]).
+-export([
+         ec2_classic_security_group/2,
+         ec2_classic_security_group_ids/1,
+         ec2_classic_security_groups/1,
+         ec2_security_group/2,
+         ec2_security_group_ids/1,
+         ec2_security_groups/1,
+         start_link/0
+        ]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
 %% ------------------------------------------------------------------
 
--export([init/1,
+-export([
+         code_change/3,
          handle_call/3,
          handle_cast/2,
          handle_info/2,
-         terminate/2,
-         code_change/3]).
+         init/1,
+         terminate/2
+        ]).
 
 %% ------------------------------------------------------------------
 %% test Function Exports
@@ -52,8 +61,8 @@ start_link() ->
 
 -spec init(_) -> {'ok', []}.
 init(_Args) ->
-    {ok, KeepAliveAlertSeconds} = application:get_env(dog_trainer,keepalive_alert_seconds),
-    _KeepaliveTimer = erlang:send_after(KeepAliveAlertSeconds * 1 * 1000, self(), watch_hashes),
+    Ec2SgCacheSeconds = application:get_env(dog_trainer,ec2_sg_cache_seconds,60),
+    cache_tab:new(ec2_sgs, [{life_time, Ec2SgCacheSeconds}]),
     State = ordsets:new(),
     {ok, State}.
 
@@ -79,6 +88,9 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(_,_) -> {'noreply',_}.
 handle_cast(stop, State) ->
   {stop, normal, State};
+handle_cast({add_to_queue, Groups}, State) ->
+  NewState = ordsets:union(ordsets:from_list(Groups), State),  
+  {noreply, NewState};
 handle_cast(Msg, State) ->
   lager:error("unknown_message: Msg: ~p, State: ~p",[Msg, State]),
   {noreply, State}.
@@ -91,11 +103,6 @@ handle_cast(Msg, State) ->
 %%----------------------------------------------------------------------
 % TODO: be more specific about Info in spec
 -spec handle_info(_,_) -> {'noreply',_}.
-handle_info(watch_hashes, State) ->
-    ok = do_watch_hashes(State),
-    {ok, PollingIntervalSeconds} = application:get_env(dog_trainer,polling_interval_seconds),
-    erlang:send_after(PollingIntervalSeconds * 1000, self(), watch_hashes),
-    {noreply, []};
 handle_info(Info, State) ->
   lager:error("unknown_message: Info: ~p, State: ~p",[Info, State]),
   {noreply, State}.
@@ -117,39 +124,60 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-
-%% @doc Makes a call to the nif to add a resource to
-%% watch. Logs on error
--spec do_watch_hashes(_) -> ok.
-do_watch_hashes(_State) ->
-    case dog_agent_checker:check() of
-        true ->
-            AlertedHosts = dog_host:all_hash_alerted(),
-            lager:info("AlertedHosts: ~p",[AlertedHosts]),
-            {ok, SuccessChecks, FailedChecks} = dog_host:hash_check(),
-            {ok,HostsFailedHashCheck} = dog_host:hash_age_check(),
-            FailedHosts = [ maps:get(<<"name">>,H) || H <- HostsFailedHashCheck],
-            lager:info("FailedHosts: ~p",[FailedHosts]),
-            NewAlertHosts = ordsets:subtract(lists:sort(FailedHosts),lists:sort(AlertedHosts)),
-            lager:info("NewAlertHosts: ~p",[NewAlertHosts]),
-            case NewAlertHosts of
-                [] ->
-                    pass;
-                _ ->
-                    dog_host:send_hash_alert(ordsets:to_list(NewAlertHosts),FailedChecks),
-                    lists:foreach(fun(HostName) -> dog_host:update_hash_alert_sent(HostName,true) end, NewAlertHosts)
-            end,
-            NewRecoverHosts = ordsets:subtract(lists:sort(AlertedHosts),lists:sort(FailedHosts)),
-            lager:info("NewRecoverHosts: ~p",[NewRecoverHosts]),
-            case NewRecoverHosts of
-                [] ->
-                    pass;
-                _ ->
-                    dog_host:send_hash_recover(ordsets:to_list(NewRecoverHosts),SuccessChecks),
-                    lists:foreach(fun(HostName) -> dog_host:update_hash_alert_sent(HostName,false) end, NewRecoverHosts)
-            end,
-            ok;
-        false ->
-            lager:info("Skipping, dog_agent_checker:check() false"),
-            ok
+-spec get_ec2_security_groups(Region :: binary()) -> {ok, Ec2Sgs :: map()}.
+get_ec2_security_groups(Region) ->
+    Config = dog_ec2_sg:config(Region),
+    Result = erlcloud_ec2:describe_security_groups([],[],[],Config),
+    lager:debug("Result: ~p~n",[Result]),
+    case Result of
+        {ok,R} ->
+            {ok, R};
+        _ ->
+            {error, #{}}
     end.
+
+-spec ec2_security_groups(Region :: binary()) -> Ec2Sgs :: list().
+ec2_security_groups(Region) ->
+    case cache_tab:lookup(ec2_sgs, Region, fun() -> get_ec2_security_groups(Region) end) of
+    {ok, Ec2Sgs} ->
+        ListOfMaps = [maps:from_list(X) || X <- Ec2Sgs, proplists:get_value(vpc_id,X) =/= [] ],
+        Ec2SgsMap = dog_common:list_of_maps_to_map(ListOfMaps,group_id),
+        Ec2SgsMap;
+    _ ->
+        #{}
+    end.
+
+-spec ec2_security_group(Ec2SecurityGroupId :: binary(), Region :: binary()) -> {ok, Ec2Sgs :: list()}.
+ec2_security_group(Ec2SecurityGroupId, Region) ->
+    Ec2SgsMap = ec2_security_groups(Region),
+    Ec2Sg = maps:get(binary:bin_to_list(Ec2SecurityGroupId), Ec2SgsMap,{error,notfound}),
+    Ec2Sg.
+
+-spec ec2_security_group_ids(Region :: binary()) -> SgIds :: list().
+ec2_security_group_ids(Region) ->
+    Ec2Sgs = ec2_security_groups(Region),
+    SgIds = maps:keys(Ec2Sgs),
+    SgIds.
+
+-spec ec2_classic_security_groups(Region :: binary()) -> Ec2Sgs :: list().
+ec2_classic_security_groups(Region) ->
+    case cache_tab:lookup(ec2_sgs, Region, fun() -> get_ec2_security_groups(Region) end) of
+    {ok, Ec2Sgs} ->
+        ListOfMaps = [maps:from_list(X) || X <- Ec2Sgs, proplists:get_value(vpc_id,X) == [] ],
+        Ec2SgsMap = dog_common:list_of_maps_to_map(ListOfMaps,group_id),
+        Ec2SgsMap;
+    _ ->
+        #{}
+    end.
+
+-spec ec2_classic_security_group(Ec2SecurityGroupId :: binary(), Region :: binary()) -> {ok, Ec2Sgs :: list()}.
+ec2_classic_security_group(Ec2SecurityGroupId, Region) ->
+    Ec2SgsMap = ec2_classic_security_groups(Region),
+    Ec2Sg = maps:get(binary:bin_to_list(Ec2SecurityGroupId), Ec2SgsMap,{error,notfound}),
+    Ec2Sg.
+
+-spec ec2_classic_security_group_ids(Region :: binary()) -> SgIds :: list().
+ec2_classic_security_group_ids(Region) ->
+    Ec2Sgs = ec2_classic_security_groups(Region),
+    SgIds = maps:keys(Ec2Sgs),
+    SgIds.

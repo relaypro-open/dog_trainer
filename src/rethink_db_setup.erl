@@ -8,7 +8,8 @@
 
 -export([
          get_connection/4,
-         ensure_db_exists/2
+         ensure_db_exists/2,
+         create_initial_global_hash/1
         ]).
 
 -spec table_schema() -> map().
@@ -119,13 +120,26 @@ create_index(Connection,TableName,FieldName) ->
 
 -spec create_initial_global_hash(Connection :: pid()) -> {ok, map()}.
 create_initial_global_hash(Connection) ->
-  Record = #{
-    <<"hash">> => <<"initial">>,
-    <<"name">> => <<"global">>
-   }, 
-  gen_rethink:run(Connection,
-                               fun(X) ->
-                                   reql:db(X, dog),
-                                   reql:table(X, <<"ipset">>),
-                                   reql:insert(X, Record)
-                               end).
+    {ok, R} = dog_rethink:run(
+	fun(X) -> 
+		reql:db(X, dog), 
+		reql:table(X, ipset)
+	end),
+    {ok, Result} = rethink_cursor:all(R),
+    lager:debug("Result: ~p",[Result]),
+    case lists:flatten(Result) of
+        [] ->
+          Record = #{
+            <<"hash">> => <<"initial">>,
+            <<"name">> => <<"global">>,
+            <<"timestamp">> => dog_time:timestamp()
+           }, 
+          gen_rethink:run(Connection,
+                                       fun(X) ->
+                                           reql:db(X, dog),
+                                           reql:table(X, <<"ipset">>),
+                                           reql:insert(X, Record)
+                                       end);
+        _ ->
+            pass
+    end.

@@ -212,9 +212,17 @@ get_all_grouped_by_id() ->
     maps:from_list([{maps:get(<<"id">>,Zone), Zone} || Zone <- All]).
 
 
+-spec cleanup(Group :: map()) -> {ok, map()}.
+cleanup(Group) ->
+    Ipv6 = maps:get(<<"ipv6_addresses">>,Group),
+    Ipv6Lower = [string:lowercase(Addr) || Addr <- Ipv6],
+    GroupLower = maps:update(<<"ipv6_addresses">>,Ipv6Lower,Group),
+    {ok, GroupLower}.
+
 -spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists }.
 create(ZoneMap@0) ->
-    Name = maps:get(<<"name">>, ZoneMap@0),
+    {ok, ZoneMap@1} = cleanup(ZoneMap@0),
+    Name = maps:get(<<"name">>, ZoneMap@1),
     {ok, ExistingZones} = get_all(),
     ExistingNames = [maps:get(<<"name">>,Zone) || Zone <- ExistingZones],
     case lists:member(Name, ExistingNames) of
@@ -225,7 +233,7 @@ create(ZoneMap@0) ->
                                       fun(X) -> 
                                               reql:db(X, dog),
                                               reql:table(X, ?TYPE_TABLE),
-                                              reql:insert(X, ZoneMap@0)
+                                              reql:insert(X, ZoneMap@1)
                                       end),
             Key = hd(maps:get(<<"generated_keys">>,R)),
             {ok, Key};
@@ -234,11 +242,12 @@ create(ZoneMap@0) ->
     end.
 
 -spec update(ZoneId :: binary(), UpdateMap :: map()) -> {atom(), any()} .
-update(Id, UpdateMap) ->
-    lager:debug("UpdateMap: ~p~n", [UpdateMap]),
+update(Id, UpdateMap@0) ->
+    lager:debug("UpdateMap: ~p~n", [UpdateMap@0]),
+    {ok, UpdateMap@1} = cleanup(UpdateMap@0),
     case get_by_id(Id) of
         {ok, OldService} ->
-            NewService = maps:merge(OldService,UpdateMap),
+            NewService = maps:merge(OldService,UpdateMap@1),
             case dog_json_schema:validate(?VALIDATION_TYPE,NewService) of
                 ok ->
                     %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
@@ -248,7 +257,7 @@ update(Id, UpdateMap) ->
                                   reql:db(X, dog),
                                   reql:table(X, ?TYPE_TABLE),
                                   reql:get(X, Id),
-                                  reql:update(X,UpdateMap)
+                                  reql:update(X,UpdateMap@1)
                           end),
                     lager:debug("update R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),

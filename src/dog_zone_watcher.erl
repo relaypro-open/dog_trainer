@@ -91,8 +91,18 @@ handle_query_result(Result, State) ->
         [] ->
             pass;
         _ ->
-            imetrics:add_m(watcher,zone_update),
-            dog_ipset_update_agent:queue_update()
+            lists:foreach(fun(Entry) ->
+                ZoneName = case maps:get(<<"new_val">>,Entry) of
+                    null ->
+                        maps:get(<<"name">>,maps:get(<<"old_val">>,Entry));
+                    _ ->
+                        maps:get(<<"name">>,maps:get(<<"new_val">>,Entry))
+                end,
+                imetrics:add_m(watcher,zone_update),
+                dog_ipset_update_agent:queue_update(),
+                GroupType = <<"zone">>,
+                dog_iptables:update_group_iptables(ZoneName, GroupType)
+              end, Result)
     end,
     {noreply, [Result|State]}.
 

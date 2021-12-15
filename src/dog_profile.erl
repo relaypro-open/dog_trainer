@@ -1,6 +1,7 @@
 -module(dog_profile).
 
 -include("dog_trainer.hrl").
+-include_lib("erlcloud/include/erlcloud_ec2.hrl").
 
 -define(VALIDATION_TYPE, <<"profile">>).
 -define(TYPE_TABLE, profile).
@@ -33,6 +34,8 @@
          get_name_by_id/1,
          get_role_groups_in_profile/1,
          get_zone_groups_in_profile/1,
+         get_all_inbound_ports_by_protocol/1,
+         get_ppps_inbound_ec2/2,
          init/0,
          in_active_profile/1,
          is_active/1,
@@ -40,6 +43,7 @@
          create_ruleset/11,
          create_ruleset/12,
          create_ruleset/13,
+         normalize_ruleset/1,
          to_text/1,
          where_used/1,
          read_profile_from_file/1
@@ -186,15 +190,57 @@ write_profile_to_file(Profile, GroupName) ->
     ok = file:write_file(FileName, jsx:encode(Profile)),
     ok.
 
-remove_quotes(Line) ->
-    string:replace(Line,"\"","",all).
 
--spec normalize_ruleset(Ruleset :: iodata()) -> iolist().
+remove_comments(Ruleset) ->
+  NoCommentRulesList = lists:filter(fun(X) -> case re:run(X,"^#") of nomatch -> true; _ -> false end end, split(Ruleset,"\n", all) ),
+  NoCommentRules = lists:flatten(lists:join("\n",
+                         NoCommentRulesList)),
+  NoCommentRules.
+    
+%remove_docker(Ruleset) ->
+%  lists:filter(fun(Line0) ->
+%	       {ok, Re} = re:compile("docker", [caseless, unicode]),
+%	       case re:run(Line0, Re) of
+%                  nomatch -> true;
+%                  _  -> false 
+%              end
+%            end, Ruleset).
+
+remove_docker(Ruleset) ->
+    lists:map(fun(Line0) ->
+        Line1 = re:replace(Line0, "^-A DOCKER(.*)","",[{return,list}]),
+        Line2 = re:replace(Line1, "^:DOCKER(.*)","",[{return,list}]),
+        Line3 = case Line2 of
+            "-A FORWARD -j REJECT --reject-with icmp-port-unreachable" ->
+                Line2;
+            _ ->
+                re:replace(Line2, "^-A FORWARD(.*)","",[{return,list}])
+        end,
+        Line3
+              end, Ruleset).
+
+remove_empty_lists(List) ->
+  [L || L <- List, L =/= []].
+
+remove_quotes(Line0) ->
+    Line1 = re:replace(Line0, "\"", "", [{return, list},global]),
+    Line2 = re:replace(Line1, "\'", "", [{return, list},global]),
+    Line2.
+
+-spec zero_counters(Ruleset :: iolist()) -> iolist().
+zero_counters(Ruleset) ->
+    re:replace(Ruleset, "(:.*) \\[.*\\]", "\\1 [0:0]",
+           [{return, list}, global]).
+
 normalize_ruleset(Ruleset) ->
-    RulesetSplit = string:split(Ruleset,"\n",all),
+    RulesetNoComments = remove_comments(Ruleset),
+    RulesetZeroed = zero_counters(RulesetNoComments),
+    RulesetSplit = string:split(RulesetZeroed,"\n",all),
     RulesetNoQuotes = [remove_quotes(Line) || Line <- RulesetSplit],
     RulesetTrimmed = [string:trim(Line,trailing," ") || Line <- RulesetNoQuotes],
-    RulesetNormalized = lists:flatten(lists:join("\n",RulesetTrimmed)),
+    RulesetNoDocker = remove_docker(RulesetTrimmed),
+    RulesetNoBlankLines = remove_empty_lists(RulesetNoDocker),
+    RulesetNormalized = lists:flatten(lists:join("\n",RulesetNoBlankLines)),
     RulesetNormalized.
 
 -spec create_hash(Ruleset :: iodata() ) -> binary().
@@ -224,7 +270,6 @@ create_hash(Ruleset) ->
   error | {R4IpsetsRuleset :: iolist(), R6IpsetsRuleset :: iolist(), R4IptablesRuleset :: iolist(), R6IptablesRuleset :: iolist()}.
 create_ruleset(RoutingKey, Group, _Environment, _Location, _HostKey,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap,_Ipsets) ->
     lager:info("creating Ipv4,Ipv6 rulesets, ipsets: ~p",[RoutingKey]),
-    dog_hosts_agent_sup:restart_hash_agent(), %restart dog iptables hash check
     {R4IpsetsResult, R4IptablesResult} = generate_ipv4_ruleset_by_group_name(Group,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap),
     {R6IpsetsResult, R6IptablesResult} = generate_ipv6_ruleset_by_group_name(Group,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap),
     AnyError = lists:any(fun(X) -> X == error end,[R4IpsetsResult,R6IpsetsResult,R4IptablesResult,R6IptablesResult]),
@@ -403,7 +448,7 @@ get_by_id(Id) ->
                                  end),
     case R of
         {ok, null} ->
-            lager:error("profile id null return value: ~p",[Id]),
+            lager:debug("profile id null return value: ~p",[Id]),
             {error, notfound};
         {ok, Result} ->
             {ok, Result}
@@ -678,3 +723,164 @@ in_active_profile(Id) ->
         _ -> 
             {true, Profiles}
     end.
+
+%TODO: Phase 1 of ec2 sg management: only control ports, allow any source address
+-spec get_all_inbound_ports_by_protocol(ProfileJson :: map()) -> ProtocolPorts :: list().
+get_all_inbound_ports_by_protocol(ProfileJson) ->
+    Inbound = nested:get([<<"rules">>,<<"inbound">>], ProfileJson),
+    ActiveInbound = [Rule || Rule <- Inbound, maps:get(<<"active">>,Rule) == true],
+    RawPortsProtocols = lists:map(fun(Rule) ->
+                              ServiceId = maps:get(<<"service">>,Rule),
+                              {ok,Service} = dog_service:get_by_id(ServiceId),
+                              Services = maps:get(<<"services">>,Service),
+                              lists:nth(1,lists:map(fun(S) ->
+                                                Ports = maps:get(<<"ports">>,S),
+                                                Protocol = maps:get(<<"protocol">>,S),
+                                                case Protocol of
+                                                    <<"any">> ->
+                                                            [
+                                                             {<<"tcp">>, Ports},
+                                                             {<<"udp">>, Ports}
+                                                            ];
+                                                        _ ->
+                                                            {Protocol,Ports}
+                                                end
+                                        end,Services))
+                      end,ActiveInbound),
+    dog_common:merge_lists_in_tuples(lists:flatten(RawPortsProtocols)).
+
+-spec expand_services(Source :: binary(), Services :: binary()) -> 
+    {Protocol :: binary(), FromPort :: binary(), ToPort :: binary(), Source :: binary() }.
+expand_services(Source,Services) ->
+      lists:nth(1,lists:map(fun(S) ->
+                        PortsList = maps:get(<<"ports">>,S),
+                        lists:map(fun(Ports) ->
+                            {From,To} = case split(Ports,":") of
+                                            [F,T] ->
+                                                {F,T};
+                                            [F] ->
+                                                {F,F}
+                                        end,
+                            FromPort = list_to_integer(From),
+                            ToPort = list_to_integer(To),
+                            Protocol = maps:get(<<"protocol">>,S),
+                            case Protocol of
+                                <<"any">> ->
+                                        [
+                                         {tcp, FromPort, ToPort, Source},
+                                         {udp, FromPort, ToPort, Source}
+                                        ]
+                                        ;
+                                <<"udp">> ->
+                                         {udp, FromPort, ToPort, Source};
+                                <<"tcp">> ->
+                                         {tcp, FromPort, ToPort, Source};
+                                <<"icmp">>   ->
+                                         {icmp, FromPort, ToPort, Source}
+                            end
+                                  end,PortsList)
+                end,Services)).
+
+
+%TODO: Add security group source to rules
+%protocol port port source
+-spec get_ppps_inbound_ec2(ProfileJson :: map(), DestinationRegion :: string()) -> SourcePortProtocol :: list().
+get_ppps_inbound_ec2(ProfileJson,DestinationRegion) ->
+    Inbound = nested:get([<<"rules">>,<<"inbound">>], ProfileJson),
+    ActiveInbound = [Rule || Rule <- Inbound, (maps:get(<<"active">>,Rule) == true) and (maps:get(<<"action">>,Rule) == <<"ACCEPT">>)],
+    SourceProtocolPorts = lists:map(fun(Rule) ->
+          ServiceId = maps:get(<<"service">>,Rule),
+          {ok,Service} = dog_service:get_by_id(ServiceId),
+          Services = maps:get(<<"services">>,Service),
+          GroupType = maps:get(<<"group_type">>,Rule),
+          %TODO: Description = maps:get(<<"comment">>,Rule), %Not supported by erlcloud
+          case GroupType of
+              <<"ANY">> ->
+                  Sources = [{cidr_ip,"0.0.0.0/0"}],
+                  lists:map(fun(Source) ->
+                                    expand_services(Source,Services)
+                            end, Sources);
+              <<"ROLE">> ->
+                  GroupId = maps:get(<<"group">>,Rule),
+                  {ok,Group} = dog_group:get_by_id(GroupId),
+                  GroupName = maps:get(<<"name">>,Group),
+                  Sources = case dog_group:get_ec2_security_group_ids_by_name(GroupName) of
+                                [] ->
+                                    [{cidr_ip,"0.0.0.0/0"}];
+                                Ec2GroupIds ->
+                                    lists:map(fun(Ec2Group) ->
+                                                      SgRegion = maps:get(<<"region">>,Ec2Group),
+                                                      SgId = maps:get(<<"sgid">>,Ec2Group),
+                                                      Ec2ClassicSgIds = dog_ec2_update_agent:ec2_classic_security_group_ids(SgRegion),
+
+                                                      case lists:member(binary:bin_to_list(SgId),Ec2ClassicSgIds) of
+                                                          true ->
+                                                                      {cidr_ip,"0.0.0.0/0"};
+                                                          false ->
+                                                              case SgRegion == DestinationRegion of
+                                                                  false ->
+                                                                      {cidr_ip,"0.0.0.0/0"}; 
+                                                                  true ->
+                                                                      {group_id, binary:bin_to_list(SgId)}
+                                                              end
+                                                      end
+                                              end, Ec2GroupIds)
+                            end,
+                  lists:map(fun(Source) ->
+                                    expand_services(Source,Services)
+                            end, Sources);
+              <<"ZONE">> ->
+                  Sources = [{cidr_ip,"0.0.0.0/0"}], 
+                  lists:map(fun(Source) ->
+                                    expand_services(Source,Services)
+                            end, Sources)
+                  %TODO If not too long, list public+private IPs of Zone
+                  %{ok, Zone} = dog_zone:get_by_id(maps:get(<<"group">>,Rule)),
+                  %lager:debug("Zone: ~p~n",[Zone]),
+                  %Ip4Addresses = maps:get(<<"ipv4_addresses">>,Zone),
+                  %MaxEc2ZoneSize = application:get_env(dog_trainer,max_ec2_zone_size,5),
+                  %case length(Ip4Addresses) of
+                  %    Length when Length > MaxEc2ZoneSize ->
+                  %        Sources = [{cidr_ip,"0.0.0.0/0"}], %TODO If not too long, list public+private IPs of Zone
+                  %        lists:map(fun(Source) ->
+                  %                          expand_services(Source,Services)
+                  %                  end, Sources);
+                  %    _Length ->
+                  %        ZoneRules =  lists:map(fun(Ipv4) ->
+                  %            Sources = [{cidr_ip,binary:bin_to_list(dog_ips:add_net_to_ipv4(Ipv4))}],
+                  %            lists:map(fun(Source) ->
+                  %                              expand_services(Source,Services)
+                  %                      end, Sources)
+                  %        end,Ip4Addresses),
+                  %        lists:flatten(ZoneRules)
+                  %end
+          end
+    end,ActiveInbound),
+    %[tuple_to_list(X) || X <- lists:flatten(SourceProtocolPorts)].
+    lists:flatten(SourceProtocolPorts).
+    %merge_lists_in_tuples(lists:flatten(RawPortsProtocols)).
+    %dog_common:merge_lists_in_tuples(lists:flatten(SourceProtocolPorts)).
+    
+%%--------------------------------------------------------------------
+%% Helpers
+%%--------------------------------------------------------------------
+
+hex(N) when N < 10 ->
+    N + $0;
+hex(N) when N < 16 ->
+    N - 10 + $a.
+
+%For pre-2X Erlang:
+trim(String, trailing, " ") ->
+    re:replace(re:replace(String, "\\s+$", "",
+              [global, {return, list}]),
+           "^\\s+", "", [global, {return, list}]).
+
+split(String, Delimiter, all) ->
+    split(String, Delimiter).
+split(String, Delimiter) ->
+    re:split(String, Delimiter, [{return, list}]).
+replace(String,SearchPattern,Replacement,all) ->
+    Replaced = re:replace(String,SearchPattern,Replacement,[global,{return,list}]),
+    [Replaced].
+

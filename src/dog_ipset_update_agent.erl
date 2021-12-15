@@ -70,8 +70,9 @@ queue_length() ->
 
 -spec init(_) -> {'ok', []}.
 init(_Args) ->
-    CurrentIpsetHash = dog_ipset:read_hash(),
-    dog_ipset:set_hash(CurrentIpsetHash),
+    %CurrentIpset = dog_ipset:read_current_ipset(),
+    %{ok, CurrentIpsetHashes} = dog_ipset:get_hashes(),
+    %dog_ipset:create(CurrentIpsetHashes),
     {ok, PeriodicPublishInterval} = application:get_env(dog_trainer,ipset_periodic_publish_interval_seconds),
     _PublishTimer = erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     State = ordsets:new(),
