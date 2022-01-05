@@ -755,15 +755,20 @@ expand_services(Source,Services) ->
       lists:nth(1,lists:map(fun(S) ->
                         PortsList = maps:get(<<"ports">>,S),
                         lists:map(fun(Ports) ->
+                            Protocol = maps:get(<<"protocol">>,S),
                             {From,To} = case split(Ports,":") of
                                             [F,T] ->
                                                 {F,T};
-                                            [F] ->
-                                                {F,F}
+                                            [F] -> 
+                                                case Protocol of
+                                                    <<"icmp">> -> 
+                                                        {F,"-1"};
+                                                    _ ->
+                                                        {F,F}
+                                                end
                                         end,
                             FromPort = list_to_integer(From),
                             ToPort = list_to_integer(To),
-                            Protocol = maps:get(<<"protocol">>,S),
                             case Protocol of
                                 <<"any">> ->
                                         [

@@ -17,8 +17,8 @@
 -export([
         config/1,
         compare_sg/3,
-        create_ingress_rules/1,
-        create_ingress_port_rules/4,
+%        create_ingress_rules/1,
+ %       create_ingress_port_rules/4,
         create_port_anywhere_ingress_rules/1,
         create_port_anywhere_ingress_rules_by_id/1,
         ingress_record_to_ppps/1,
@@ -38,7 +38,7 @@ config(Region) ->
 
 default_spps_rules(Ec2SecurityGroupId) ->
     [
-    {icmp,8,8,{cidr_ip,"0.0.0.0/0"}},
+    % {icmp,8,-1,{cidr_ip,"0.0.0.0/0"}},
     {tcp,0,65535,{group_id,binary:bin_to_list(Ec2SecurityGroupId)}},
     {udp,0,65535,{group_id,binary:bin_to_list(Ec2SecurityGroupId)}}
      ].
@@ -204,7 +204,12 @@ create_port_anywhere_ingress_rule(Protocol, Ports) ->
                                       [F,T] ->
                                           {F,T};
                                       [F] ->
-                                          {F,F}
+                                          case Protocol of
+                                              <<"icmp">> -> 
+                                                  {F,<<"-1">>};
+                                              _ ->
+                                                  {F,F}
+                                          end
                                   end,
                       #vpc_ingress_spec{
                          ip_protocol = binary_to_atom(Protocol),
@@ -226,40 +231,46 @@ create_port_anywhere_ingress_rules_by_id(DogGroupId) ->
     DogGroupName = maps:get(<<"name">>,DogGroup),
     create_port_anywhere_ingress_rules(DogGroupName).
 
--spec create_ingress_rules(Spps :: list() ) -> Rules :: list().
-create_ingress_rules(Spps) ->
-    Rules = lists:map(fun({{SourceType,Source},Protocol,Ports}) ->
-                              create_ingress_port_rules(SourceType,Source,Protocol,Ports)
-                      end, Spps),
-    lists:flatten(Rules).
-                      
--spec create_ingress_port_rules(SourceType :: string(),Source :: string(),Protocol :: string(), Ports :: list()) -> list().
-create_ingress_port_rules(SourceType,Source,Protocol,Ports) ->
-    PortRule = lists:map(fun(Port) ->
-                                 {From,To} = case string:split(Port,":") of
-                                                 [F,T] ->
-                                                     {F,T};
-                                                 [F] ->
-                                                     {F,F}
-                                             end,
-                                 case SourceType of
-                                     cidr_ip ->
-                                         #vpc_ingress_spec{
-                                            ip_protocol = binary_to_atom(Protocol),
-                                            from_port = binary_to_integer(From),
-                                            to_port = binary_to_integer(To),
-                                            cidr_ip = [Source]
-                                           };
-                                     group_id ->
-                                         #vpc_ingress_spec{
-                                            ip_protocol = binary_to_atom(Protocol),
-                                            from_port = binary_to_integer(From),
-                                            to_port = binary_to_integer(To),
-                                            group_id = [binary_to_list(Source)]
-                                           }
-                                 end
-                         end, Ports),
-    lists:flatten(PortRule).
+%-spec create_ingress_rules(Spps :: list() ) -> Rules :: list().
+%create_ingress_rules(Spps) ->
+%    Rules = lists:map(fun({{SourceType,Source},Protocol,Ports}) ->
+%                              create_ingress_port_rules(SourceType,Source,Protocol,Ports)
+%                      end, Spps),
+%    lists:flatten(Rules).
+%                      
+%-spec create_ingress_port_rules(SourceType :: string(),Source :: string(),Protocol :: string(), Ports :: list()) -> list().
+%create_ingress_port_rules(SourceType,Source,Protocol,Ports) ->
+%    PortRule = lists:map(fun(Port) ->
+%                                 lager:debug("Protocol: ~p, Port : ~p",[Protocol,Port]),
+%                                 {From,To} = case string:split(Port,":") of
+%                                                 [F,T] ->
+%                                                     {F,T};
+%                                                 [F] ->
+%                                                     case Protocol of
+%                                                         <<"icmp">> ->
+%                                                             {F,-1};
+%                                                         _ ->
+%                                                             {F,F}
+%                                                     end
+%                                             end,
+%                                 case SourceType of
+%                                     cidr_ip ->
+%                                         #vpc_ingress_spec{
+%                                            ip_protocol = binary_to_atom(Protocol),
+%                                            from_port = binary_to_integer(From),
+%                                            to_port = binary_to_integer(To),
+%                                            cidr_ip = [Source]
+%                                           };
+%                                     group_id ->
+%                                         #vpc_ingress_spec{
+%                                            ip_protocol = binary_to_atom(Protocol),
+%                                            from_port = binary_to_integer(From),
+%                                            to_port = binary_to_integer(To),
+%                                            group_id = [binary_to_list(Source)]
+%                                           }
+%                                 end
+%                         end, Ports),
+%    lists:flatten(PortRule).
 
 ppps_to_spps(Ppps) ->
     ppps_to_spps(Ppps,#{}).
