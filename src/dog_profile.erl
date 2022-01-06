@@ -20,54 +20,52 @@
 
 -export([
          all_active/0,
-         date_string/0,
-         generate_ipv4_ruleset_by_name/1,
-         generate_ipv6_ruleset_by_name/1,
-         generate_ipv4_ruleset_by_id/1,
-         generate_ipv6_ruleset_by_id/1,
-         generate_ipv4_ruleset_by_group_id/1,
-         generate_ipv4_ruleset_by_group_name/1,
-         generate_ipv6_ruleset_by_group_id/1,
-         generate_ipv6_ruleset_by_group_name/1,
-         get_id_by_name/1,
-         get_latest_profile/1,
-         get_name_by_id/1,
-         get_role_groups_in_profile/1,
-         get_zone_groups_in_profile/1,
-         get_all_inbound_ports_by_protocol/1,
-         get_ppps_inbound_ec2/2,
-         init/0,
-         in_active_profile/1,
-         is_active/1,
+         %create_hash/1,
          create_ruleset/10,
          create_ruleset/11,
          create_ruleset/12,
          create_ruleset/13,
-         normalize_ruleset/1,
+         date_string/0,
+         generate_ipv4_ruleset_by_group_id/1,
+         %generate_ipv4_ruleset_by_group_name/1,
+         generate_ipv4_ruleset_by_id/1,
+         %generate_ipv4_ruleset_by_name/1,
+         generate_ipv6_ruleset_by_group_id/1,
+         %generate_ipv6_ruleset_by_group_name/1,
+         generate_ipv6_ruleset_by_id/1,
+         %generate_ipv6_ruleset_by_name/1,
+         get_all_inbound_ports_by_protocol/1,
+         %get_id_by_name/1,
+         get_latest_profile/1,
+         %get_name_by_id/1,
+         get_ppps_inbound_ec2/2,
+         get_role_groups_in_profile/1,
+         get_zone_groups_in_profile/1,
+         %in_active_profile/1,
+         init/0,
+         %is_active/1,
+         %normalize_ruleset/1,
+         %read_profile_from_file/1
          to_text/1,
-         where_used/1,
-         read_profile_from_file/1
+         where_used/1
         ]).
-
-%test
--export([create_hash/1]).
 
 -spec init() -> any().
 init() ->
   pass.
 
--spec generate_ipv4_ruleset_by_name(Name :: binary()) -> {{ok,iolist()}, {ok,iolist()}} | {error, Error :: any()}.
-generate_ipv4_ruleset_by_name(Name) ->
-    Result = dog_profile:get_by_name(Name),
-    case Result of
-        {error, _Error} ->
-            lager:info("No profile associated with group id: ~p",[Name]),
-            throw(profile_not_found);
-        {ok, ProfileJson} ->
-            IpsetsRuleset = dog_ruleset:generate_ruleset(ProfileJson, ipsets, <<"v4">>),
-            IptablesRuleset = dog_ruleset:generate_ruleset(ProfileJson, iptables, <<"v4">>),
-            {IpsetsRuleset, IptablesRuleset}
-    end.
+%-spec generate_ipv4_ruleset_by_name(Name :: binary()) -> {{ok,iolist()}, {ok,iolist()}} | {error, Error :: any()}.
+%generate_ipv4_ruleset_by_name(Name) ->
+%    Result = dog_profile:get_by_name(Name),
+%    case Result of
+%        {error, _Error} ->
+%            lager:info("No profile associated with group id: ~p",[Name]),
+%            throw(profile_not_found);
+%        {ok, ProfileJson} ->
+%            IpsetsRuleset = dog_ruleset:generate_ruleset(ProfileJson, ipsets, <<"v4">>),
+%            IptablesRuleset = dog_ruleset:generate_ruleset(ProfileJson, iptables, <<"v4">>),
+%            {IpsetsRuleset, IptablesRuleset}
+%    end.
 
 -spec generate_ipv6_ruleset_by_id(Id :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
 generate_ipv6_ruleset_by_id(Id) ->
@@ -81,17 +79,17 @@ generate_ipv6_ruleset_by_id(Id) ->
              {IpsetsRulesetResult, IptablesRulesetResult}
     end.
 
--spec generate_ipv6_ruleset_by_name(Name :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
-generate_ipv6_ruleset_by_name(Name) ->
-    case get_by_name(Name) of
-        {error, _Error} ->
-            lager:info("No profile associated with group id: ~p",[Name]),
-            throw(profile_not_found);
-        {ok, ProfileJson} ->
-            IpsetsRulesetResult = dog_ruleset:generate_ruleset(ProfileJson, ipsets, <<"v6">>),
-            IptablesRulesetResult = dog_ruleset:generate_ruleset(ProfileJson, iptables, <<"v6">>),
-            {IpsetsRulesetResult, IptablesRulesetResult}
-    end.
+%-spec generate_ipv6_ruleset_by_name(Name :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
+%generate_ipv6_ruleset_by_name(Name) ->
+%    case get_by_name(Name) of
+%        {error, _Error} ->
+%            lager:info("No profile associated with group id: ~p",[Name]),
+%            throw(profile_not_found);
+%        {ok, ProfileJson} ->
+%            IpsetsRulesetResult = dog_ruleset:generate_ruleset(ProfileJson, ipsets, <<"v6">>),
+%            IptablesRulesetResult = dog_ruleset:generate_ruleset(ProfileJson, iptables, <<"v6">>),
+%            {IpsetsRulesetResult, IptablesRulesetResult}
+%    end.
 
 -spec generate_ipv4_ruleset_by_id(GroupId :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
 generate_ipv4_ruleset_by_id(Id) ->
@@ -100,10 +98,10 @@ generate_ipv4_ruleset_by_id(Id) ->
     Iptables = dog_ruleset:generate_ruleset(Json, iptables, <<"v4">>),
     {Ipsets, Iptables}.
 
--spec generate_ipv4_ruleset_by_group_name(GroupName :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
-generate_ipv4_ruleset_by_group_name(GroupName) ->
-  {Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap} = dog_ipset:id_maps(),
-    generate_ipv4_ruleset_by_group_name(GroupName,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap).
+%-spec generate_ipv4_ruleset_by_group_name(GroupName :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
+%generate_ipv4_ruleset_by_group_name(GroupName) ->
+%  {Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap} = dog_ipset:id_maps(),
+%    generate_ipv4_ruleset_by_group_name(GroupName,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap).
 
 -spec generate_ipv4_ruleset_by_group_name(GroupName :: binary(), Ipv4RoleMap :: map(), Ipv6RoleMap :: map(), Ipv4ZoneMap :: map(), Ipv6ZoneMap :: map(), ZoneIdMap :: map(), GroupIdMap :: map(), ServiceIdMap :: map() ) -> {{ok,list()}, {ok,iolist()}}.
 generate_ipv4_ruleset_by_group_name(GroupName,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap) ->
@@ -137,10 +135,10 @@ profile_not_found(GroupId) ->
           lager:info("No profile associated with group id: ~p",[GroupId]),
           throw(profile_not_found).
 
--spec generate_ipv6_ruleset_by_group_name(GroupName :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
-generate_ipv6_ruleset_by_group_name(GroupName) ->
-    {Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap} = dog_ipset:id_maps(),
-    generate_ipv6_ruleset_by_group_name(GroupName,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap).
+%-spec generate_ipv6_ruleset_by_group_name(GroupName :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
+%generate_ipv6_ruleset_by_group_name(GroupName) ->
+%    {Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap} = dog_ipset:id_maps(),
+%    generate_ipv6_ruleset_by_group_name(GroupName,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap).
 
 -spec generate_ipv6_ruleset_by_group_name(GroupName :: binary(), Ipv4RoleMap :: map(), Ipv6RoleMap :: map(), Ipv4ZoneMap :: map(), Ipv6ZoneMap :: map(), ZoneIdMap :: map(), GroupIdMap :: map(), ServiceIdMap :: map() ) -> {{ok,iolist()}, {ok,iolist()}}.
 generate_ipv6_ruleset_by_group_name(GroupName,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap) ->
@@ -178,11 +176,11 @@ generate_ipv4_ruleset_by_group_id(GroupId) ->
     {ok, Iptables} = dog_ruleset:generate_ruleset(Json, iptables, <<"v4">>),
     {Ipsets, Iptables}.
 
--spec read_profile_from_file(GroupName :: binary()) -> Contents :: binary().
-read_profile_from_file(GroupName) ->
-    FileName = ?RUNDIR ++ "/profile." ++ binary_to_list(GroupName) ++ ".txt",
-    {ok, Contents} = file:read_file(FileName),
-    Contents.
+%-spec read_profile_from_file(GroupName :: binary()) -> Contents :: binary().
+%read_profile_from_file(GroupName) ->
+%    FileName = ?RUNDIR ++ "/profile." ++ binary_to_list(GroupName) ++ ".txt",
+%    {ok, Contents} = file:read_file(FileName),
+%    Contents.
 
 -spec write_profile_to_file(Profile :: map(), GroupName :: binary()) -> ok.
 write_profile_to_file(Profile, GroupName) ->
@@ -376,25 +374,25 @@ get_all() ->
                end,
     {ok, Profiles}.
 
--spec get_id_by_name(ProfileName :: binary()) -> {ok, iolist()} | {error, atom()}.
-get_id_by_name(ProfileName) ->
-    Result = get_by_name(ProfileName),
-    case Result of
-        {ok, Profile} ->
-            {ok, maps:get(<<"id">>,Profile)};
-        {error, Error} ->
-            lager:error("profile name not found: ~p, ~p",[ProfileName,Error]),
-            {error, Error}
-    end.
+%-spec get_id_by_name(ProfileName :: binary()) -> {ok, iolist()} | {error, atom()}.
+%get_id_by_name(ProfileName) ->
+%    Result = get_by_name(ProfileName),
+%    case Result of
+%        {ok, Profile} ->
+%            {ok, maps:get(<<"id">>,Profile)};
+%        {error, Error} ->
+%            lager:error("profile name not found: ~p, ~p",[ProfileName,Error]),
+%            {error, Error}
+%    end.
 
--spec get_name_by_id(ProfileId :: binary()) -> {ok, iolist()} | {error, atom()}.
-get_name_by_id(ProfileId) ->
-    case get_by_id(ProfileId) of
-        {ok, Profile} ->
-            {ok, maps:get(<<"name">>,Profile)};
-        {error, Error} ->
-            {error, Error}
-    end.
+%-spec get_name_by_id(ProfileId :: binary()) -> {ok, iolist()} | {error, atom()}.
+%get_name_by_id(ProfileId) ->
+%    case get_by_id(ProfileId) of
+%        {ok, Profile} ->
+%            {ok, maps:get(<<"name">>,Profile)};
+%        {error, Error} ->
+%            {error, Error}
+%    end.
 
 -spec get_by_name(ProfileName :: binary()) -> {'ok', map() } | {error, atom()} .
 get_by_name(ProfileName) ->
@@ -531,10 +529,10 @@ update_in_place(Id, UpdateMap) ->
             {false, Error}
     end.
 
--spec is_active(Id :: binary()) -> boolean().
-is_active(Id) ->
-    {ok, Active} = dog_profile:all_active(),
-    lists:member(Id,Active).
+%-spec is_active(Id :: binary()) -> boolean().
+%is_active(Id) ->
+%    {ok, Active} = dog_profile:all_active(),
+%    lists:member(Id,Active).
 
 -spec delete(GroupId :: binary()) -> (ok | {error, Error :: map()}).
 delete(Id) ->
@@ -712,17 +710,17 @@ where_used(ProfileId) ->
 get_schema() ->
   dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec in_active_profile(Id :: binary()) -> {false, []} | {true, Profiles :: map() }.
-in_active_profile(Id) ->
-    {ok, Used} = where_used(Id),
-    {ok, Active} = dog_profile:all_active(),
-    Profiles = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(Active))),
-    case Profiles of
-        [] -> 
-            {false,[]};
-        _ -> 
-            {true, Profiles}
-    end.
+%-spec in_active_profile(Id :: binary()) -> {false, []} | {true, Profiles :: map() }.
+%in_active_profile(Id) ->
+%    {ok, Used} = where_used(Id),
+%    {ok, Active} = dog_profile:all_active(),
+%    Profiles = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(Active))),
+%    case Profiles of
+%        [] -> 
+%            {false,[]};
+%        _ -> 
+%            {true, Profiles}
+%    end.
 
 %TODO: Phase 1 of ec2 sg management: only control ports, allow any source address
 -spec get_all_inbound_ports_by_protocol(ProfileJson :: map()) -> ProtocolPorts :: list().

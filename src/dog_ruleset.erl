@@ -3,19 +3,19 @@
 -include("dog_trainer.hrl").
 
 -export([
-         cidr_netmask/1,
-         cidr_network/1,
-         generate_ruleset/3,
+         %cidr_netmask/1,
+         %cidr_network/1,
          generate_ruleset/10,
-         netmask_cidr/1,
-         write_ruleset_set_v4_to_file/2,
-         write_ruleset_set_v6_to_file/2,
-         write_ruleset_unset_v4_to_file/2,
-         write_ruleset_unset_v6_to_file/2,
+         generate_ruleset/3,
+         %netmask_cidr/1,
          read_ruleset_set_v4_from_file/1,
          read_ruleset_set_v6_from_file/1,
          read_ruleset_unset_v4_from_file/1,
-         read_ruleset_unset_v6_from_file/1
+         read_ruleset_unset_v6_from_file/1,
+         write_ruleset_set_v4_to_file/2,
+         write_ruleset_set_v6_to_file/2,
+         write_ruleset_unset_v4_to_file/2,
+         write_ruleset_unset_v6_to_file/2
         ]).
 
 -spec generate_ruleset(ProfileJson :: map(), Type :: atom(), Version :: binary() ) -> {'ok', iolist()}. 
@@ -914,63 +914,63 @@ read_ruleset_unset_v6_from_file(GroupName) ->
   {ok, Ruleset} = dog_file:read_file(FileName),
   {ok, Ruleset}.
 
-%%--------------------------------------------------------------------
-%% @spec cidr_netmask(Bits :: integer()) -> ipv4()
-%% @doc  Return the netmask corresponding to the network bits received in CIDR 
-%%       format.
-%%--------------------------------------------------------------------
-cidr_netmask(Bits) when is_integer(Bits) andalso Bits =< 32 ->
-  ZeroBits = 8 - (Bits rem 8),
-  Last = (16#ff bsr ZeroBits) bsl ZeroBits,
-
-  case (Bits div 8) of
-    0 ->
-      {(255 band Last), 0, 0, 0};
-    1 ->
-      {255, (255 band Last), 0, 0};
-    2 ->
-      {255, 255, (255 band Last), 0};
-    3 ->
-      {255, 255, 255, (255 band Last)};
-    4 ->
-      {255, 255, 255, 255}
-  end.
-
-%%--------------------------------------------------------------------
-%% @spec cidr_network({Addr :: ipv4(), Bits :: integer()}) -> ipv4()
-%% @doc  Return the subnet corresponding the the IP address and network bits 
-%%       received in CIDR format.
-%%--------------------------------------------------------------------
-cidr_network({{I1, I2, I3, I4}, Bits}) when is_integer(Bits) andalso Bits =< 32 ->
-  ZeroBits = 8 - (Bits rem 8),
-  Last = (16#ff bsr ZeroBits) bsl ZeroBits,
-
-  case (Bits div 8) of
-    0 ->
-      {(I1 band Last), 0, 0, 0};
-    1 ->
-      {I1, (I2 band Last), 0, 0};
-    2 ->
-      {I1, I2, (I3 band Last), 0};
-    3 ->
-      {I1, I2, I3, (I4 band Last)};
-    4 ->
-      {I1, I2, I3, I4}
-  end.
-
-binary_ones(OnesZeros) when is_list(OnesZeros) ->
-  length(lists:filter(fun(X) -> 
-                          integer_to_binary(X) == <<"49">> end, 
-                      OnesZeros)).
-
-integer_to_binary_list(Integer) when is_integer(Integer) ->
-  io_lib:format("~8..0B",[list_to_integer(binary_to_list(integer_to_binary(Integer,2)))]).
-
-netmask_cidr({I1,I2,I3,I4}) ->
-  binary_ones(
-  lists:flatten([
-   integer_to_binary_list(I1),
-   integer_to_binary_list(I2),
-   integer_to_binary_list(I3),
-   integer_to_binary_list(I4)
-  ])).
+%%%--------------------------------------------------------------------
+%%% @spec cidr_netmask(Bits :: integer()) -> ipv4()
+%%% @doc  Return the netmask corresponding to the network bits received in CIDR 
+%%%       format.
+%%%--------------------------------------------------------------------
+%cidr_netmask(Bits) when is_integer(Bits) andalso Bits =< 32 ->
+%  ZeroBits = 8 - (Bits rem 8),
+%  Last = (16#ff bsr ZeroBits) bsl ZeroBits,
+%
+%  case (Bits div 8) of
+%    0 ->
+%      {(255 band Last), 0, 0, 0};
+%    1 ->
+%      {255, (255 band Last), 0, 0};
+%    2 ->
+%      {255, 255, (255 band Last), 0};
+%    3 ->
+%      {255, 255, 255, (255 band Last)};
+%    4 ->
+%      {255, 255, 255, 255}
+%  end.
+%
+%%%--------------------------------------------------------------------
+%%% @spec cidr_network({Addr :: ipv4(), Bits :: integer()}) -> ipv4()
+%%% @doc  Return the subnet corresponding the the IP address and network bits 
+%%%       received in CIDR format.
+%%%--------------------------------------------------------------------
+%cidr_network({{I1, I2, I3, I4}, Bits}) when is_integer(Bits) andalso Bits =< 32 ->
+%  ZeroBits = 8 - (Bits rem 8),
+%  Last = (16#ff bsr ZeroBits) bsl ZeroBits,
+%
+%  case (Bits div 8) of
+%    0 ->
+%      {(I1 band Last), 0, 0, 0};
+%    1 ->
+%      {I1, (I2 band Last), 0, 0};
+%    2 ->
+%      {I1, I2, (I3 band Last), 0};
+%    3 ->
+%      {I1, I2, I3, (I4 band Last)};
+%    4 ->
+%      {I1, I2, I3, I4}
+%  end.
+%
+%binary_ones(OnesZeros) when is_list(OnesZeros) ->
+%  length(lists:filter(fun(X) -> 
+%                          integer_to_binary(X) == <<"49">> end, 
+%                      OnesZeros)).
+%
+%integer_to_binary_list(Integer) when is_integer(Integer) ->
+%  io_lib:format("~8..0B",[list_to_integer(binary_to_list(integer_to_binary(Integer,2)))]).
+%
+%netmask_cidr({I1,I2,I3,I4}) ->
+%  binary_ones(
+%  lists:flatten([
+%   integer_to_binary_list(I1),
+%   integer_to_binary_list(I2),
+%   integer_to_binary_list(I3),
+%   integer_to_binary_list(I4)
+%  ])).

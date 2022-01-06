@@ -1,6 +1,6 @@
 -module(dog_host).
 
--include("dog_trainer.hrl").
+%-include("dog_trainer.hrl").
 
 -define(VALIDATION_TYPE, <<"host">>).
 -define(TYPE_TABLE, host).
@@ -16,55 +16,52 @@
          get_all_active/0,
          get_schema/0,
          update/2,
-         update_by_hostkey/2,
-         update_by_name/2
+         update_by_hostkey/2
+         %update_by_name/2
         ]).
 
 -export([
-         ipset_hash_age_check/1,
-         ipset_hash_age_check/2,
-         ipset_hash_age_update/2,
-         iptables_hash_age_check/1,
-         iptables_hash_age_check/2,
-         iptables_hash_age_update/2,
-         get_active_by_id/1,
-         get_id_by_name/1,
-         get_id_by_hostkey/1,
-         get_all_ips/0,
+         %get_active_by_id/1,
          get_all_active_interfaces/0,
-         get_state_by_id/1,
+         %get_all_ips/0,
+         %get_id_by_hostkey/1,
+         %get_id_by_name/1,
+         %get_state_by_id/1,
+         %group_hashes/0,
          hash_check/1,
-         iptables_hash_logic/4,
+         %host_hashes/0
          init/0, 
+         %ipset_hash_age_check/1,
+         %ipset_hash_age_check/2,
+         %ipset_hash_age_update/2,
+         %iptables_hash_age_check/1,
+         %iptables_hash_age_check/2,
+         %iptables_hash_age_update/2,
+         %iptables_hash_logic/4,
          keepalive_age_check/0,
          keepalive_age_check/1,
          keepalive_check/0,
          keepalive_check/1,
-         new_state/4,
+         %new_state/4,
          retirement_check/0,
          retirement_check/1,
-         send_hash_alert/2,
-         send_hash_recover/2,
-         send_keepalive_alert/1,
-         send_keepalive_recover/1,
-         send_retirement_alert/1,
-         set_active_by_id/1,
-         set_active_by_name/1,
-         set_hosts_active/1,
-         set_hosts_inactive/1,
-         set_hosts_retired/1,
-         set_inactive_by_id/1,
-         set_inactive_by_name/1,
-         set_retired_by_name/1,
-         set_retired_by_id/1,
-         set_state_by_id/2,
-         state_event/3,
-         update_active/2
-        ]).
-
--export([
-         group_hashes/0,
-         host_hashes/0
+         %send_hash_alert/2,
+         %send_hash_recover/2,
+         %send_keepalive_alert/1,
+         %send_keepalive_recover/1,
+         %send_retirement_alert/1,
+         %set_active_by_id/1,
+         %set_active_by_name/1,
+         %set_hosts_active/1,
+         %set_hosts_inactive/1,
+         %set_hosts_retired/1,
+         %set_inactive_by_id/1,
+         %set_inactive_by_name/1,
+         %set_retired_by_id/1,
+         %set_retired_by_name/1,
+         %set_state_by_id/2,
+         state_event/3
+         %update_active/2,
         ]).
 
 -spec keepalive_check() ->{ok, Unalive :: list()}.
@@ -129,42 +126,42 @@ retirement_check(TimeCutoff) ->
     lager:info("OldAgents: ~p",[OldAgents]),
     {ok, OldAgents}.
 
--spec group_hashes() -> {ok, map()}.
-group_hashes() ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-    {ok, R} = dog_rethink:run(
-	fun(X) -> 
-		reql:db(X, dog), 
-		reql:table(X,group),
-%        reql:has_fields(X,[<<"hash4_ipsets">>,<<"hash6_ipsets">>,<<"hash4_iptables">>,<<"hash6_iptables">>]),
-        reql:pluck(X,[<<"name">>,<<"hash4_ipsets">>, <<"hash6_ipsets">>, <<"hash4_iptables">>, <<"hash6_iptables">>]) 
-    end),
-    {ok, GroupResult} = rethink_cursor:all(R),
-    R1 = lists:flatten(GroupResult),
-    Groups = [ A || A <- R1],
-    GroupsList = lists:map(fun(G) -> 
-                      [{maps:get(<<"name">>,G),maps:remove(<<"name">>,G)}] end, Groups),
-    GroupsMap = maps:from_list(lists:flatten(GroupsList)),
-    {ok, GroupsMap}.
+%-spec group_hashes() -> {ok, map()}.
+%group_hashes() ->
+%    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
+%    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
+%    {ok, R} = dog_rethink:run(
+%	fun(X) -> 
+%		reql:db(X, dog), 
+%		reql:table(X,group),
+%%        reql:has_fields(X,[<<"hash4_ipsets">>,<<"hash6_ipsets">>,<<"hash4_iptables">>,<<"hash6_iptables">>]),
+%        reql:pluck(X,[<<"name">>,<<"hash4_ipsets">>, <<"hash6_ipsets">>, <<"hash4_iptables">>, <<"hash6_iptables">>]) 
+%    end),
+%    {ok, GroupResult} = rethink_cursor:all(R),
+%    R1 = lists:flatten(GroupResult),
+%    Groups = [ A || A <- R1],
+%    GroupsList = lists:map(fun(G) -> 
+%                      [{maps:get(<<"name">>,G),maps:remove(<<"name">>,G)}] end, Groups),
+%    GroupsMap = maps:from_list(lists:flatten(GroupsList)),
+%    {ok, GroupsMap}.
 
--spec host_hashes() -> list().
-host_hashes() ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-    {ok, R} = dog_rethink:run(
-	fun(X) -> 
-		reql:db(X, dog), 
-		reql:table(X,host),
-        reql:has_fields(X,[<<"group">>,<<"hash4_ipsets">>,<<"hash6_ipsets">>,<<"hash4_iptables">>,<<"hash6_iptables">>,<<"ipset_hash">>]),
-        reql:filter(X,#{<<"active">> => <<"active">>}),
-        reql:filter(X,fun(Y) -> reql:bracket(Y, <<"group">>), reql:ne(Y, <<"">>) end),
-        reql:pluck(X,[<<"name">>,<<"group">>,<<"hash4_ipsets">>,<<"hash6_ipsets">>,<<"hash4_iptables">>,<<"hash6_iptables">>,<<"ipset_hash">>])
-    end),
-    {ok, HostResult} = rethink_cursor:all(R),
-    R1 = lists:flatten(HostResult),
-    Hosts = [ A || A <- R1],
-    Hosts.
+%-spec host_hashes() -> list().
+%host_hashes() ->
+%    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
+%    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
+%    {ok, R} = dog_rethink:run(
+%	fun(X) -> 
+%		reql:db(X, dog), 
+%		reql:table(X,host),
+%        reql:has_fields(X,[<<"group">>,<<"hash4_ipsets">>,<<"hash6_ipsets">>,<<"hash4_iptables">>,<<"hash6_iptables">>,<<"ipset_hash">>]),
+%        reql:filter(X,#{<<"active">> => <<"active">>}),
+%        reql:filter(X,fun(Y) -> reql:bracket(Y, <<"group">>), reql:ne(Y, <<"">>) end),
+%        reql:pluck(X,[<<"name">>,<<"group">>,<<"hash4_ipsets">>,<<"hash6_ipsets">>,<<"hash4_iptables">>,<<"hash6_iptables">>,<<"ipset_hash">>])
+%    end),
+%    {ok, HostResult} = rethink_cursor:all(R),
+%    R1 = lists:flatten(HostResult),
+%    Hosts = [ A || A <- R1],
+%    Hosts.
 
 -spec hash_fail_count_check(HostId :: binary(), HashCheck :: (true | false), HashStatus :: map()) -> {true | false, map()}.
 hash_fail_count_check(HostId, HashCheck, HashStatus) ->
@@ -293,13 +290,13 @@ hash_check(Host) ->
             end
     end.
 %    LastHostHash4Ipsets, LastHostHash6Ipsets, LastHostHash4Iptables, LastHostHash6Iptables, LastHostIpsetHash
-send_hash_metrics(FailedChecks) ->
-    MetricNames = [<<"hash4_iptables">>,<<"hash6_iptables">>,<<"hash4_ipsets">>,<<"hash6_ipsets">>,<<"ipset_hash">>],
-    Metrics = lists:map(fun(MetricName) ->
-        MetricNumber = length([HostName || {HostName,Map} <- maps:to_list(FailedChecks), maps:get(MetricName,Map) == false]),
-        {MetricName, MetricNumber} end, MetricNames),    
-    imetrics:set_gauge(<<"hash_failures">>,Metrics),
-    ok.
+%send_hash_metrics(FailedChecks) ->
+%    MetricNames = [<<"hash4_iptables">>,<<"hash6_iptables">>,<<"hash4_ipsets">>,<<"hash6_ipsets">>,<<"ipset_hash">>],
+%    Metrics = lists:map(fun(MetricName) ->
+%        MetricNumber = length([HostName || {HostName,Map} <- maps:to_list(FailedChecks), maps:get(MetricName,Map) == false]),
+%        {MetricName, MetricNumber} end, MetricNames),    
+%    imetrics:set_gauge(<<"hash_failures">>,Metrics),
+%    ok.
 
 %-spec update_last_hashes(Id :: binary(),HostHash4Ipsets :: binary(), HostHash6Ipsets :: binary(), HostHash4Iptables :: binary(), HostHash6Iptables :: binary(),HostIpsetHash :: binary()) -> {true,binary()} | {false,binary()} | {false, no_updated}.
 %update_last_hashes(Id, HostHash4Ipsets, HostHash6Ipsets, HostHash4Iptables, HostHash6Iptables, HostIpsetHash) ->
@@ -810,14 +807,14 @@ update_by_hostkey(HostKey, UpdateMap) ->
             {error, Reason}
     end.
 
--spec update_by_name(HostName :: binary(), UpdateMap :: map()) -> no_return().
-update_by_name(HostName, UpdateMap) ->
-    case get_id_by_name(HostName) of
-        {ok, Id} -> 
-            update(Id, UpdateMap);
-        {error, Reason} -> 
-            {error, Reason}
-    end.
+%-spec update_by_name(HostName :: binary(), UpdateMap :: map()) -> no_return().
+%update_by_name(HostName, UpdateMap) ->
+%    case get_id_by_name(HostName) of
+%        {ok, Id} -> 
+%            update(Id, UpdateMap);
+%        {error, Reason} -> 
+%            {error, Reason}
+%    end.
 
 -spec delete(Id :: binary()) -> (ok | error).
 delete(Id) ->
@@ -837,23 +834,23 @@ delete(Id) ->
         _ -> error
     end.
 
--spec update_active(Id :: binary(), ActiveState :: binary() ) -> { true, binary() } | {false, no_updated}.
-update_active(Id, ActiveState) ->
-    lager:debug("Setting agent active state: ~p, ~p",[Id,ActiveState]),
-    {ok, R} = dog_rethink:run(
-          fun(X) -> 
-                  reql:db(X, dog),
-                  reql:table(X, ?TYPE_TABLE),
-                  reql:get(X, Id),
-                  reql:update(X,#{<<"active">> => ActiveState})
-          end),
-    Replaced = maps:get(<<"replaced">>, R),
-    Unchanged = maps:get(<<"unchanged">>, R),
-    case {Replaced,Unchanged} of
-        {1,0} -> {true,Id};
-        {0,1} -> {false,Id};
-        _ -> {false, no_updated}
-    end.
+%-spec update_active(Id :: binary(), ActiveState :: binary() ) -> { true, binary() } | {false, no_updated}.
+%update_active(Id, ActiveState) ->
+%    lager:debug("Setting agent active state: ~p, ~p",[Id,ActiveState]),
+%    {ok, R} = dog_rethink:run(
+%          fun(X) -> 
+%                  reql:db(X, dog),
+%                  reql:table(X, ?TYPE_TABLE),
+%                  reql:get(X, Id),
+%                  reql:update(X,#{<<"active">> => ActiveState})
+%          end),
+%    Replaced = maps:get(<<"replaced">>, R),
+%    Unchanged = maps:get(<<"unchanged">>, R),
+%    case {Replaced,Unchanged} of
+%        {1,0} -> {true,Id};
+%        {0,1} -> {false,Id};
+%        _ -> {false, no_updated}
+%    end.
 
 -spec get_state_from_host(Host :: map()) -> {'error','notfound'} | {'ok',_}.
 get_state_from_host(Host) ->
@@ -875,30 +872,30 @@ get_state_from_host(Host) ->
                 end,
             {ok, State}.
 
--spec get_state_by_id(Id :: binary()) -> {'error','notfound'} | {'ok',_}.
-get_state_by_id(Id) ->
-    case get_document_by_id(Id) of
-        {ok, Host} -> 
-            Active = maps:get(<<"active">>,Host,<<"new">>),
-            Hashpass =  maps:get(<<"hashpass">>,Host,true),
-            State = case {Active,Hashpass} of
-                {<<"retired">>,_} ->
-                    <<"retired">>;
-                {<<"new">>,true} ->
-                    <<"new">>;
-                {<<"active">>,true} ->
-                    <<"active">>;
-                {<<"active">>,false} ->
-                    <<"active_hashfail">>;
-                {<<"inactive">>,true} ->
-                    <<"inactive">>;
-                {<<"inactive">>,false} ->
-                    <<"inactive_hashfail">>
-            end,
-            {ok, State};
-        {error, Error} -> 
-            {error, Error}
-    end.
+%-spec get_state_by_id(Id :: binary()) -> {'error','notfound'} | {'ok',_}.
+%get_state_by_id(Id) ->
+%    case get_document_by_id(Id) of
+%        {ok, Host} -> 
+%            Active = maps:get(<<"active">>,Host,<<"new">>),
+%            Hashpass =  maps:get(<<"hashpass">>,Host,true),
+%            State = case {Active,Hashpass} of
+%                {<<"retired">>,_} ->
+%                    <<"retired">>;
+%                {<<"new">>,true} ->
+%                    <<"new">>;
+%                {<<"active">>,true} ->
+%                    <<"active">>;
+%                {<<"active">>,false} ->
+%                    <<"active_hashfail">>;
+%                {<<"inactive">>,true} ->
+%                    <<"inactive">>;
+%                {<<"inactive">>,false} ->
+%                    <<"inactive_hashfail">>
+%            end,
+%            {ok, State};
+%        {error, Error} -> 
+%            {error, Error}
+%    end.
 
 -spec set_state_by_id(Id :: binary(), State :: binary() ) -> {true,binary()} | {false,binary()} | {false, no_updated}.
 set_state_by_id(Id, State) ->
@@ -941,15 +938,15 @@ get_id_by_hostkey(Hostkey) ->
             {error, Reason}
     end.
 
--spec get_id_by_name(Name :: binary()) -> {ok, binary()} | {error, atom()}.
-get_id_by_name(Name) ->
-    case get_by_name(Name) of
-        {ok,Host} ->
-            Id = maps:get(<<"id">>,Host),
-            {ok, Id};
-        {error, Reason} ->
-            {error, Reason}
-    end.
+%-spec get_id_by_name(Name :: binary()) -> {ok, binary()} | {error, atom()}.
+%get_id_by_name(Name) ->
+%    case get_by_name(Name) of
+%        {ok,Host} ->
+%            Id = maps:get(<<"id">>,Host),
+%            {ok, Id};
+%        {error, Reason} ->
+%            {error, Reason}
+%    end.
 
 -spec get_all_active_interfaces() -> {ok, list()}.
 get_all_active_interfaces() ->
@@ -974,80 +971,81 @@ get_all_active_interfaces() ->
         _ -> {ok, Interfaces@1}
     end.
 
--spec set_inactive_by_name(Name :: binary()) -> { true, iolist() } | {false, no_updated}.
-set_inactive_by_name(Name) ->
-    {ok, Id} = get_id_by_name(Name),
-    update_active(Id,<<"inactive">>).
-
--spec set_active_by_name(Name :: binary()) -> { true, iolist() } | {false, no_updated}.
-set_active_by_name(Name) ->
-    {ok, Id} = get_id_by_name(Name),
-    update_active(Id,<<"active">>).
-
--spec set_retired_by_name(Name :: binary()) -> { true, iolist() } | {false, no_updated}.
-set_retired_by_name(Name) ->
-    {ok, Id} = get_id_by_name(Name),
-    update_active(Id,<<"retired">>).
-
--spec set_inactive_by_id(Id :: binary()) -> { true, iolist() } | {false, no_updated}.
-set_inactive_by_id(Id) ->
-    update_active(Id,<<"inactive">>).
-
--spec set_active_by_id(Id :: binary()) -> { true, iolist() } | {false, no_updated}.
-set_active_by_id(Id) ->
-    update_active(Id,<<"active">>).
-
--spec set_retired_by_id(Id :: binary()) -> { true, iolist() } | {false, no_updated}.
-set_retired_by_id(Id) ->
-    update_active(Id,<<"retired">>).
-
--spec get_active_by_id(Id :: binary()) -> {'error','notfound'} | {'ok',_}.
-get_active_by_id(Id) ->
-    case get_document_by_id(Id) of
-        {ok, Host} -> 
-            {ok, maps:get(<<"active">>,Host)};
-        {error, Error} -> 
-            {error, Error}
-    end.
-
--spec set_hosts_active( Ids :: list() ) -> ok.
-set_hosts_active(Ids) ->
-    lager:info("set_hosts_active: ~p",[Ids]),
-    lists:foreach(fun(Id) -> set_active_by_id(Id) end, Ids),
-    ok.
-
--spec set_hosts_inactive( Ids :: list() ) -> ok.
-set_hosts_inactive(Ids) ->
-    lager:info("set_hosts_inactive: ~p",[Ids]),
-    lists:foreach(fun(Id) -> set_inactive_by_id(Id) end, Ids),
-    ok.
-
--spec set_hosts_retired( Ids :: list() ) -> ok.
-set_hosts_retired(Ids) ->
-    lager:info("set_hosts_retired: ~p",[Ids]),
-    lists:foreach(fun(Id) -> set_retired_by_id(Id) end, Ids),
-    ok.
+%-spec set_inactive_by_name(Name :: binary()) -> { true, iolist() } | {false, no_updated}.
+%set_inactive_by_name(Name) ->
+%    {ok, Id} = get_id_by_name(Name),
+%    update_active(Id,<<"inactive">>).
+%
+%-spec set_active_by_name(Name :: binary()) -> { true, iolist() } | {false, no_updated}.
+%set_active_by_name(Name) ->
+%    {ok, Id} = get_id_by_name(Name),
+%    update_active(Id,<<"active">>).
+%
+%-spec set_retired_by_name(Name :: binary()) -> { true, iolist() } | {false, no_updated}.
+%set_retired_by_name(Name) ->
+%    {ok, Id} = get_id_by_name(Name),
+%    update_active(Id,<<"retired">>).
+%
+%-spec set_inactive_by_id(Id :: binary()) -> { true, iolist() } | {false, no_updated}.
+%set_inactive_by_id(Id) ->
+%    update_active(Id,<<"inactive">>).
+%
+%-spec set_active_by_id(Id :: binary()) -> { true, iolist() } | {false, no_updated}.
+%set_active_by_id(Id) ->
+%    update_active(Id,<<"active">>).
+%
+%-spec set_retired_by_id(Id :: binary()) -> { true, iolist() } | {false, no_updated}.
+%set_retired_by_id(Id) ->
+%    update_active(Id,<<"retired">>).
+%
+%-spec get_active_by_id(Id :: binary()) -> {'error','notfound'} | {'ok',_}.
+%get_active_by_id(Id) ->
+%    case get_document_by_id(Id) of
+%        {ok, Host} -> 
+%            {ok, maps:get(<<"active">>,Host)};
+%        {error, Error} -> 
+%            {error, Error}
+%    end.
+%
+%-spec set_hosts_active( Ids :: list() ) -> ok.
+%set_hosts_active(Ids) ->
+%    lager:info("set_hosts_active: ~p",[Ids]),
+%    lists:foreach(fun(Id) -> set_active_by_id(Id) end, Ids),
+%    ok.
+%
+%-spec set_hosts_inactive( Ids :: list() ) -> ok.
+%set_hosts_inactive(Ids) ->
+%    lager:info("set_hosts_inactive: ~p",[Ids]),
+%    lists:foreach(fun(Id) -> set_inactive_by_id(Id) end, Ids),
+%    ok.
+%
+%-spec set_hosts_retired( Ids :: list() ) -> ok.
+%set_hosts_retired(Ids) ->
+%    lager:info("set_hosts_retired: ~p",[Ids]),
+%    lists:foreach(fun(Id) -> set_retired_by_id(Id) end, Ids),
+%    ok.
 
 -spec get_schema() -> binary().
 get_schema() ->
   dog_json_schema:get_file(<<"host">>).
 
--spec get_all_ips() -> {ok, list()}. 
-get_all_ips() ->
-    {ok, R} = dog_rethink:run(
-                              fun(X) -> 
-                                      reql:db(X, dog), 
-                                      reql:table(X, ?TYPE_TABLE),
-                                      reql:filter(X,#{<<"active">> => <<"active">>}),
-                                      reql:get_field(X, <<"interfaces">>)
-                              end),
-    {ok, Result} = rethink_cursor:all(R),
-    Interfaces = case lists:flatten(Result) of
-                [] -> [];
-                Else -> Else
-            end,
-    Ips = lists:map(fun(Interface) -> element(2,dog_ips:addresses_from_interfaces(jsx:decode(Interface))) end, Interfaces),
-    {ok, lists:flatten(Ips)}.
+%-spec get_all_ips() -> {ok, list()}. 
+%get_all_ips() ->
+%    {ok, R} = dog_rethink:run(
+%                              fun(X) -> 
+%                                      reql:db(X, dog), 
+%                                      reql:table(X, ?TYPE_TABLE),
+%                                      reql:filter(X,#{<<"active">> => <<"active">>}),
+%                                      reql:get_field(X, <<"interfaces">>)
+%                              end),
+%    {ok, Result} = rethink_cursor:all(R),
+%    Interfaces = case lists:flatten(Result) of
+%                [] -> [];
+%                Else -> Else
+%            end,
+%    Ips = lists:map(fun(Interface) -> element(2,dog_ips:addresses_from_interfaces(jsx:decode(Interface))) end, Interfaces),
+%    {ok, lists:flatten(Ips)}.
+
 -spec state_event(Id :: binary(),
                 Event :: keepalive | keepalive_timeout | retirement_timeout | fail_hashcheck | pass_hashcheck, HashStatus :: map() ) -> NewState :: binary().
 state_event(HostMap, Event, HashStatus) ->

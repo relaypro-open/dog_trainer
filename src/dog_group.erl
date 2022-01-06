@@ -18,96 +18,92 @@
         ]).
 
 -export([
-        all_ec2_sg_mappings/0,
-        all_ips/0,
-        all_ipv4s/0,
+        %all_active/0,
+        %all_external_ips/0,
+        %all_external_ipv4s/0,
+        %all_external_ipv6s/0,
+        %all_groups_in_group_profiles/0,
+        %all_internal_ips/0,
+        %all_internal_ipv4s/0,
+        %all_internal_ipv6s/0,
+        %all_ips/0,
+        %all_ipv4s/0,
         all_ipv4s_grouped/0,
-        all_ipv4s_grouped_by_id/0,
-        all_ipv6s/0,
+        %all_ipv4s_grouped_by_id/0,
+        %all_ipv6s/0,
         all_ipv6s_grouped/0,
-        all_ipv6s_grouped_by_id/0,
-        all_external_ips/0,
-        all_external_ipv4s/0,
-        all_external_ipv6s/0,
-        test_all_internal_ips/0,
-        all_internal_ips/0,
-        all_internal_ipv4s/0,
-        all_internal_ipv6s/0,
-        get_all_group_interfaces/0,
-        get_all_group_interfaces/1,
+        %all_ipv6s_grouped_by_id/0,
+        %all_roles_in_group_profiles/0,
+        %all_zones_in_group_profiles/0,
+        %external_active/0,
+        get_active_groups/0,
+        %get_all_group_interfaces/0,
+        %get_all_group_interfaces/1,
         get_all_grouped_by_id/0,
         get_all_inbound_ports_by_protocol/1,
+        get_all_internal_ec2_security_group_ids/0,
         get_all_ips_by_id/1,
         get_all_ipv4s_by_id/1,
-        get_all_ipv4s_by_name/1,
+        %get_all_ipv4s_by_name/1,
         get_all_ipv6s_by_id/1,
-        get_all_ipv6s_by_name/1,
-        get_all_external_ec2_security_group_ids/0,
-        get_all_internal_ec2_security_group_ids/0,
-        get_internal_ec2_security_group_ids_by_id/1,
+        %get_all_ipv6s_by_name/1,
+        %get_document_by_id/1,
         get_ec2_security_group_ids_by_name/1,
         get_ec2_security_group_ids_from_members/1,
         get_external_ips_by_id/1,
         get_external_ipv4s_by_id/1,
         get_external_ipv6s_by_id/1,
-        get_group_interfaces_by_name/1,
-        get_group_interfaces_by_name/2,
-        get_internal_ips_by_id/1,
-        get_internal_ips_by_name/1,
-        get_internal_ipv4s_by_id/1,
-        get_internal_ipv6s_by_id/1
-        ]).
-
--export([
-        all_active/0,
-        all_groups_in_group_profiles/0,
-        all_zones_in_group_profiles/0,
-        all_roles_in_group_profiles/0,
-        external_active/0,
-        internal_active/0,
-        get_active_groups/0,
-        get_group_ids/0,
-        get_group_names/0,
-        get_hash4_ipsets/1,
-        get_hash4_iptables/1,
-        get_hash6_ipsets/1,
-        get_hash6_iptables/1,
+        %get_group_ids/0,
+        %get_group_interfaces_by_id/1,
+        %get_group_interfaces_by_name/1,
+        %get_group_interfaces_by_name/2,
+        %get_group_names/0,
+        %get_hash4_ipsets/1,
+        %get_hash4_iptables/1,
+        %get_hash6_ipsets/1,
+        %get_hash6_iptables/1,
         get_hosts_by_id/1,
         get_id_by_name/1,
         get_ids_with_profile_id/1,
+        get_internal_ec2_security_group_ids_by_id/1,
+        get_internal_ips_by_id/1,
+        %get_internal_ips_by_name/1,
+        get_internal_ipv4s_by_id/1,
+        get_internal_ipv6s_by_id/1,
         get_name_by_id/1,
+        get_ppps_inbound_ec2/2,
         get_profile_by_id/1,
         get_profile_by_name/1,
-        get_ppps_inbound_ec2/2,
-        group_name_exists/1,
+        %group_name_exists/1,
+        %in_active_profile/1,
         init/0,
-        in_active_profile/1,
+        %internal_active/0,
         merge/1,
-        merge_join/2,
+        %merge_join/2,
         replace_profile_by_profile_id/2,
         replace_profile_by_profile_id/3,
         role_group_effects_groups/1,
-        role_groups_in_groups_profiles/0,
+        %role_groups_in_groups_profiles/0,
         set_hash4_ipsets/2,
         set_hash4_iptables/2,
         set_hash6_ipsets/2,
         set_hash6_iptables/2,
-        update_group_ec2_security_groups/2,
-        where_ec2_sg_id_used/1,
-        where_zone_used/1,
-        zone_group_effects_groups/1,
-        zone_groups_in_groups_profiles/0
+        %test_all_internal_ips/0,
+        %where_zone_used/1,
+        zone_group_effects_groups/1
+        %zone_groups_in_groups_profiles/0,
         ]).
 
+%Batch commands
 -export([
-        get_document_by_id/1,
+        %set_ec2_group_mappings_from_members/1,
+        %set_ec2_group_mappings_from_members/2
+        all_ec2_sg_mappings/0,
+        %get_all_external_ec2_security_group_ids/0,
         set_ec2_group_mappings_from_members/0,
-        set_ec2_group_mappings_from_members/1,
-        set_ec2_group_mappings_from_members/2
+        update_group_ec2_security_groups/2,
+        where_ec2_sg_id_used/1
         ]).
-
-%test
--export([get_group_interfaces_by_id/1]).
 
 -spec init() -> any().
 init() ->
@@ -145,18 +141,18 @@ zone_groups_in_groups_profiles() ->
                                {Name, GroupsInProfile} end, lists:flatten(Profiles)),
     maps:from_list(GroupsInGroups).
 
-all_zones_in_group_profiles() ->
-  GroupMap = zone_groups_in_groups_profiles(),
-  DuplicateList = lists:flatten([V || {_K,V} <- maps:to_list(GroupMap)]),
-  sets:to_list(sets:from_list(DuplicateList)).
+%all_zones_in_group_profiles() ->
+%  GroupMap = zone_groups_in_groups_profiles(),
+%  DuplicateList = lists:flatten([V || {_K,V} <- maps:to_list(GroupMap)]),
+%  sets:to_list(sets:from_list(DuplicateList)).
 
-all_roles_in_group_profiles() ->
-  GroupMap = role_groups_in_groups_profiles(),
-  DuplicateList = lists:flatten([V || {_K,V} <- maps:to_list(GroupMap)]),
-  sets:to_list(sets:from_list(DuplicateList)).
+%all_roles_in_group_profiles() ->
+%  GroupMap = role_groups_in_groups_profiles(),
+%  DuplicateList = lists:flatten([V || {_K,V} <- maps:to_list(GroupMap)]),
+%  sets:to_list(sets:from_list(DuplicateList)).
 
-all_groups_in_group_profiles() ->
-  all_zones_in_group_profiles() ++ all_roles_in_group_profiles().
+%all_groups_in_group_profiles() ->
+%  all_zones_in_group_profiles() ++ all_roles_in_group_profiles().
 
 role_groups_in_groups_profiles() ->
     {ok, Groups} = get_active_groups(),
@@ -274,11 +270,11 @@ get_group_names() ->
     GroupNames = [ maps:get(<<"name">>,Group) || Group <- Groups],
     GroupNames.
 
--spec get_group_ids() -> list().
-get_group_ids() ->
-    {ok, Groups} = get_all(),
-    GroupIds = [ maps:get(<<"id">>,Group) || Group <- Groups],
-    GroupIds.
+%-spec get_group_ids() -> list().
+%get_group_ids() ->
+%    {ok, Groups} = get_all(),
+%    GroupIds = [ maps:get(<<"id">>,Group) || Group <- Groups],
+%    GroupIds.
 
 -spec create(Group :: map()) -> {ok, Key :: iolist()}.
 create(Group@0) when is_map(Group@0)->
@@ -342,21 +338,21 @@ create(Group@0) when is_map(Group@0)->
             {error, exists}
      end.
 
--spec group_name_exists(GroupName :: binary()) -> boolean().
-group_name_exists(GroupName) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-    {ok, R} = dog_rethink:run(
-    fun(X) ->
-        reql:db(X, dog),
-        reql:table(X, ?TYPE_TABLE),
-        reql:get_all(X, GroupName, #{index => <<"name">>})
-    end),
-    {ok, Result} = rethink_cursor:all(R),
-    case lists:flatten(Result) of
-        [] -> false;
-        _Else -> true
-    end.
+%-spec group_name_exists(GroupName :: binary()) -> boolean().
+%group_name_exists(GroupName) ->
+%    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
+%    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
+%    {ok, R} = dog_rethink:run(
+%    fun(X) ->
+%        reql:db(X, dog),
+%        reql:table(X, ?TYPE_TABLE),
+%        reql:get_all(X, GroupName, #{index => <<"name">>})
+%    end),
+%    {ok, Result} = rethink_cursor:all(R),
+%    case lists:flatten(Result) of
+%        [] -> false;
+%        _Else -> true
+%    end.
 
 %-spec get_profile_by_id(GroupName :: binary() ) -> {'ok', binary()} | {'error', 'notfound'}.
 -spec get_profile_by_id(binary()) -> {ok, binary()} | {error, notfound}.
@@ -483,27 +479,27 @@ get_profile_by_name(GroupName) ->
             dog_profile:get_by_id(ProfileId) 
     end.
 
-get_hash4_ipsets(GroupName) ->
-    get_hash(GroupName, <<"hash4_ipsets">>).
-get_hash6_ipsets(GroupName) ->
-    get_hash(GroupName, <<"hash6_ipsets">>).
-get_hash4_iptables(GroupName) ->
-    get_hash(GroupName, <<"hash4_iptables">>).
-get_hash6_iptables(GroupName) ->
-    get_hash(GroupName, <<"hash6_iptables">>).
+%get_hash4_ipsets(GroupName) ->
+%    get_hash(GroupName, <<"hash4_ipsets">>).
+%get_hash6_ipsets(GroupName) ->
+%    get_hash(GroupName, <<"hash6_ipsets">>).
+%get_hash4_iptables(GroupName) ->
+%    get_hash(GroupName, <<"hash4_iptables">>).
+%get_hash6_iptables(GroupName) ->
+%    get_hash(GroupName, <<"hash6_iptables">>).
 
--spec get_hash(GroupName :: binary(), Field :: binary()) -> {ok, binary()}.
-get_hash(GroupName, Field) ->
-    {ok, R} = dog_rethink:run(
-    fun(X) ->
-        reql:db(X, dog),
-        reql:table(X, ?TYPE_TABLE),
-        reql:get_all(X, GroupName, #{index => <<"name">>}),
-        reql:get_field(X, Field)
-    end),
-    {ok, Result} = rethink_cursor:all(R),
-    Hash = hd(lists:flatten(Result)),
-    {ok, Hash}.
+%-spec get_hash(GroupName :: binary(), Field :: binary()) -> {ok, binary()}.
+%get_hash(GroupName, Field) ->
+%    {ok, R} = dog_rethink:run(
+%    fun(X) ->
+%        reql:db(X, dog),
+%        reql:table(X, ?TYPE_TABLE),
+%        reql:get_all(X, GroupName, #{index => <<"name">>}),
+%        reql:get_field(X, Field)
+%    end),
+%    {ok, Result} = rethink_cursor:all(R),
+%    Hash = hd(lists:flatten(Result)),
+%    {ok, Hash}.
 
 set_hash4_ipsets(GroupName, Hash) ->
     set_hash(GroupName, Hash, <<"hash4_ipsets">>).
@@ -687,11 +683,11 @@ delete(Id) ->
             {error,#{<<"errors">> => #{<<"in active profile">> => Profiles}}}
      end.
 
-- spec get_internal_ips_by_name( iolist() ) -> {'ok', list()} | {'error', atom()}.
-get_internal_ips_by_name(GroupName) ->
-   {ok, Interfaces} = get_group_interfaces_by_name(GroupName),
-   {ok, IPs} = dog_ips:addresses_from_interfaces(Interfaces),
-   {ok, IPs}.
+%- spec get_internal_ips_by_name( iolist() ) -> {'ok', list()} | {'error', atom()}.
+%get_internal_ips_by_name(GroupName) ->
+%   {ok, Interfaces} = get_group_interfaces_by_name(GroupName),
+%   {ok, IPs} = dog_ips:addresses_from_interfaces(Interfaces),
+%   {ok, IPs}.
 
 - spec get_internal_ips_by_id( binary() ) -> {'ok', list()} | {'error', atom()}.
 get_internal_ips_by_id(GroupId) ->
@@ -957,11 +953,11 @@ all_ipv4s_grouped() ->
     Ipv4s = lists:map(fun(Name) -> {ok, Ips} = get_all_ipv4s_by_name(Name), {Name,Ips} end, GroupNames),
     maps:from_list(lists:flatten(Ipv4s)).
 
--spec all_ipv4s_grouped_by_id() -> map().
-all_ipv4s_grouped_by_id() ->
-    GroupIds = get_group_ids(),
-    Ipv4s = lists:map(fun(Id) -> {ok, Ips} = get_all_ipv4s_by_id(Id), {Id,Ips} end, GroupIds),
-    maps:from_list(lists:flatten(Ipv4s)).
+%-spec all_ipv4s_grouped_by_id() -> map().
+%all_ipv4s_grouped_by_id() ->
+%    GroupIds = get_group_ids(),
+%    Ipv4s = lists:map(fun(Id) -> {ok, Ips} = get_all_ipv4s_by_id(Id), {Id,Ips} end, GroupIds),
+%    maps:from_list(lists:flatten(Ipv4s)).
 
 -spec all_ipv6s_grouped() -> map().
 all_ipv6s_grouped() ->
@@ -969,11 +965,11 @@ all_ipv6s_grouped() ->
     Ipv6s = lists:map(fun(Name) -> {ok, Ips} = get_all_ipv6s_by_name(Name), {Name,Ips} end, GroupNames),
     maps:from_list(lists:flatten(Ipv6s)).
 
--spec all_ipv6s_grouped_by_id() -> map().
-all_ipv6s_grouped_by_id() ->
-    GroupIds = get_group_ids(),
-    Ipv6s = lists:map(fun(Id) -> {ok, Ips} = get_all_ipv6s_by_id(Id), {Id,Ips} end, GroupIds),
-    maps:from_list(lists:flatten(Ipv6s)).
+%-spec all_ipv6s_grouped_by_id() -> map().
+%all_ipv6s_grouped_by_id() ->
+%    GroupIds = get_group_ids(),
+%    Ipv6s = lists:map(fun(Id) -> {ok, Ips} = get_all_ipv6s_by_id(Id), {Id,Ips} end, GroupIds),
+%    maps:from_list(lists:flatten(Ipv6s)).
 
 
 -spec all_ipv4s() -> list().
@@ -998,15 +994,15 @@ all_ipv6s() ->
 all_ips() ->
     dog_ips:uniq(lists:flatten(all_ipv4s() ++ all_ipv6s() )).
 
-%-spec all_internal_ips() -> list().
-test_all_internal_ips() ->
-    {ok, Groups} = get_all(),
-    InternalIps = lists:map(fun(Group) ->
-                        GroupId = maps:get(<<"id">>,Group),
-                        {ok, Interfaces} = get_group_interfaces_by_id(GroupId),
-                        {ok, Ips} = dog_ips:addresses_from_interfaces(Interfaces),
-                        Ips end, Groups),
-    dog_ips:uniq(lists:flatten(InternalIps)).
+%%-spec all_internal_ips() -> list().
+%test_all_internal_ips() ->
+%    {ok, Groups} = get_all(),
+%    InternalIps = lists:map(fun(Group) ->
+%                        GroupId = maps:get(<<"id">>,Group),
+%                        {ok, Interfaces} = get_group_interfaces_by_id(GroupId),
+%                        {ok, Ips} = dog_ips:addresses_from_interfaces(Interfaces),
+%                        Ips end, Groups),
+%    dog_ips:uniq(lists:flatten(InternalIps)).
 
 -spec all_internal_ips() -> list().
 all_internal_ips() ->
@@ -1148,17 +1144,17 @@ get_ids_with_profile_id(Id) ->
     Ids = [maps:get(<<"id">>,X) || X <- Groups, maps:get(<<"profile_id">>,X) == Id andalso maps:get(<<"profile_version">>,X) == <<"latest">>],
     Ids.
 
--spec where_zone_used(GroupName :: binary()) -> {ok, list()}.
-where_zone_used(GroupName) ->
-    {ok, Profiles} = dog_profile:get_all(),
-    ProfileGroups = lists:map(fun(Profile) ->
-        ProfileId = maps:get(<<"id">>,Profile),
-        {ok, ProfileMap} = dog_profile:get_by_id(ProfileId),
-        Groups = dog_profile:get_zone_groups_in_profile(ProfileMap),
-        {ProfileId, Groups}
-              end, Profiles),
-    FilteredProfiles = lists:filtermap(fun({_Id, Groups}) -> lists:member(GroupName,Groups) end, ProfileGroups),
-    {ok, [erlang:element(1,P) || P <- FilteredProfiles]}.
+%-spec where_zone_used(GroupName :: binary()) -> {ok, list()}.
+%where_zone_used(GroupName) ->
+%    {ok, Profiles} = dog_profile:get_all(),
+%    ProfileGroups = lists:map(fun(Profile) ->
+%        ProfileId = maps:get(<<"id">>,Profile),
+%        {ok, ProfileMap} = dog_profile:get_by_id(ProfileId),
+%        Groups = dog_profile:get_zone_groups_in_profile(ProfileMap),
+%        {ProfileId, Groups}
+%              end, Profiles),
+%    FilteredProfiles = lists:filtermap(fun({_Id, Groups}) -> lists:member(GroupName,Groups) end, ProfileGroups),
+%    {ok, [erlang:element(1,P) || P <- FilteredProfiles]}.
 
 -spec get_schema() -> binary().
 get_schema() ->
@@ -1206,10 +1202,10 @@ get_all_internal_ec2_security_group_ids() ->
     IdsByGroupMap = maps:from_list(IdsByGroup),
     IdsByGroupMap.
 
--spec get_all_external_ec2_security_group_ids() -> IdsByGroup :: map().
-get_all_external_ec2_security_group_ids() ->
-    AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
-    AllActiveUnionEc2Sgs.
+%-spec get_all_external_ec2_security_group_ids() -> IdsByGroup :: map().
+%get_all_external_ec2_security_group_ids() ->
+%    AllActiveUnionEc2Sgs = dog_external:get_all_active_union_ec2_sgs(),
+%    AllActiveUnionEc2Sgs.
 
 %GROUP BASED EC2 INFO
 get_internal_ec2_security_group_ids_by_id(GroupId) ->
