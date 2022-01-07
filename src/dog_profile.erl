@@ -747,7 +747,9 @@ get_all_inbound_ports_by_protocol(ProfileJson) ->
                                         end,Services))
                       end,ActiveInbound),
     dog_common:merge_lists_in_tuples(lists:flatten(RawPortsProtocols)).
-
+%NOTE: erlcloud encodes 'all services' as an atom '-1'
+%encodes 'all ports as integers from_port = 0, to_port = 0
+%encodes icmp as type in from_port as integer, and to_port as integer -1
 -spec expand_services(Source :: binary(), Services :: binary()) -> 
     {Protocol :: binary(), FromPort :: binary(), ToPort :: binary(), Source :: binary() }.
 expand_services(Source,Services) ->
@@ -755,25 +757,28 @@ expand_services(Source,Services) ->
                         PortsList = maps:get(<<"ports">>,S),
                         lists:map(fun(Ports) ->
                             Protocol = maps:get(<<"protocol">>,S),
-                            {From,To} = case split(Ports,":") of
+                            {FromPort,ToPort} = case split(Ports,":") of
                                             [F,T] ->
-                                                {F,T};
+                                                {list_to_integer(F),list_to_integer(T)};
                                             [F] -> 
                                                 case Protocol of
                                                     <<"icmp">> -> 
-                                                        {F,"-1"};
+                                                        {list_to_integer(F),-1};
                                                     _ ->
-                                                        {F,F}
+                                                        {list_to_integer(F),list_to_integer(F)}
                                                 end
                                         end,
-                            FromPort = list_to_integer(From),
-                            ToPort = list_to_integer(To),
                             case Protocol of
                                 <<"any">> ->
                                         [
-                                         {tcp, FromPort, ToPort, Source},
-                                         {udp, FromPort, ToPort, Source}
-                                         %{-1, FromPort, ToPort, Source}
+                                         %{tcp, FromPort, ToPort, Source},
+                                         %{udp, FromPort, ToPort, Source}
+                                         case {FromPort,ToPort} of
+                                             {0,65535} -> 
+                                                 {'-1', 0, 0, Source};
+                                             {_,_} -> 
+                                                 {'-1', FromPort, ToPort, Source}
+                                         end
                                         ]
                                         ;
                                 <<"udp">> ->

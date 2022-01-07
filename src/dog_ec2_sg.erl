@@ -43,7 +43,7 @@ default_ingress_spps_rules(Ec2SecurityGroupId) ->
     [
     %{tcp,0,65535,{group_id,binary:bin_to_list(Ec2SecurityGroupId)}},
     %{udp,0,65535,{group_id,binary:bin_to_list(Ec2SecurityGroupId)}}
-    {-1,0,65535,{group_id,binary:bin_to_list(Ec2SecurityGroupId)}}
+    {'-1',0,0,{group_id,binary:bin_to_list(Ec2SecurityGroupId)}}
      ].
 
 default_egress_spps_rules() ->
