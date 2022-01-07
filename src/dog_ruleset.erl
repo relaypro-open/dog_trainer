@@ -98,8 +98,8 @@ generate_ruleset(ProfileJson,Type,Version,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ip
                       lists:flatten([header_v4(),inbound_header_v4(),InboundRules,forward_header_v4(),outbound_header_v4(),
                                  InboundSymmetricRules,OutboundRules,footer_v4()]);
                     <<"true">> -> 
-                      lists:flatten([header_docker_v4(),inbound_header_v4(),InboundRules,forward_header_docker_v4(),outbound_header_v4(),
-                                 InboundSymmetricRules,OutboundRules,footer_docker_v4()])
+                      lists:flatten([header_v4(),header_docker_v4(),inbound_header_v4(),InboundRules,forward_header_docker_v4(),outbound_header_v4(),
+                                 InboundSymmetricRules,OutboundRules,footer_docker_v4(),footer_v4()])
                   end;
                 <<"v6">> ->
                   lists:flatten([header_v6(),inbound_header_v6(),InboundRules,forward_header_v6(),outbound_header_v6(),
@@ -141,7 +141,8 @@ header_docker_v4() ->
 -spec inbound_header_v4() -> iolist().
 inbound_header_v4() ->
 "-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
--A INPUT -i lo -p tcp -m tcp --dport 4371 -j ACCEPT
+-A INPUT -i lo -p udp -m udp --dport 53 -m comment --comment systemd-resolved -j ACCEPT
+-A INPUT -i lo -p tcp -m tcp --dport 4371 -m comment --comment riak-epmd -j ACCEPT
 ".
 
 -spec forward_header_v4() -> iolist().
@@ -163,6 +164,7 @@ forward_header_docker_v4() ->
 -spec outbound_header_v4() -> iolist(). 
 outbound_header_v4() -> 
 "-A OUTPUT -p tcp -m tcp --sport 4371 -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A OUTPUT -o lo -p udp -m udp --sport 53 -m state --state RELATED,ESTABLISHED -m comment --comment systemd-resolved -j ACCEPT
 ".
 
 %-spec forward() -> string().
