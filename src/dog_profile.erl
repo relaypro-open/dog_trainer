@@ -20,7 +20,7 @@
 
 -export([
          all_active/0,
-         %create_hash/1,
+         create_hash/1,
          create_ruleset/10,
          create_ruleset/11,
          create_ruleset/12,
@@ -39,6 +39,7 @@
          get_latest_profile/1,
          %get_name_by_id/1,
          get_ppps_inbound_ec2/2,
+         get_ppps_outbound_ec2/2,
          get_role_groups_in_profile/1,
          get_zone_groups_in_profile/1,
          %in_active_profile/1,
@@ -772,6 +773,7 @@ expand_services(Source,Services) ->
                                         [
                                          {tcp, FromPort, ToPort, Source},
                                          {udp, FromPort, ToPort, Source}
+                                         %{-1, FromPort, ToPort, Source}
                                         ]
                                         ;
                                 <<"udp">> ->
@@ -864,6 +866,58 @@ get_ppps_inbound_ec2(ProfileJson,DestinationRegion) ->
     %merge_lists_in_tuples(lists:flatten(RawPortsProtocols)).
     %dog_common:merge_lists_in_tuples(lists:flatten(SourceProtocolPorts)).
     
+-spec get_ppps_outbound_ec2(ProfileJson :: map(), DestinationRegion :: string()) -> SourcePortProtocol :: list().
+get_ppps_outbound_ec2(ProfileJson,DestinationRegion) ->
+    Outbound = nested:get([<<"rules">>,<<"outbound">>], ProfileJson),
+    ActiveOutbound = [Rule || Rule <- Outbound, (maps:get(<<"active">>,Rule) == true) and (maps:get(<<"action">>,Rule) == <<"ACCEPT">>)],
+    SourceProtocolPorts = lists:map(fun(Rule) ->
+          ServiceId = maps:get(<<"service">>,Rule),
+          {ok,Service} = dog_service:get_by_id(ServiceId),
+          Services = maps:get(<<"services">>,Service),
+          GroupType = maps:get(<<"group_type">>,Rule),
+          case GroupType of
+              <<"ANY">> ->
+                  Sources = [{cidr_ip,"0.0.0.0/0"}],
+                  lists:map(fun(Source) ->
+                                    expand_services(Source,Services)
+                            end, Sources);
+              <<"ROLE">> ->
+                  GroupId = maps:get(<<"group">>,Rule),
+                  {ok,Group} = dog_group:get_by_id(GroupId),
+                  GroupName = maps:get(<<"name">>,Group),
+                  Sources = case dog_group:get_ec2_security_group_ids_by_name(GroupName) of
+                                [] ->
+                                    [{cidr_ip,"0.0.0.0/0"}];
+                                Ec2GroupIds ->
+                                    lists:map(fun(Ec2Group) ->
+                                                      SgRegion = maps:get(<<"region">>,Ec2Group),
+                                                      SgId = maps:get(<<"sgid">>,Ec2Group),
+                                                      Ec2ClassicSgIds = dog_ec2_update_agent:ec2_classic_security_group_ids(SgRegion),
+
+                                                      case lists:member(binary:bin_to_list(SgId),Ec2ClassicSgIds) of
+                                                          true ->
+                                                                      {cidr_ip,"0.0.0.0/0"};
+                                                          false ->
+                                                              case SgRegion == DestinationRegion of
+                                                                  false ->
+                                                                      {cidr_ip,"0.0.0.0/0"}; 
+                                                                  true ->
+                                                                      {group_id, binary:bin_to_list(SgId)}
+                                                              end
+                                                      end
+                                              end, Ec2GroupIds)
+                            end,
+                  lists:map(fun(Source) ->
+                                    expand_services(Source,Services)
+                            end, Sources);
+              <<"ZONE">> ->
+                  Sources = [{cidr_ip,"0.0.0.0/0"}], 
+                  lists:map(fun(Source) ->
+                                    expand_services(Source,Services)
+                            end, Sources)
+          end
+    end,ActiveOutbound),
+    lists:flatten(SourceProtocolPorts).
 %%--------------------------------------------------------------------
 %% Helpers
 %%--------------------------------------------------------------------

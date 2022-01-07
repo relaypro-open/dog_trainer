@@ -72,6 +72,7 @@
         get_internal_ipv6s_by_id/1,
         get_name_by_id/1,
         get_ppps_inbound_ec2/2,
+        get_ppps_outbound_ec2/2,
         get_profile_by_id/1,
         get_profile_by_name/1,
         %group_name_exists/1,
@@ -1185,6 +1186,23 @@ get_ppps_inbound_ec2(Group, Region) ->
                   {ok,ProfileJson} = dog_profile:get_by_id(ProfileId),
                   %{Region,SgId,dog_profile:get_spp_inbound_ec2(ProfileJson,Region)}
                   dog_profile:get_ppps_inbound_ec2(ProfileJson,Region)
+            end.
+
+-spec get_ppps_outbound_ec2(Group :: map(), Region :: string()) -> list().
+get_ppps_outbound_ec2(Group, Region) ->
+            Ec2SecurityGroupList = maps:get(<<"ec2_security_group_ids">>,Group,[]),
+            Ec2SecurityGroupMap = dog_common:lmm(Ec2SecurityGroupList,<<"region">>),
+            Ec2Sg = maps:get(Region,Ec2SecurityGroupMap,[]),
+            case Ec2Sg of
+                [] ->
+                    [];
+                _ ->
+                  %Region = maps:get(<<"region">>,Ec2Sg),
+                  %SgId = maps:get(<<"sgid">>,Ec2Sg),
+                  ProfileId = maps:get(<<"profile_id">>,Group),
+                  {ok,ProfileJson} = dog_profile:get_by_id(ProfileId),
+                  %{Region,SgId,dog_profile:get_spp_outbound_ec2(ProfileJson,Region)}
+                  dog_profile:get_ppps_outbound_ec2(ProfileJson,Region)
             end.
 
 -spec get_all_internal_ec2_security_group_ids() -> IdsByGroup :: map().
