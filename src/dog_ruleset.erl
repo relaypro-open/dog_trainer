@@ -141,8 +141,7 @@ header_docker_v4() ->
 -spec inbound_header_v4() -> iolist().
 inbound_header_v4() ->
 "-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
--A INPUT -i lo -p udp -m udp --dport 53 -m comment --comment systemd-resolved -j ACCEPT
--A INPUT -i lo -p tcp -m tcp --dport 4371 -m comment --comment riak-epmd -j ACCEPT
+-A INPUT -i lo -m comment --comment 'local any' -j ACCEPT
 ".
 
 -spec forward_header_v4() -> iolist().
@@ -163,8 +162,7 @@ forward_header_docker_v4() ->
 
 -spec outbound_header_v4() -> iolist(). 
 outbound_header_v4() -> 
-"-A OUTPUT -p tcp -m tcp --sport 4371 -m state --state RELATED,ESTABLISHED -j ACCEPT
--A OUTPUT -o lo -p udp -m udp --sport 53 -m state --state RELATED,ESTABLISHED -m comment --comment systemd-resolved -j ACCEPT
+"-A OUTPUT -o lo -m state --state RELATED,ESTABLISHED -m comment --comment 'local any' -j ACCEPT
 ".
 
 %-spec forward() -> string().
