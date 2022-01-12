@@ -22,5 +22,14 @@
                           {durable, true}]},
     {'exchange.declare', [{exchange, <<"outbound">>},
                           {type, <<"fanout">>},
-                          {durable, true}]}%
+                          {durable, true}]},
+    {'exchange.declare', [{exchange, <<"file_transfer">>},
+                          {type, <<"topic">>},
+                          {durable, true}]},
+    {'queue.declare', [{queue, <<"file_transfer">>},
+                        {auto_delete, false},
+                       {durable, true}]},
+    {'queue.bind', [{queue, <<"file_transfer">>},
+                    {exchange, <<"file_transfer">>},
+                    {routing_key, <<"#">>}]}
 ]}].

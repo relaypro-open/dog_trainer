@@ -2,6 +2,7 @@
 
 -export([
         inverse_map_of_lists/1,
+        create_hash/1,
         list_of_maps_to_map/2,
         lmm/2,
         merge_lists_in_tuples/1,
@@ -139,3 +140,6 @@ maps_append(Key,Value,Map) ->
     end,
     Map@1.
 
+-spec create_hash(Bytes :: binary()) -> any().
+create_hash(Bytes) ->
+    base16:encode(crypto:hash(sha256, Bytes)).

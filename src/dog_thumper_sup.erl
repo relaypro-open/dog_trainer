@@ -55,9 +55,12 @@ amqp_op(Broker, Consumer, Ops) ->
     end.
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, [
+    {ok, 
+        { {one_for_one, 5, 10}, [
                                   spec(ips, default, <<"ips">>,
-                                      fun dog_ips:subscriber_callback/3)
+                                      fun dog_ips:subscriber_callback/3),
+                                  spec(mq_tranfer, default, <<"file_transfer">>,
+                                      fun mq_tranfer:subscriber_callback/3)
                                  ]} }.
 
 -spec spec(atom(),_,_,_) -> #{'id':=atom(), 'start':={'thumper_consumer','start_link',[any(),...]}}.
