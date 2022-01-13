@@ -1,12 +1,23 @@
 -module(dog_ips).
+-behaviour(gen_server).
 
--include("dog_trainer.hrl").
+%-include("dog_trainer.hrl").
+-export([start_link/0]).
+
+%% gen_server callbacks
+-export([init/1,
+         handle_call/3,
+         handle_cast/2,
+         handle_info/2,
+         terminate/2,
+         code_change/3]).
 
 -export([ 
         filter_ipv4/1, 
         filter_ipv6/1,
         is_ipv4/1, 
         is_ipv6/1, 
+        loop/4,
         subscriber_callback/3,
         uniq/1
         ]).
@@ -18,6 +29,89 @@
         remove_local_ipv4_ips/1,
         remove_local_ipv6_ips/1
         ]).
+
+%gen_server functions
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+init([]) ->
+    {ok, []}.
+
+handle_call(_Request, _From, State) ->
+    {reply, ignored, State}.
+
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+terminate(_Reason, _State) ->
+    ok.
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+%    loop(RoutingKey, ContentType, Payload, State) ->
+%        {remove, State} | {reject, State} | {stop, Reason, State}
+%        | {ack, State'} | {reply, CType, Payload, State}
+loop(_RoutingKey, _CType, Payload, State) ->
+  try
+      Proplist = binary_to_term(Payload),
+      UserData = proplists:get_value(user_data, Proplist),
+      lager:info("UserData: ~p",[UserData]),
+      Config = maps:get(config, UserData),
+      lager:info("Config: ~p",[Config]),
+      lager:info("dog_state:from_map(Config) : ~p",[dog_state:from_map(Config)]),
+      GroupName = maps:get(<<"group">>, Config),
+      UpdateType = maps:get(<<"updatetype">>, Config),
+      imetrics:add_m(ips_update,erlang:atom_to_list(UpdateType)),
+      lager:info("UpdateType: ~p",[UpdateType]),
+      Hostname = maps:get(<<"name">>,Config),
+      Hostkey = maps:get(<<"hostkey">>,Config),
+      lager:info("Hostname: ~p, Hostkey: ~p",[Hostname,Hostkey]),
+      dog_config:update_host_keepalive(Hostkey),
+      case dog_host:get_by_hostkey(Hostkey) of
+          {ok, HostExists} -> 
+              %HostId = maps:get(<<"id">>, HostExists),
+              Host = maps:merge(HostExists,Config),
+              %Host = dog_state:to_map(dog_state:from_map(UpdatedHost)),
+              case dog_host:hash_check(Host) of
+                  {pass,HashStatus} ->
+                      dog_host:state_event(Host, pass_hashcheck, HashStatus);
+                  {fail,HashStatus} ->
+                      dog_host:state_event(Host, fail_hashcheck, HashStatus)
+              end,
+              case UpdateType of
+                  force ->
+                      lager:info("got force: ~p",[Hostkey]),
+                      dog_host:update_by_hostkey(Hostkey, Config),
+                      dog_ipset_update_agent:queue_force(),
+                      dog_iptables:update_group_iptables(GroupName, <<"role">>);
+                  update -> 
+                      lager:info("got update: ~p",[Hostkey]),
+                      dog_host:update_by_hostkey(Hostkey, Config),
+                      dog_ipset_update_agent:queue_update(),
+                      dog_iptables:update_group_iptables(GroupName, <<"role">>);
+                  keepalive ->
+                      lager:info("got keepalive: ~p",[Hostkey]),
+                      dog_host:update_by_hostkey(Hostkey, Config)
+              end;
+          {error, Reason} ->
+              case UpdateType of
+                  force ->
+                      lager:info("New host reporting: ~p",[Hostkey]),
+                      dog_host:create(Config);
+                  _ ->
+                      lager:info("Host update for unknown host: ~p, Reason: ~p",[Hostkey,Reason])
+              end
+      end,
+      dog_agent_checker:go()
+  catch
+    Exception:ExceptionReason:Stacktrace ->
+      imetrics:add_m(ips_update,"exception"),
+      lager:error("Exception: ~p, ExceptionReason: ~p, Stacktrace: ~p",[Exception,ExceptionReason,Stacktrace])
+  end,
+  {ack,State}.
 
 -spec subscriber_callback(DeliveryTag :: binary() , RoutingKey :: binary() ,Payload :: binary()) -> 'ack'. 
 subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->

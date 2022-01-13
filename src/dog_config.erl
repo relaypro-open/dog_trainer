@@ -16,7 +16,13 @@ publish_host_config(Hostkey) ->
     Count = 1,
     Pid = erlang:self(),
     Message = term_to_binary([{count, Count}, {local_time, calendar:local_time()}, {pid, Pid}, {user_data, UserData}]),
-    Response = thumper:publish(Message, ?ConfigExchange, Hostkey),
+    %Response = thumper:publish(Message, ?ConfigExchange, Hostkey),
+    Response = turtle:publish(config_publisher,
+        <<"config">>,
+        Hostkey,
+        <<"text/json">>,
+        Message,
+        #{ delivery_mode => persistent }),
     Response.
 
 -spec update_host_keepalive(Hostkey :: binary() ) -> ok.

@@ -384,7 +384,13 @@ publish_to_queue(Ipsets) ->
     Count = 1,
     Pid = erlang:self(),
     Message = term_to_binary([{count, Count}, {local_time, calendar:local_time()}, {pid, Pid}, {user_data, UserData}]),
-    Response = thumper:publish(Message, <<"ipsets">>, <<"fanout">>),
+    %Response = thumper:publish(Message, <<"ipsets">>, <<"fanout">>),
+    Response = turtle:publish(ipset_publisher,
+        <<"ipsets">>,
+        <<"fanout">>,
+        <<"text/json">>,
+        Message,
+        #{ delivery_mode => persistent }),
     imetrics:add(ipset_publish),
     Response.
 
