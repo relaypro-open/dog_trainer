@@ -85,30 +85,6 @@ handle_connection_down(State) ->
     lager:info("handle_connection_down"),
     {noreply, State}.
 
-%2020-05-26 20:54:20.244 [info] <0.919.0>@dog_link_watcher:handle_query_result:84 
-%Result: [#{
-%<<"new_val">> => 
-%#{<<"connection">> => #{<<"api_port">> => 15672,<<"host">> => <<"dog-ubuntu-server2.lxd">>,
-%<<"password">> => <<"327faf06-c3f5-11e7-9765-7831c1be5b34">>,<<"port">> => 5673,
-%<<"ssl_options">> => #{<<"cacertfile">> => <<"/var/consul/data/pki/certs/ca.crt">>,
-%<<"certfile">> => <<"/var/consul/data/pki/certs/server.crt">>,<<"fail_if_no_peer_cert">> => true,
-%<<"keyfile">> => <<"/var/consul/data/pki/private/server.key">>,<<"server_name_indication">> => <<"disable">>,
-%<<"verify">> => <<"verify_peer">>},
-%<<"user">> => <<"dog_trainer">>,<<"virtual_host">> => <<"dog">>},<<"connection_type">> => <<"thumper">>,
-%<<"direction">> => <<"bidirectional">>,<<"enabled">> => true,<<"id">> => <<"22ad4556-c5f7-4f17-83e7-69bf96e9b4d3">>,
-%<<"name">> => <<"d2">>,<<"state">> => <<"active">>},
-%
-%<<"old_val">> => 
-%#{<<"connection">> => #{<<"api_port">> => 15672,<<"host">> => <<"dog-ubuntu-server2.lxd">>,
-%<<"password">> => <<"327faf06-c3f5-11e7-9765-7831c1be5b34">>,<<"port">> => 5673,
-%<<"ssl_options">> => #{<<"cacertfile">> => <<"/var/consul/data/pki/certs/ca.crt">>,
-%<<"certfile">> => <<"/var/consul/data/pki/certs/server.crt">>,<<"fail_if_no_peer_cert">> => true,
-%<<"keyfile">> => <<"/var/consul/data/pki/private/server.key">>,<<"server_name_indication">> => <<"disable">>,
-%<<"verify">> => <<"verify_peer">>},
-%<<"user">> => <<"dog_trainer">>,<<"virtual_host">> => <<"dog">>},<<"connection_type">> => <<"thumper">>,
-%<<"direction">> => <<"bidirectional">>,<<"enabled">> => false,<<"id">> => <<"22ad4556-c5f7-4f17-83e7-69bf96e9b4d3">>,
-%<<"name">> => <<"d2">>,<<"state">> => <<"active">>}}]
-
 handle_query_result(Result, State) ->
     lager:info("Result: ~p", [Result]),
     case Result of
@@ -147,13 +123,15 @@ handle_query_result(Result, State) ->
               imetrics:add_m(watcher,link_update),
               case {OldEnabledState,NewEnabledState} of
                 {false,true} ->
-                  dog_external:update_external_broker_definition(EnvName),
-                  thumper:reconnect(EnvName);
+                  dog_external:update_external_broker_definition(EnvName);
+                  %thumper:reconnect(EnvName);
                 {true,false} ->
-                  thumper:disconnect(EnvName);
+                  dog_external:remove_external_broker_definition(EnvName);
+                  %dog_external:disconnect;
+                  %thumper:disconnect(EnvName);
                 {_,_} ->
-                  dog_external:update_external_broker_definition(EnvName),
-                  thumper:reconnect(EnvName)
+                  dog_external:update_external_broker_definition(EnvName)
+                  %thumper:reconnect(EnvName)
               end
           end, Result)
     end,

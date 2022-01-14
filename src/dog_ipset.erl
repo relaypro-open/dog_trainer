@@ -384,7 +384,6 @@ publish_to_queue(Ipsets) ->
     Count = 1,
     Pid = erlang:self(),
     Message = term_to_binary([{count, Count}, {local_time, calendar:local_time()}, {pid, Pid}, {user_data, UserData}]),
-    %Response = thumper:publish(Message, <<"ipsets">>, <<"fanout">>),
     Response = turtle:publish(ipset_publisher,
         <<"ipsets">>,
         <<"fanout">>,
@@ -425,9 +424,17 @@ publish_to_outbound_exchange(TargetEnvName, IpsetExternalMap) ->
                              ]),
     RoutingKey = binary:list_to_bin(LocalEnvName),
     BrokerConfigName = list_to_atom(binary:bin_to_list(TargetEnvName)),
-    thumper:start_link(BrokerConfigName),
+    %thumper:start_link(BrokerConfigName),
     lager:info("~p, ~p, ~p, ~p",[BrokerConfigName, Message, <<"inbound">>, RoutingKey]),
-    Response = thumper:publish_to(BrokerConfigName, Message, <<"inbound">>, RoutingKey),
+    %Response = thumper:publish_to(BrokerConfigName, Message, <<"inbound">>, RoutingKey),
+    PublisherName = erlang:binary_to_atom(<<TargetEnvName/binary, <<"_publisher">>/binary>>),
+    Response = turtle:publish(
+        PublisherName,
+        <<"inbound">>,
+        RoutingKey,
+        <<"text/json">>,
+        Message,
+        #{ delivery_mode => persistent }),
     imetrics:add(ipset_outbound_publish),
     Response.
 

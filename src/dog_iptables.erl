@@ -172,7 +172,6 @@ publish_to_queue(RoutingKey, R4IpsetsRuleset, R6IpsetsRuleset, R4IptablesRuleset
     Count = 1,
     Pid = erlang:self(),
     Message = term_to_binary([{count, Count}, {local_time, calendar:local_time()}, {pid, Pid}, {user_data, UserData}]),
-    %Response = thumper:publish(Message, ?IptablesExchange, RoutingKey),
     Response = turtle:publish(iptables_publisher,
         <<"iptables">>,
         RoutingKey,

@@ -11,11 +11,9 @@ setup() ->
     application:start(ssl),
     application:start(inets),
     application:start(ibrowse),
-    thumper_app:start(),
     ok. 
 
 cleanup(_Ok) ->
-    application:stop(thumper),
     application:stop(ibrowse),
     application:stop(inets),
     application:stop(ssl),

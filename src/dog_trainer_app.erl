@@ -22,8 +22,8 @@ start(_StartType, _StartArgs) ->
 
 %%--------------------------------------------------------------------
 prep_stop(_State) ->
-    lager:info("Stopping consumer of inbound queue"),
-    supervisor:terminate_child(dog_thumper_sup, ips),
+    %lager:info("Stopping consumer of inbound queue"),
+    %supervisor:terminate_child(dog_thumper_sup, ips),
     lager:info("Waiting for outbound queue to clear"),
     wait_for_queue_empty(),
     lager:info("Stopping dog_trainer").

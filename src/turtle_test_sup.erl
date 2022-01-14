@@ -2,13 +2,16 @@
 -include_lib("amqp_client/include/amqp_client.hrl").
 
 -export([
-		add_conn_config/0,
+		%add_conn_config/0,
+        close_conn/0,
          start_link/0, 
          init/1,
-		conn_sup/1,
-		new_connection/0,
+		%conn_sup/1,
+		%new_connection/0,
 		new_publisher/0,
-		external_publisher_spec/0
+        new_service/0,
+		external_publisher_spec/0,
+        registration_connection_spec/0
        ]).
 -behaviour(supervisor).
 
@@ -25,9 +28,15 @@ init([]) ->
     {ok, { {one_for_all, 10, 60}, ChildSpecs} }.
 
 new_publisher() ->
-    new_connection(),
-    add_conn_config(),
-    supervisor:start_child(turtle_sup,turtle_test_sup:external_publisher_spec()).
+    turtle_conn:new(turtle_connection_config()),
+    turtle_publisher:new(dog_turtle_sup,external_publisher_spec()).
+    %supervisor:start_child(turtle_sup,turtle_test_sup:external_publisher_spec()).
+
+new_service() ->
+    turtle_service:new(dog_turtle_sup,registration_connection_spec()).
+
+close_conn() ->
+    turtle_conn:close(external).
 
 external_publisher_spec() ->
     PublisherName = external_publisher,
@@ -40,6 +49,28 @@ external_publisher_spec() ->
         turtle_publisher:child_spec(PublisherName, ConnName, AMQPDecls,
             #{ confirms => true, passive => false, rpc => false }),
 	AMQPPoolChildSpec.
+
+registration_connection_spec() ->
+    Exch = <<"registration">>,
+    Q = <<"registration.request">>,
+    Config = #{
+      name => registration,
+      connection => default,
+      function => fun dog_ips:loop/4,
+      handle_info => fun dog_ips:handle_info/2,
+      init_state => #{ },
+      declarations =>
+          [#'exchange.declare' { exchange = Exch, type = <<"topic">>, durable = true },
+           #'queue.declare' { queue = Q, durable = false },
+           #'queue.bind' { queue = Q, exchange = Exch, routing_key = <<"registration">> }],
+      subscriber_count => 1,
+      prefetch_count => 1,
+      consume_queue => Q,
+      passive => false
+    },
+
+    ServiceSpec = turtle_service:child_spec(Config),
+	ServiceSpec.
 
 turtle_connection_config() ->
     #{
@@ -64,19 +95,19 @@ turtle_connection_config() ->
             ]
 }.
 
-new_connection() ->
-	Spec = conn_sup(turtle_connection_config()),
-    supervisor:start_child(turtle_sup,Spec).
-
-conn_sup(#{conn_name := Name} = Ps) ->
-    #{ id => Name,
-       start => {turtle_conn, start_link, [Name, Ps]},
-       restart => permanent,
-       shutdown => 5000,
-       type => worker
-     }.
-
-add_conn_config() ->
-	CurrentConfig = application:get_env(turtle, connection_config, []),
-	NewConfig = CurrentConfig ++ [turtle_connection_config()],
-	application:set_env(turtle,connection_config,NewConfig).
+%new_connection() ->
+%	Spec = conn_sup(turtle_connection_config()),
+%    supervisor:start_child(turtle_sup,Spec).
+%
+%conn_sup(#{conn_name := Name} = Ps) ->
+%    #{ id => Name,
+%       start => {turtle_conn, start_link, [Name, Ps]},
+%       restart => permanent,
+%       shutdown => 5000,
+%       type => worker
+%     }.
+%
+%add_conn_config() ->
+%	CurrentConfig = application:get_env(turtle, connection_config, []),
+%	NewConfig = CurrentConfig ++ [turtle_connection_config()],
+%	application:set_env(turtle,connection_config,NewConfig).

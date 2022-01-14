@@ -1,1 +1,3 @@
 -pa releases/${REL_VSN}/consolidated
+-name dog_trainer
+-setcookie dog_trainer

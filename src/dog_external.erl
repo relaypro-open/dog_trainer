@@ -25,7 +25,7 @@
         get_all_active/0,
         get_all_active_union_ec2_sgs/0,
         get_schema/0,
-        get_thumper_spec/1,
+        %get_thumper_spec/1,
         grouped_by_ipset_name/0,
         grouped_by_ipset_name/4,
         remove_external_broker_definition/1,
@@ -47,68 +47,107 @@
 -spec setup_external_broker_connections(LinkName :: binary()) -> ok. 
 setup_external_broker_connections(EnvName) ->
   {ok,Link} = dog_link:get_by_name(EnvName),
-  Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
-  ThumperSpec = get_thumper_spec(Link),
-  Thumper1 = lists:append(ThumperSpec,Thumper),
-  application:set_env(thumper,brokers,Thumper1),
-  LinkName = erlang:list_to_atom(
-               binary:bin_to_list(
-                 maps:get(<<"name">>,Link))), 
-  thumper:start_link(LinkName),
+  %Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
+  %ThumperSpec = get_thumper_spec(Link),
+  %Thumper1 = lists:append(ThumperSpec,Thumper),
+  %application:set_env(thumper,brokers,Thumper1),
+  %LinkName = erlang:list_to_atom(
+  %             binary:bin_to_list(
+  %               maps:get(<<"name">>,Link))), 
+  %thumper:start_link(LinkName),
+  turtle_conn:new(turtle_connection_config(Link)),
   ok.
 
 -spec update_external_broker_definition(LinkName :: binary()) -> ok. 
 update_external_broker_definition(EnvName) ->
-  {ok,Link} = dog_link:get_by_name(EnvName),
-  Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
-  ThumperSpec = get_thumper_spec(Link),
-  Thumper1 = lists:delete(ThumperSpec,Thumper),
-  Thumper2 = lists:append(ThumperSpec,Thumper1),
-  application:set_env(thumper,brokers,Thumper2),
+  remove_external_broker_definition(EnvName),
+  setup_external_broker_connections(EnvName),
+  %{ok,Link} = dog_link:get_by_name(EnvName),
+  %Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
+  %ThumperSpec = get_thumper_spec(Link),
+  %Thumper1 = lists:delete(ThumperSpec,Thumper),
+  %Thumper2 = lists:append(ThumperSpec,Thumper1),
+  %application:set_env(thumper,brokers,Thumper2),
   ok.
 
 -spec remove_external_broker_definition(LinkName :: binary()) -> ok. 
 remove_external_broker_definition(EnvName) ->
   {ok,Link} = dog_link:get_by_name(EnvName),
-  Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
-  ThumperSpec = get_thumper_spec(Link),
-  Thumper1 = lists:delete(ThumperSpec,Thumper),
-  application:set_env(thumper,brokers,Thumper1),
+  LinkName = erlang:binary_to_atom(
+               binary:bin_to_list(
+                 maps:get(<<"name">>,Link))), 
+  turtle_conn:close(LinkName),
+  %Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
+  %ThumperSpec = get_thumper_spec(Link),
+  %Thumper1 = lists:delete(ThumperSpec,Thumper),
+  %application:set_env(thumper,brokers,Thumper1),
   ok.
 
-get_thumper_spec(Link) ->
+turtle_connection_config(Link) ->
   Connection = maps:get(<<"connection">>,Link),
-  ThumperSpec = 
-  [
-   {erlang:list_to_atom(
+   ConnName = erlang:list_to_atom(
       binary:bin_to_list(
         maps:get(<<"name">>,Link))), 
-    [
-     {rabbitmq_config,
-      [
-       {host, binary:bin_to_list(maps:get(<<"host">>,Connection))},
-       {port, maps:get(<<"port">>,Connection)},
-       {api_port, maps:get(<<"api_port">>,Connection)},
-       {virtual_host, maps:get(<<"virtual_host">>,Connection)},
-       {user, maps:get(<<"user">>,Connection)},
-       {password, maps:get(<<"password">>,Connection)},
-       {ssl_options, [{cacertfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"cacertfile">>],Connection))},
-                      {certfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"certfile">>],Connection))},
-                      {keyfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"keyfile">>],Connection))},
-                      {verify, erlang:list_to_atom(
-                                 binary:bin_to_list(
-                                   nested:get([<<"ssl_options">>,<<"verify">>],Connection)))},
-                      {server_name_indication, erlang:list_to_atom(
-                                                 binary:bin_to_list(
-                                                   nested:get([<<"ssl_options">>,<<"server_name_indication">>],Connection)))},
-                      {fail_if_no_peer_cert, nested:get([<<"ssl_options">>,<<"fail_if_no_peer_cert">>],Connection)}
-                     ]}
-      ]
-     }
-    ]
-   }
-  ],
-  ThumperSpec.
+    #{
+            conn_name => ConnName,
+
+            username => maps:get(<<"user">>,Connection),
+            password => maps:get(<<"password">>,Connection),
+            virtual_host => maps:get(<<"virtual_host">>,Connection),
+            ssl_options => [
+                           {cacertfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"cacertfile">>],Connection))},
+                           {certfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"certfile">>],Connection))},
+                           {keyfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"keyfile">>],Connection))},
+                           {verify, erlang:list_to_atom(
+                                      binary:bin_to_list(
+                                        nested:get([<<"ssl_options">>,<<"verify">>],Connection)))},
+
+                           {server_name_indication, erlang:list_to_atom(
+                                                      binary:bin_to_list(
+                                                        nested:get([<<"ssl_options">>,<<"server_name_indication">>],Connection)))},
+                           {fail_if_no_peer_cert, nested:get([<<"ssl_options">>,<<"fail_if_no_peer_cert">>],Connection)}
+                          ],
+            deadline => 300000,
+            connections => [
+                {main, [
+                  {binary:bin_to_list(maps:get(<<"host">>,Connection)), {port, maps:get(<<"port">>,Connection)} } 
+                ]}
+            ]
+}.
+
+%get_thumper_spec(Link) ->
+%  Connection = maps:get(<<"connection">>,Link),
+%  ThumperSpec = 
+%  [
+%   {erlang:list_to_atom(
+%      binary:bin_to_list(
+%        maps:get(<<"name">>,Link))), 
+%    [
+%     {rabbitmq_config,
+%      [
+%       {host, binary:bin_to_list(maps:get(<<"host">>,Connection))},
+%       {port, maps:get(<<"port">>,Connection)},
+%       {api_port, maps:get(<<"api_port">>,Connection)},
+%       {virtual_host, maps:get(<<"virtual_host">>,Connection)},
+%       {user, maps:get(<<"user">>,Connection)},
+%       {password, maps:get(<<"password">>,Connection)},
+%       {ssl_options, [{cacertfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"cacertfile">>],Connection))},
+%                      {certfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"certfile">>],Connection))},
+%                      {keyfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"keyfile">>],Connection))},
+%                      {verify, erlang:list_to_atom(
+%                                 binary:bin_to_list(
+%                                   nested:get([<<"ssl_options">>,<<"verify">>],Connection)))},
+%                      {server_name_indication, erlang:list_to_atom(
+%                                                 binary:bin_to_list(
+%                                                   nested:get([<<"ssl_options">>,<<"server_name_indication">>],Connection)))},
+%                      {fail_if_no_peer_cert, nested:get([<<"ssl_options">>,<<"fail_if_no_peer_cert">>],Connection)}
+%                     ]}
+%      ]
+%     }
+%    ]
+%   }
+%  ],
+%  ThumperSpec.
 
 -spec get_by_name(Name :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_name(Name) ->
