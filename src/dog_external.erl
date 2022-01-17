@@ -39,6 +39,7 @@
 %% Dev/Test Function Exports
 %% ------------------------------------------------------------------
 -export([
+        turtle_connection_config/1
         ]).
 
 %% ------------------------------------------------------------------
@@ -46,6 +47,7 @@
 %% ------------------------------------------------------------------
 -spec setup_external_broker_connections(LinkName :: binary()) -> ok. 
 setup_external_broker_connections(EnvName) ->
+  lager:debug("EnvName: ~p",[EnvName]),
   {ok,Link} = dog_link:get_by_name(EnvName),
   %Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
   %ThumperSpec = get_thumper_spec(Link),
@@ -55,32 +57,32 @@ setup_external_broker_connections(EnvName) ->
   %             binary:bin_to_list(
   %               maps:get(<<"name">>,Link))), 
   %thumper:start_link(LinkName),
-  turtle_conn:new(turtle_connection_config(Link)),
+  %turtle_conn:new(turtle_connection_config(Link)),
   ok.
 
 -spec update_external_broker_definition(LinkName :: binary()) -> ok. 
 update_external_broker_definition(EnvName) ->
-  remove_external_broker_definition(EnvName),
-  setup_external_broker_connections(EnvName),
-  %{ok,Link} = dog_link:get_by_name(EnvName),
-  %Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
-  %ThumperSpec = get_thumper_spec(Link),
-  %Thumper1 = lists:delete(ThumperSpec,Thumper),
-  %Thumper2 = lists:append(ThumperSpec,Thumper1),
-  %application:set_env(thumper,brokers,Thumper2),
+  %remove_external_broker_definition(EnvName),
+  %setup_external_broker_connections(EnvName),
+  %%{ok,Link} = dog_link:get_by_name(EnvName),
+  %%Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
+  %%ThumperSpec = get_thumper_spec(Link),
+  %%Thumper1 = lists:delete(ThumperSpec,Thumper),
+  %%Thumper2 = lists:append(ThumperSpec,Thumper1),
+  %%application:set_env(thumper,brokers,Thumper2),
   ok.
 
 -spec remove_external_broker_definition(LinkName :: binary()) -> ok. 
 remove_external_broker_definition(EnvName) ->
-  {ok,Link} = dog_link:get_by_name(EnvName),
-  LinkName = erlang:binary_to_atom(
-               binary:bin_to_list(
-                 maps:get(<<"name">>,Link))), 
-  turtle_conn:close(LinkName),
-  %Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
-  %ThumperSpec = get_thumper_spec(Link),
-  %Thumper1 = lists:delete(ThumperSpec,Thumper),
-  %application:set_env(thumper,brokers,Thumper1),
+  %{ok,Link} = dog_link:get_by_name(EnvName),
+  %LinkName = erlang:binary_to_atom(
+  %             binary:bin_to_list(
+  %               maps:get(<<"name">>,Link))), 
+  %turtle_conn:close(LinkName),
+  %%Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
+  %%ThumperSpec = get_thumper_spec(Link),
+  %%Thumper1 = lists:delete(ThumperSpec,Thumper),
+  %%application:set_env(thumper,brokers,Thumper1),
   ok.
 
 turtle_connection_config(Link) ->
@@ -91,9 +93,9 @@ turtle_connection_config(Link) ->
     #{
             conn_name => ConnName,
 
-            username => maps:get(<<"user">>,Connection),
-            password => maps:get(<<"password">>,Connection),
-            virtual_host => maps:get(<<"virtual_host">>,Connection),
+            username => binary:bin_to_list(maps:get(<<"user">>,Connection)),
+            password => binary:bin_to_list(maps:get(<<"password">>,Connection)),
+            virtual_host => binary:bin_to_list(maps:get(<<"virtual_host">>,Connection)),
             ssl_options => [
                            {cacertfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"cacertfile">>],Connection))},
                            {certfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"certfile">>],Connection))},
@@ -110,7 +112,7 @@ turtle_connection_config(Link) ->
             deadline => 300000,
             connections => [
                 {main, [
-                  {binary:bin_to_list(maps:get(<<"host">>,Connection)), {port, maps:get(<<"port">>,Connection)} } 
+                  {binary:bin_to_list(maps:get(<<"host">>,Connection)), maps:get(<<"port">>,Connection) } 
                 ]}
             ]
 }.

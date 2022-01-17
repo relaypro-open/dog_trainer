@@ -16,7 +16,7 @@ init([]) ->
                                  ?SUP(dog_watcher_sup),
                                  ?SUP(dog_publisher_sup),
                                  ?SUP(dog_turtle_sup),
-                                 ?SUP(dog_api_router)%,
-                                 ?SUP(dog_hosts_agent_sup)%,
-                                 %?SUP(dog_external_sup)
+                                 ?SUP(dog_api_router),
+                                 ?SUP(dog_hosts_agent_sup),
+                                 ?SUP(dog_external_sup)
                                 ]}}.

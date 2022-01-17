@@ -38,6 +38,8 @@
          %inbound_queue_spec/1,
         %outbound_queue_spec/1,
         %unbind_exchange/1
+        inbound_service_spec/1,
+        outbound_publisher_spec/1
         ]).
 
 %% ------------------------------------------------------------------
@@ -306,16 +308,17 @@ create_active_inbound_queue(EnvName) ->
   %create_queue(QueueSpec),
   %bind_queue(QueueSpec),
   %subscribe_to_queue(QueueSpec),
+  %larger:debug("EnvName: ~p",[EnvName]),
   turtle_service:new(dog_turtle_sup,inbound_service_spec(EnvName)),
   ok.
 
 inbound_service_spec(EnvName) ->
     Name = binary_to_atom(EnvName),
     Exchange = <<"inbound">>,
-    QueueName = <<EnvName/binary, <<"_">>/binary, <<"inbound">>>>,
+    QueueName = <<<<"inbound">>/binary,<<"_">>/binary,EnvName/binary>>,
     Config = #{
       name => Name,
-      connection => Name,
+      connection => default,
       function => fun dog_external:loop/4,
       handle_info => fun dog_external_agent:handle_info/2,
       init_state => #{ },
@@ -333,14 +336,15 @@ inbound_service_spec(EnvName) ->
 	ServiceSpec.
 
 outbound_publisher_spec(EnvName) ->
+    Name = binary_to_atom(EnvName),
     PublisherName = binary_to_atom(<<EnvName/binary, <<"_publisher">>/binary>>),
-    ConnName = default,
-    Exchange = <<"outbound">>,
-    QueueName = <<EnvName/binary, <<"_">>/binary, <<"outbound">>>>,
+    ConnName = Name,
+    %Exchange = <<"outbound">>,
+    %QueueName = <<<<"outbound">>/binary,<<"_">>/binary,EnvName/binary>>,
     AMQPDecls = [
-		  #'exchange.declare' {exchange = Exchange, type = <<"fanout">>, durable = true}
-           #'queue.declare' { queue = QueueName, durable = true, auto_delete = true },
-           #'queue.bind' { queue = QueueName, exchange = Exchange, routing_key = <<"fanout">> }
+		  %#'exchange.declare' {exchange = Exchange, type = <<"fanout">>, durable = true},
+          % #'queue.declare' { queue = QueueName, durable = true, auto_delete = true },
+          % #'queue.bind' { queue = QueueName, exchange = Exchange, routing_key = <<"fanout">> }
 %    #{broker => default, name => Name, queue => QueueName, routing_key => <<"fanout">>, exchange => BaseName }.
     ],
     AMQPPoolChildSpec =
