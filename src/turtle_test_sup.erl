@@ -8,7 +8,8 @@
 		conn_sup/1,
 		new_connection/0,
 		new_publisher/0,
-		external_publisher_spec/0
+		external_publisher_spec/0,
+        turtle_connection_config/0
        ]).
 -behaviour(supervisor).
 

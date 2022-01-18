@@ -101,7 +101,7 @@
  {<<"ssl_verify_fun">>,{pkg,<<"ssl_verify_fun">>,<<"1.1.5">>},0},
  {<<"turtle">>,
   {git,"https://github.com/relaypro-open/turtle.git",
-       {ref,"4746a4cfd61abaf557712f77f419ba01b2e05417"}},
+       {ref,"dcd97f88599db5a0e241fc848cd0fc283f9eb7ac"}},
   0},
  {<<"unicode_util_compat">>,{pkg,<<"unicode_util_compat">>,<<"0.5.0">>},0},
  {<<"uuid">>,{pkg,<<"uuid_erl">>,<<"1.7.1">>},1},

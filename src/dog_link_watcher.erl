@@ -117,22 +117,18 @@ handle_query_result(Result, State) ->
                 end,
               NewEnabledState = maps:get(new_enabled_state,NewState),
               OldEnabledState = maps:get(old_enabled_state,NewState),
-              EnvName = maps:get(env_name,NewState),
+              %EnvName = maps:get(env_name,NewState),
               lager:debug("{OldEnabledState,NewEnabledState}: ~p",[{OldEnabledState,NewEnabledState}]),
               dog_external_agent:set_link_state(NewState),
-              imetrics:add_m(watcher,link_update),
-              case {OldEnabledState,NewEnabledState} of
-                {false,true} ->
-                  dog_external:update_external_broker_definition(EnvName);
-                  %thumper:reconnect(EnvName);
-                {true,false} ->
-                  dog_external:remove_external_broker_definition(EnvName);
-                  %dog_external:disconnect;
-                  %thumper:disconnect(EnvName);
-                {_,_} ->
-                  dog_external:update_external_broker_definition(EnvName)
-                  %thumper:reconnect(EnvName)
-              end
+              imetrics:add_m(watcher,link_update)%,
+              %case {OldEnabledState,NewEnabledState} of
+              %  {false,true} ->
+              %    dog_external:restart_external_broker_connection(EnvName);
+              %  {true,false} ->
+              %    dog_external:stop_external_broker_connection(EnvName);
+              %  {_,_} ->
+              %    dog_external:restart_external_broker_connection(EnvName)
+              %end
           end, Result)
     end,
     dog_ipset:update_ipsets(all_envs), %TODO

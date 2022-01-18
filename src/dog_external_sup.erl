@@ -11,7 +11,6 @@ init([]) ->
   {ok, {{one_for_one, 5, 60},
         lists:flatten(lists:map(fun(Link) ->
                       LinkName = maps:get(<<"name">>,Link),
-                      turtle_conn:new(dog_external:turtle_connection_config(Link)),
                       %EnvName = LinkName,
                       lager:debug("LinkName: ~p",[LinkName]),
                       %[

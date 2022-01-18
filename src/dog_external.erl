@@ -28,10 +28,10 @@
         %get_thumper_spec/1,
         grouped_by_ipset_name/0,
         grouped_by_ipset_name/4,
-        remove_external_broker_definition/1,
-        setup_external_broker_connections/1,
+        stop_external_broker_connection/1,
+        start_external_broker_connection/1,
         to_ipset_names/2,
-        update_external_broker_definition/1,
+        restart_external_broker_connection/1,
         replace/2
         ]).
 
@@ -45,45 +45,21 @@
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
--spec setup_external_broker_connections(LinkName :: binary()) -> ok. 
-setup_external_broker_connections(EnvName) ->
+-spec start_external_broker_connection(LinkName :: binary()) -> ok. 
+start_external_broker_connection(EnvName) ->
   lager:debug("EnvName: ~p",[EnvName]),
   {ok,Link} = dog_link:get_by_name(EnvName),
-  %Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
-  %ThumperSpec = get_thumper_spec(Link),
-  %Thumper1 = lists:append(ThumperSpec,Thumper),
-  %application:set_env(thumper,brokers,Thumper1),
-  %LinkName = erlang:list_to_atom(
-  %             binary:bin_to_list(
-  %               maps:get(<<"name">>,Link))), 
-  %thumper:start_link(LinkName),
-  %turtle_conn:new(turtle_connection_config(Link)),
-  ok.
+  turtle_conn:new(turtle_connection_config(Link)).
 
--spec update_external_broker_definition(LinkName :: binary()) -> ok. 
-update_external_broker_definition(EnvName) ->
-  %remove_external_broker_definition(EnvName),
-  %setup_external_broker_connections(EnvName),
-  %%{ok,Link} = dog_link:get_by_name(EnvName),
-  %%Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
-  %%ThumperSpec = get_thumper_spec(Link),
-  %%Thumper1 = lists:delete(ThumperSpec,Thumper),
-  %%Thumper2 = lists:append(ThumperSpec,Thumper1),
-  %%application:set_env(thumper,brokers,Thumper2),
-  ok.
+-spec restart_external_broker_connection(LinkName :: binary()) -> ok. 
+restart_external_broker_connection(EnvName) ->
+  stop_external_broker_connection(EnvName),
+  start_external_broker_connection(EnvName).
 
--spec remove_external_broker_definition(LinkName :: binary()) -> ok. 
-remove_external_broker_definition(EnvName) ->
-  %{ok,Link} = dog_link:get_by_name(EnvName),
-  %LinkName = erlang:binary_to_atom(
-  %             binary:bin_to_list(
-  %               maps:get(<<"name">>,Link))), 
-  %turtle_conn:close(LinkName),
-  %%Thumper = proplists:get_value(brokers,application:get_all_env(thumper)),
-  %%ThumperSpec = get_thumper_spec(Link),
-  %%Thumper1 = lists:delete(ThumperSpec,Thumper),
-  %%application:set_env(thumper,brokers,Thumper1),
-  ok.
+-spec stop_external_broker_connection(LinkName :: binary()) -> ok. 
+stop_external_broker_connection(EnvName) ->
+  {ok,Link} = dog_link:get_by_name(EnvName),
+  turtle_conn:stop(turtle_connection_config(Link)).
 
 turtle_connection_config(Link) ->
   Connection = maps:get(<<"connection">>,Link),
@@ -313,8 +289,8 @@ create(ExternalMap@0) ->
   ExistingNames = case ExistingExternals of
                     [] ->
                       [];
-                    ExistingExternals ->
-                      [maps:get(<<"name">>,External) || External <- ExistingExternals]
+                    EE ->
+                      [maps:get(<<"name">>,External) || External <- EE]
                   end,
   DefaultValuesExternalMap = #{
                                <<"state">> => <<"active">>
