@@ -141,7 +141,7 @@ header_docker_v4() ->
 -spec inbound_header_v4() -> iolist().
 inbound_header_v4() ->
 "-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
--A INPUT -i lo -m comment --comment 'local any' -j ACCEPT
+-A INPUT -i lo -m comment --comment "local any" -j ACCEPT
 ".
 
 -spec forward_header_v4() -> iolist().
@@ -162,7 +162,7 @@ forward_header_docker_v4() ->
 
 -spec outbound_header_v4() -> iolist(). 
 outbound_header_v4() -> 
-"-A OUTPUT -o lo -m state --state RELATED,ESTABLISHED -m comment --comment 'local any' -j ACCEPT
+"-A OUTPUT -o lo -m state --state RELATED,ESTABLISHED -m comment --comment "local any" -j ACCEPT
 ".
 
 %-spec forward() -> string().
