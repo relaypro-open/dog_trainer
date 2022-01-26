@@ -42,13 +42,27 @@ publish_file_execute(Hostkey, Filename) ->
                               {pid, Pid}
                              ]),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    Response = turtle:publish(file_transfer_publisher,
-        <<"file_transfer">>,
-        RoutingKey,
-        <<"text/json">>,
-        Message,
-        #{ delivery_mode => persistent }),
-    Response.
+    %Response = turtle:publish(file_transfer_publisher,
+    %    <<"file_transfer">>,
+    %    RoutingKey,
+    %    <<"text/json">>,
+    %    Message,
+    %    #{ delivery_mode => persistent }),
+    case turtle:rpc_sync(
+           file_transfer_publisher, 
+           <<"file_transfer">>, 
+           RoutingKey, 
+           <<"text/json">>,
+           Message) of
+              {error, Reason} -> 
+                    %ReasonDecode = jsx:decode(Reason),
+                    lager:error("Reason: ~p",[Reason]),
+                    Reason;
+              {ok, _NTime, _CType, Response} ->
+                    ResponseDecode = jsx:decode(Response),
+                    lager:info("Response: ~p",[ResponseDecode]), 
+                    ResponseDecode
+    end.
 
 delete_file(FilePath,Hostkey) ->
     publish_file_delete(Hostkey,FilePath).
@@ -64,13 +78,26 @@ publish_file_delete(Hostkey, Filename) ->
                               {pid, Pid}
                              ]),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    Response = turtle:publish(file_transfer_publisher,
-        <<"file_transfer">>,
-        RoutingKey,
-        <<"text/json">>,
-        Message,
-        #{ delivery_mode => persistent }),
-    Response.
+    %Response = turtle:publish(file_transfer_publisher,
+    %    <<"file_transfer">>,
+    %    RoutingKey,
+    %    <<"text/json">>,
+    %    Message,
+    %    #{ delivery_mode => persistent }),
+    %Response.
+    case turtle:rpc_sync(
+           file_transfer_publisher, 
+           <<"file_transfer">>, 
+           RoutingKey, 
+           <<"text/json">>,
+           Message) of
+              {error, Reason} -> 
+                    lager:error("Reason: ~p",[Reason]),
+                    Reason;
+              {ok, _NTime, _CType, Response} ->
+                    lager:info("Response: ~p",[Response]), 
+                    Response
+    end.
 
 -spec publish_file_send(Hostkey :: string(), Filename :: string(),Data :: binary(), TotalBlocks :: integer(), CurrentBlock :: integer()) -> any().
 publish_file_send(Hostkey, Filename, Data, TotalBlocks, CurrentBlock) ->
@@ -97,6 +124,19 @@ publish_file_send(Hostkey, Filename, Data, TotalBlocks, CurrentBlock) ->
         Message,
         #{ delivery_mode => persistent }),
     Response.
+    %case turtle:rpc_sync(
+    %       file_transfer_publisher, 
+    %       <<"file_transfer">>, 
+    %       RoutingKey, 
+    %       <<"text/json">>,
+    %       Message) of
+    %          {error, Reason} -> 
+    %                lager:error("Reason: ~p",[Reason]),
+    %                Reason;
+    %          {ok, _NTime, _CType, Response} ->
+    %                lager:info("Response: ~p",[Response]), 
+    %                Response
+    %end.
 
 -spec send_file(Filename :: string(), Hostkey :: string()) -> ok | error.
 send_file(Filename, Hostkey) ->
@@ -107,6 +147,10 @@ send_file(Filename, Hostkey) ->
     after 
         file:close(Filename)
     end.
+    %{ok,IoDevice} = file:open(Filename, [read,binary,read_ahead,raw]),
+    %Response = send_data(IoDevice,Filename, Hostkey),
+    %lager:debug("Response: ~p",[Response]),
+    %file:close(Filename).
 
 send_data(IoDevice,Filename, Hostkey) ->
    TotalBlocks = number_blocks(Filename),

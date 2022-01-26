@@ -87,7 +87,7 @@ file_publisher_spec() ->
     ],
     AMQPPoolChildSpec =
         turtle_publisher:child_spec(PublisherName, ConnName, AMQPDecls,
-            #{ confirms => true, passive => false, rpc => false }),
+            #{ confirms => true, passive => false, rpc => enable }),
 	AMQPPoolChildSpec.
 
 -spec get_pid(atom()) -> {'error','deleted' | 'terminated'} | {'ok',pid()}.
