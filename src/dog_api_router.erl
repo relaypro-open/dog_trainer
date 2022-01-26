@@ -46,4 +46,21 @@ start_link() ->
         [{port, 7070}, {ip, {0,0,0,0}}], 
         #{ env => #{dispatch => Dispatch} }
     ),
-	dog_api_sup:start_link().
+    %{ok, _} = cowboy:start_tls(api_mtls, 
+    %    [
+    %        {port, 8443},
+    %        {cacertfile, "/opt/dog_trainer/consul-root.cer"},
+    %        {certfile, "/opt/dog_trainer/server.cert.pem"},
+    %        {keyfile, "/opt/dog_trainer/server.key.pem"},
+    %        %{cert, "/var/consul/data/pki/certs/server.crt"},
+    %        %{cacertfile, "/var/consul/data/pki/certs/ca.crt"},
+    %        %{keyfile, "/var/consul/data/pki/private/server.key"}%,
+    %        {verify, verify_peer}%,
+    %        %                            {server_name_indication, disable},
+    %        %{fail_if_no_peer_cert, true}
+    %    ],
+    %    #{
+    %        env => #{dispatch => Dispatch} 
+    %    }
+    %),
+dog_api_sup:start_link().
