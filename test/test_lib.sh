@@ -3,8 +3,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-echo 0 > /tmp/pass.txt
-echo 0 > /tmp/fail.txt
+echo $PASS > /tmp/pass.txt
+echo $FAIL > /tmp/fail.txt
 BASEURL=http://localhost:7070/api
 OPTS=""
 #BASEURL=https://dog-ubuntu-server.lxd:8443/api
@@ -36,12 +36,12 @@ getfail() {
 
 post() {
   DATA=$1
-  #R=$(curl ${OPTS} -d @"${DATA}" -w "|%{http_code}\n" --silent --show-error  -H "Content-Type: application/json" -X POST "${URL}")
   URL=$2
-  RCMD="curl ${OPTS[@]} -d @"${DATA}" -w \"|%{http_code}\n\" --silent --show-error  -H \"Content-Type: application/json\" -X POST \"${URL}\""
+  R=$(curl ${OPTS} -d @"${DATA}" -w "|%{http_code}\n" --silent --show-error  -H "Content-Type: application/json" -X POST "${URL}")
+  #RCMD="curl ${OPTS[@]} -d @"${DATA}" -w \"|%{http_code}\n\" --silent --show-error  -H \"Content-Type: application/json\" -X POST \"${URL}\""
   #>&2 log "RCMD: ${RCMD}"
-  R=$(${RCMD})
-  #>&2 log "R: ${R}"
+  #R=$(${RCMD})
+  >&2 log "R: ${R}"
   BODY=$(echo ${R} | awk -F"|" '{print $1}')
   RESPONSE_CODE=$(echo ${R} | awk -F"|" '{print $2}')
   #>&2 log ${RESPONSE_CODE}
@@ -129,9 +129,10 @@ get_id() {
 
 test_report() {
 echo
-PASS=$(getpass)
-FAIL=$(getfail)
-echo "PASS: $PASS / FAIL: $FAIL"
+	
+PASS=$(cat /tmp/pass.txt)
+FAIL=$(cat /tmp/fail.txt)
+echo "PASS: ${PASS} / FAIL: ${FAIL}"
 if [[ "$FAIL" -gt 0 || "$PASS" -lt 1 ]]
 then
 	exit 1

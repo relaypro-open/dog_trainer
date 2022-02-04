@@ -9,8 +9,6 @@ source test_lib.sh
 TESTDIR=/opt/dog_trainer/test
 
 echo "dog_trainer basic API test"
-#echo -e "{\n\"name\":\"office\",\n\"ipv4_addresses\":[\"1.1.1.1\",\"2.2.2.2\"],\n\"ipv6_addresses\":[]\n}" > ${TESTDIR}/zone.json
-#ZONE_ID=$(curl -d "${TESTDIR}/zone.json' --silent -H "Content-Type: application/json" -X POST "${BASEURL}/zone" | jq -r .id)
 echo "ZONE"
 echo -e "{\n\"name\":\"drewtest\",\n\"ipv4_addresses\":[\"1.1.1.1\",\"2.2.2.2\"],\n\"ipv6_addresses\":[]\n}" > ${TESTDIR}/zone.json
 ZONE_ID=$(post "${TESTDIR}/zone.json" "${BASEURL}/zone")
@@ -49,7 +47,7 @@ put "${TESTDIR}/profile_update.json" "${BASEURL}/profile/${PROFILE_ID}"
 putc "${TESTDIR}/profile_update.json" "${BASEURL}/profile/${PROFILE_ID}" 303 #updates create new profiles
 putc "${TESTDIR}/profile_update_blank_name.json" "${BASEURL}/profile/${PROFILE_ID}" 500
 get ${BASEURL}/profile/${PROFILE_ID}
-#delete ${BASEURL}/profile/${PROFILE_ID}
+delete ${BASEURL}/profile/${PROFILE_ID}
 get ${BASEURL}/profiles
 
 echo "GROUP"
@@ -71,7 +69,7 @@ put "${TESTDIR}/host_update.json" "${BASEURL}/host/${HOST_ID}"
 putc "${TESTDIR}/host_update.json" "${BASEURL}/host/${HOST_ID}" 303
 putc "${TESTDIR}/host_update_blank_hostname.json" "${BASEURL}/host/${HOST_ID}" 500
 get ${BASEURL}/host/${HOST_ID}
-delete ${BASEURL}/host/${HOST_ID}
+#delete ${BASEURL}/host/${HOST_ID}
 get ${BASEURL}/hosts
 
 echo "LINK/EXTERNAL"
@@ -87,4 +85,5 @@ getc "${BASEURL}/external?name=x1" 404
 get ${BASEURL}/links
 
 echo
-echo "PASS: ${PASS} / FAIL: ${FAIL}"
+#echo "PASS: ${PASS} / FAIL: ${FAIL}"
+test_report
