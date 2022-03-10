@@ -1,4 +1,5 @@
 -define(ROOT, "/api").
+-define(V2ROOT, "/api/V2").
 
 -define(IpsExchange, <<"ips">>).
 -define(IptablesExchange, <<"iptables">>).
