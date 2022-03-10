@@ -18,7 +18,7 @@
         ]).
 
 -export([
-        %all_active/0,
+        all_active/0,
         %all_external_ips/0,
         %all_external_ipv4s/0,
         %all_external_ipv6s/0,

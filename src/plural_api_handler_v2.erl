@@ -11,7 +11,7 @@ get_handler_module(Path) ->
     handler_lookup(api_handler:extract_module_from_path(Path,4,1)).
 
 handler_lookup(<<"externals">>) -> dog_external;
-handler_lookup(<<"groups">>) -> dog_group;
+handler_lookup(<<"groups">>) -> dog_group_api_v2;
 handler_lookup(<<"hosts">>) -> dog_host_api_v2;
 handler_lookup(<<"links">>) -> dog_link;
 handler_lookup(<<"profiles">>) -> dog_profile;
