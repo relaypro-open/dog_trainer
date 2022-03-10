@@ -142,4 +142,4 @@ get_all() ->
                 [] -> [];
                 Else -> Else
             end,
-    {ok, #{<<"hosts">> => Hosts}}.
+    {ok, Hosts}.
