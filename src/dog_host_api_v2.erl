@@ -28,7 +28,6 @@ get_by_name(Name) ->
 
 -spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists }.
 create(HostMap@0) ->
-  %Name = maps:get(<<"name">>, HostMap@0),
   Hostkey = maps:get(<<"hostkey">>, HostMap@0, notfound),
   case Hostkey of
     notfound ->
@@ -63,7 +62,36 @@ create(HostMap@0) ->
           {ok, NewVal}
       end
   end.
-                  %{ok, Host} = get_by_id(hd(maps:get(<<"generated_keys">>,R))),
+
+-spec get_all() -> {ok, list()}.
+get_all() ->
+    {ok, R} = dog_rethink:run(
+                              fun(X) -> 
+                                      reql:db(X, dog), 
+                                      reql:table(X, ?TYPE_TABLE)
+                              end),
+    {ok, Result} = rethink_cursor:all(R),
+    Hosts = case lists:flatten(Result) of
+                [] -> [];
+                Else -> Else
+            end,
+    {ok, Hosts}.
+
+-spec delete(Id :: binary()) -> (ok | error).
+delete(Id) ->
+    {ok, R} = dog_rethink:run(
+                              fun(X) -> 
+                                      reql:db(X, dog),
+                                      reql:table(X, ?TYPE_TABLE),
+                                      reql:get(X, Id),
+                                      reql:delete(X)
+                              end),
+    lager:debug("delete R: ~p~n",[R]),
+    Deleted = maps:get(<<"deleted">>, R),
+    case Deleted of
+        1 -> ok;
+        _ -> error
+    end.
 
 -spec update(Id :: binary(), UpdateMap :: map()) -> {ok, iolist()} | {false, iolist()} | {false, no_updated} | {validation_error, iolist()} .
 update(Id, UpdateMap) ->
@@ -86,11 +114,9 @@ update(Id, UpdateMap) ->
             {1,0} -> 
               NewVal = maps:get(<<"new_val">>,hd(maps:get(<<"changes">>,R))),
               {true,NewVal};
-              %{true,R};
             {0,1} -> 
               OldVal = maps:get(<<"old_val">>,hd(maps:get(<<"changes">>,R))),
               {false,OldVal};
-              %{false,R};
             _ -> 
               {false, no_updated}
           end;
@@ -111,35 +137,3 @@ update_by_hostkey(HostKey, UpdateMap) ->
             lager:info("Update for unknown host: ~p, Reason: ~p",[HostKey,Reason]),
             create(UpdateMap)
     end.
-
--spec delete(Id :: binary()) -> (ok | error).
-delete(Id) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-    {ok, R} = dog_rethink:run(
-                              fun(X) -> 
-                                      reql:db(X, dog),
-                                      reql:table(X, ?TYPE_TABLE),
-                                      reql:get(X, Id),
-                                      reql:delete(X)
-                              end),
-    lager:debug("delete R: ~p~n",[R]),
-    Deleted = maps:get(<<"deleted">>, R),
-    case Deleted of
-        1 -> ok;
-        _ -> error
-    end.
-
--spec get_all() -> {ok, list()}.
-get_all() ->
-    {ok, R} = dog_rethink:run(
-                              fun(X) -> 
-                                      reql:db(X, dog), 
-                                      reql:table(X, ?TYPE_TABLE)
-                              end),
-    {ok, Result} = rethink_cursor:all(R),
-    Hosts = case lists:flatten(Result) of
-                [] -> [];
-                Else -> Else
-            end,
-    {ok, Hosts}.

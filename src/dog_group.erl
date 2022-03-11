@@ -76,7 +76,7 @@
         get_profile_by_id/1,
         get_profile_by_name/1,
         %group_name_exists/1,
-        %in_active_profile/1,
+        in_active_profile/1,
         init/0,
         %internal_active/0,
         merge/1,
