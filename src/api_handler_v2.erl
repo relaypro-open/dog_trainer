@@ -30,13 +30,13 @@ get_handler_path(Path) ->
 get_handler_module(Path) ->
     handler_lookup(extract_module_from_path(Path,4,1)).
 
-handler_lookup(<<"external">>) -> dog_external;
+handler_lookup(<<"external">>) -> dog_external_api_v2;
 handler_lookup(<<"group">>) -> dog_group_api_v2;
 handler_lookup(<<"host">>) -> dog_host_api_v2;
-handler_lookup(<<"link">>) -> dog_link;
-handler_lookup(<<"profile">>) -> dog_profile;
-handler_lookup(<<"service">>) -> dog_service;
-handler_lookup(<<"zone">>) ->  dog_zone.
+handler_lookup(<<"link">>) -> dog_link_api_v2;
+handler_lookup(<<"profile">>) -> dog_profile_api_v2;
+handler_lookup(<<"service">>) -> dog_service_api_v2;
+handler_lookup(<<"zone">>) ->  dog_zone_api_v2.
 
 content_types_provided(Req, State) ->
 	{[
