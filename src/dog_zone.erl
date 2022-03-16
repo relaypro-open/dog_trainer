@@ -25,6 +25,7 @@
          all_ipv4s_grouped_by_id/0,
          all_ipv6s_grouped/0,
          all_ipv6s_grouped_by_id/0,
+         cleanup/1,
          get_all_grouped_by_id/0,
          get_all_ips/0,
          get_all_ipv4s_by_id/1,
