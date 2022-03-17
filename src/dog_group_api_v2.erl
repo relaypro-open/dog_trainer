@@ -13,6 +13,8 @@
         get_by_id/1,
         get_by_name/1,
         replace/2,
+        replace_profile_by_profile_id/2,
+        replace_profile_by_profile_id/3,
         update/2
         ]).
 
@@ -161,6 +163,21 @@ replace(Id, ReplaceMap) ->
         {error, Error} ->
             {false, Error}
     end.
+
+-spec replace_profile_by_profile_id(OldId :: binary(), NewId :: binary()) ->  list().
+replace_profile_by_profile_id(OldId, NewId) ->
+    GroupIds = dog_group:get_ids_with_profile_id(OldId),
+    Results = lists:map(fun(GroupId) ->
+        update(GroupId, #{<<"profile_id">> => NewId}) end, GroupIds),
+    Results.
+
+-spec replace_profile_by_profile_id(OldId :: binary(), NewId :: binary(), ProfileName :: iolist() ) ->  list().
+replace_profile_by_profile_id(OldId, NewId, ProfileName) ->
+    lager:debug("OldId: ~p, NewId: ~p, ProfileName: ~p", [OldId, NewId, ProfileName]),
+    GroupIds = dog_group:get_ids_with_profile_id(OldId),
+    Results = lists:map(fun(GroupId) ->
+        update(GroupId, #{<<"profile_id">> => NewId, <<"profile_name">> => ProfileName}) end, GroupIds),
+    Results.
 
 -spec update(GroupId :: binary(), UpdateMap :: map()) -> {atom(), any()} .
 update(Id, UpdateMap) ->
