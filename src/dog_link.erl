@@ -24,7 +24,8 @@
         get_name_by_id/1,
         get_all_active/0,
         get_all_active_outbound/0,
-        init/0
+        init/0,
+        is_enabled/1
         ]).
 
 -spec init() -> any(). 
