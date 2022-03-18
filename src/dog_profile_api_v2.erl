@@ -56,46 +56,11 @@ get_by_name(ProfileName) ->
 
 -spec update(Id :: binary(), UpdateMap :: map()) -> {atom(), Id :: iolist()} | {false, atom()}.
 update(Id, UpdateMap) ->
-    update(Id,UpdateMap,false).
+    update(Id,UpdateMap,true).
 
 -spec update(Id :: binary(), UpdateMap :: map(), InPlace :: boolean() ) -> {atom(), Id :: iolist()} | {false, atom()}.
-update(Id, UpdateMap, InPlace) ->
-    lager:debug("Id: ~p~n",[Id]),
-    lager:debug("UpdateMap: ~p~n",[UpdateMap]),
-    case get_by_id(Id) of
-        {ok, Profile@0} ->
-            Profile@1 = maps:merge(Profile@0,UpdateMap),
-            Profile@2 = maps:remove(<<"id">>,Profile@1),
-            case InPlace of
-                false -> 
-                    case create(Profile@2) of
-                        {validation_error, Error} ->
-                            {validation_error, Error};
-                        {ok, Profile2} ->
-                            case maps:find(<<"name">>,UpdateMap) of
-                                error ->
-                                    case lists:any(fun(X) -> element(1,X) /= ok end, dog_group_api_v2:replace_profile_by_profile_id(Id,Profile2)) of
-                                        true ->
-                                            {true, Profile2};
-                                        false ->
-                                            {false, error_replacing_profile}
-                                    end;
-                                {ok,UpdateName} ->
-                                    lager:debug("UpdateName: ~p",[UpdateName]),
-                                    case dog_group_api_v2:replace_profile_by_profile_id(Id,Profile2,UpdateName) of
-                                        [] -> % This profile not associated with any group
-                                            {true, Profile2};
-                                        [{true, _}] ->
-                                            {true, Profile2}
-                                    end
-                            end
-                    end;
-                true ->
-                   update_in_place(Id,Profile@2) 
-            end;
-        {error, Error} ->
-            {false, Error}
-    end.
+update(Id, UpdateMap, _InPlace) ->
+    update_in_place(Id,UpdateMap).
 
 -spec update_in_place(Id :: binary(), UpdateMap :: map()) -> {false, atom()} | {validation_error, iolist()} | {true, binary()}.
 update_in_place(Id, UpdateMap) ->
