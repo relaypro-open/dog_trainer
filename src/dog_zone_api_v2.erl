@@ -59,7 +59,17 @@ delete(Id) ->
 
 -spec get_all() -> {ok, list()}.
 get_all() ->
-  dog_zone:get_all().
+    {ok, R} = dog_rethink:run(
+                              fun(X) -> 
+                                      reql:db(X, dog), 
+                                      reql:table(X, ?TYPE_TABLE)
+                              end),
+    {ok, Result} = rethink_cursor:all(R),
+    Zones = case lists:flatten(Result) of
+                [] -> [];
+                Else -> Else
+            end,
+    {ok, Zones}.
 
 -spec get_by_id(ZoneId :: binary()) -> {ok, map()} | {ok, null} | {error, atom()}.
 get_by_id(ZoneId) ->

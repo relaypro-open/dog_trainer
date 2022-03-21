@@ -44,7 +44,17 @@ delete(Id) ->
 
 -spec get_all() -> {'ok',list()}.
 get_all() ->
-  dog_profile:get_all().
+    {ok, R} = dog_rethink:run(
+                              fun(X) ->
+                                      reql:db(X, dog),
+                                      reql:table(X, ?TYPE_TABLE)
+                              end),
+    {ok, Result} = rethink_cursor:all(R),
+    Profiles = case lists:flatten(Result) of
+                   [] -> [];
+                   Else -> Else
+               end,
+    {ok, Profiles}.
 
 -spec get_by_id(Id :: binary()) -> {ok, map()} | {error, notfound}.
 get_by_id(Id) ->

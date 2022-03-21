@@ -74,7 +74,17 @@ get(Name) ->
 
 -spec get_all() -> {ok, list()}.
 get_all() ->
-  dog_service:get_all().
+    {ok, R} = dog_rethink:run(
+                              fun(X) -> 
+                                      reql:db(X, dog), 
+                                      reql:table(X, ?TYPE_TABLE)
+                              end),
+    {ok, Result} = rethink_cursor:all(R),
+    Services = case lists:flatten(Result) of
+                [] -> [];
+                Else -> Else
+            end,
+    {ok, Services}.
 
 -spec get_by_id(Id :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_id(Id) ->
