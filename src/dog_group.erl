@@ -40,6 +40,7 @@
         %get_all_group_interfaces/0,
         %get_all_group_interfaces/1,
         get_all_grouped_by_id/0,
+        get_all_grouped_by_name/0,
         get_all_inbound_ports_by_protocol/1,
         get_all_internal_ec2_security_group_ids/0,
         get_all_ips_by_id/1,
@@ -264,6 +265,11 @@ get_all() ->
 get_all_grouped_by_id() ->
     {ok, All} = get_all(),
     maps:from_list([{maps:get(<<"id">>,Group), Group} || Group <- All]).
+
+-spec get_all_grouped_by_name() -> map().
+get_all_grouped_by_name() ->
+    {ok, All} = get_all(),
+    maps:from_list([{maps:get(<<"name">>,Group), Group} || Group <- All]).
 
 -spec get_group_names() -> list().
 get_group_names() ->

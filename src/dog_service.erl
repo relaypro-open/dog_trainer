@@ -19,6 +19,7 @@
 -export([
         get/1, 
         get_all_grouped_by_id/0,
+        get_all_grouped_by_name/0,
         get_all_in_profile/1,
         get_id_by_name/1,
         get_name_by_id/1,
@@ -230,8 +231,6 @@ get_all() ->
 
 -spec get_all_grouped_by_id() -> map().
 get_all_grouped_by_id() ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
                               fun(X) -> 
                                       reql:db(X, dog), 
@@ -243,6 +242,20 @@ get_all_grouped_by_id() ->
                 Else -> Else
             end,
     maps:from_list([{maps:get(<<"id">>,Service), Service} || Service <- Services]).
+
+-spec get_all_grouped_by_name() -> map().
+get_all_grouped_by_name() ->
+    {ok, R} = dog_rethink:run(
+                              fun(X) -> 
+                                      reql:db(X, dog), 
+                                      reql:table(X, service)
+                              end),
+    {ok, Result} = rethink_cursor:all(R),
+    Services = case lists:flatten(Result) of
+                [] -> [];
+                Else -> Else
+            end,
+    maps:from_list([{maps:get(<<"name">>,Service), Service} || Service <- Services]).
 
 -spec where_used(ServiceId :: binary()) -> {ok, list()}.
 where_used(ServiceId) ->

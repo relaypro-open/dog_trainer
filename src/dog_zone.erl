@@ -27,6 +27,7 @@
          all_ipv6s_grouped_by_id/0,
          cleanup/1,
          get_all_grouped_by_id/0,
+         get_all_grouped_by_name/0,
          get_all_ips/0,
          get_all_ipv4s_by_id/1,
          get_all_ipv4s_by_name/1,
@@ -212,6 +213,10 @@ get_all_grouped_by_id() ->
     {ok, All} = get_all(),
     maps:from_list([{maps:get(<<"id">>,Zone), Zone} || Zone <- All]).
 
+-spec get_all_grouped_by_name() -> map().
+get_all_grouped_by_name() ->
+    {ok, All} = get_all(),
+    maps:from_list([{maps:get(<<"name">>,Zone), Zone} || Zone <- All]).
 
 -spec cleanup(Group :: map()) -> {ok, map()}.
 cleanup(Group) ->
