@@ -1,7 +1,8 @@
 Useful Reql Queries
------
+--
 
 Agent Versions:
+
 ```
 r.db('dog').table('host')
   .filter( 
@@ -10,6 +11,7 @@ r.db('dog').table('host')
 ```
 
 Group by ipset_hash:
+
 ```
 r.db('dog').table('host')
   .filter( 
@@ -18,6 +20,7 @@ r.db('dog').table('host')
 ```
 
 True/false if all hosts are unique:
+
 ```
 r.db('dog').table('host')
   .filter( 
@@ -30,6 +33,7 @@ r.db('dog').table('host')
 ```
 
 Make sure no hostkey matches 'localhost':
+
 ```
 r.db('dog').table('host').orderBy("name")
   .filter( 
@@ -40,6 +44,7 @@ r.db('dog').table('host').orderBy("name")
 ```
 
 Active agents not passing keepalive check:
+
 ```
 r.db('dog').table('host')
   .filter(
@@ -51,6 +56,7 @@ r.db('dog').table('host')
 ```
 
 Agents Not Matching Global Ipset Hash:
+
 ```
 r.db("dog").table("host")
   .filter(
@@ -58,6 +64,7 @@ r.db("dog").table("host")
   .filter( 
     r.row("ipset_hash").ne(r.db("dog").table("ipset").getAll("global",{index:'name'}).nth(0).getField("hash")))
 ```
+
 ```
 r.db("dog").table("host")
   .filter(
@@ -67,30 +74,40 @@ r.db("dog").table("host")
     .ne(r.db("dog").table("ipset").orderBy(r.desc("timestamp")).limit(1)
       .getField("hash")))
 ```
+
 All external ipv4 addresss:
+
 ```
 r.db("dog").table("group").getField("external_ipv4_addresses").concatMap(function(x) { return x }).coerceTo('array').distinct()
 ```
+
 Find groups by regex name:
+
 ```
 r.db('dog').table('group')
   .filter( 
     r.row("name").match("dog"))
 ```
+
 Duplicate hostkeys in host records:
+
 ```
 r.db('dog').table('host')
  .filter(r.row("active").eq("active"))
  .group('hostkey').count().ungroup()
  .filter(row => row('reduction').gt(1))('group')
 ```
+
 Duplicate hostkeys in host records:
+
 ```
 r.db('dog').table('host')
  .group('hostkey').count().ungroup()
  .filter(row => row('reduction').gt(1))('group')
 ```
+
 Find host by IP:
+
 ```
 r.db('dog').table('host')
   .filter( 
@@ -99,14 +116,27 @@ r.db('dog').table('host')
     r.row("interfaces").match("1\.1\.1\.1")
   )
 ```
+
 Find profile by text in rules:
+
 ```
 r.db('dog').table('profile')
   .filter(
     r.row("rules").toJSON().match("test_zone")
   )
 ```
+
+Find address in zones:
+
+```
+r.db('dog').table('zone')
+  .filter(
+    r.row("ipv4_addresses").toJSON().match("1.2.3.4")
+  )
+```
+
 List all secondary indexes in all tables:
+
 ```
 r.db("dog").tableList().map(
   function(table) {
@@ -116,12 +146,14 @@ r.db("dog").tableList().map(
 ```
 
 groups in profile rules:
+
 ```
 r.db('dog').table('profile')('rules')('inbound').map(function (rule) {
   return rule('group')})
   ```
 
 All hosts who's ipv4 hash doesn't match their group's ipv4 hash:
+
 ```
 r.db('dog').table('host')
   .filter(r.row("active").eq("active"))
@@ -133,6 +165,7 @@ r.db('dog').table('host')
 ```
 
 List Host ec2_security_groups by associated Groups:
+
 ```
 r.db('dog').table('host')
   .filter(r.row("active").eq("active"))
@@ -141,6 +174,7 @@ r.db('dog').table('host')
 ```
 
 ec2 SG info by group without ec2_security_group_ids defined, useful to figure why they are not defined:
+
 ```
 r.db('dog').table('host')
   .filter(r.row("active").eq("active"))
@@ -155,6 +189,7 @@ r.db('dog').table('host')
 ```
 
 zones by count of IPs:
+
 ```
 r.db('dog').table('zone').map
    (function(zone) {
@@ -163,6 +198,7 @@ r.db('dog').table('zone').map
 ```
 
 list non-existent groups in active profiles (pathological case) (ignore 'all-active'):
+
 ```
 r.db('dog').table('group').withFields(['profile_id']).innerJoin(
   r.db('dog').table('profile'), 
