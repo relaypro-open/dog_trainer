@@ -51,39 +51,29 @@
         {sieve_threshold, 5000},
         {sieve_window, 100}
     ]},
-    {thumper, [
-        {substitution_rules, [{cluster, {edb, get_cluster_id, []}}]},
-        {thumper_svrs, [default, publish]},
-        {brokers, [
-            {default, [
-                {rabbitmq_config,
-                    [
-                        {host, "localhost"},
-                        {port, 5673},
-                        {api_port, 15672},
-                        {virtual_host, <<"dog">>},
-                        {user, <<"dog_trainer">>},
-                        {password, <<"327faf06-c3f5-11e7-9765-7831c1be5b34">>},
-                        {ssl_options, [{cacertfile, "/var/consul/data/pki/certs/ca.crt"},
-                                       {certfile, "/var/consul/data/pki/certs/server.crt"},
-                                       {keyfile, "/var/consul/data/pki/private/server.key"},
-                                       {verify, verify_peer},
-                                       {server_name_indication, disable},
-                                       {fail_if_no_peer_cert, true}
-                                      ]},
-                         {broker_config,
-                             {thumper_tx,
-                                 ["/opt/dog_trainer/priv/broker.tx"]}}
-                    ]}]},
-            {publish, [{rabbitmq_config, default}]}
-        ]},
-        {queuejournal,
-            [
-                {enabled, true},
-                {dir, "/var/db/dog_trainer/queuejournal"},
-                {memqueue_max, 10000},
-                {check_journal, true}
-            ]
-        }
+    {turtle, [
+        {connection_config, [
+            #{
+                conn_name => default,
+
+                username => "dog_trainer",
+                password => "dog_trainer1",
+                virtual_host => "dog",
+                ssl_options => [
+                               {cacertfile, "/var/consul/data/pki/certs/ca.crt"},
+                               {certfile, "/var/consul/data/pki/certs/server.crt"},
+                               {keyfile, "/var/consul/data/pki/private/server.key"},
+                               {verify, verify_peer},
+                               {server_name_indication, disable},
+                               {fail_if_no_peer_cert, true}
+                              ],
+                deadline => 300000,
+                connections => [
+                    {main, [
+                      {"dog-ubuntu-server.lxd", 5673 } 
+                    ]}
+                ]
+            }
+        ]}
     ]}
 ].
