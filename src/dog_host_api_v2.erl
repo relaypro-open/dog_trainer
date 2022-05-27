@@ -39,6 +39,8 @@ create(HostMap@0) ->
         {ok, _ExistingHost} ->
           {error,exists};
         {error,notfound} ->
+          {ok, ExistingHosts} = get_all(),
+          ExistingHostkeys = [maps:get(<<"hostkey">>,Host) || Host <- ExistingHosts],
           DefaultValuesHostMap = #{
                                    <<"active">> => <<"new">>,
                                    <<"environment">> => <<"*">>,
@@ -52,14 +54,19 @@ create(HostMap@0) ->
                                    <<"location">> => <<"*">>
                                   },
           MergedHostMap = maps:merge(DefaultValuesHostMap, HostMap@0),
-          {ok, R} = dog_rethink:run(
-            fun(X) -> 
-                reql:db(X, dog),
-                reql:table(X, ?TYPE_TABLE),
-                reql:insert(X,MergedHostMap,#{return_changes => always})
-            end),
-          NewVal = maps:get(<<"new_val">>,hd(maps:get(<<"changes">>,R))),
-          {ok, NewVal}
+          case lists:member(Hostkey, ExistingHostkeys) of
+              false ->
+                {ok, R} = dog_rethink:run(
+                  fun(X) -> 
+                      reql:db(X, dog),
+                      reql:table(X, ?TYPE_TABLE),
+                      reql:insert(X,MergedHostMap,#{return_changes => always})
+                  end),
+                NewVal = maps:get(<<"new_val">>,hd(maps:get(<<"changes">>,R))),
+                {ok, NewVal};
+              true ->
+                  {error, name_exists}
+          end
       end
   end.
 
