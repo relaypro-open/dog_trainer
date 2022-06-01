@@ -15,6 +15,7 @@
 -export([
          delete_file/2,
          execute_file/2,
+         send_data/3,
          send_file/2
         ]).
 
