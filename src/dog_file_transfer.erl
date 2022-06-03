@@ -1,4 +1,5 @@
 -module(dog_file_transfer).
+-include("dog_trainer.hrl").
 
 -include_lib("kernel/include/file.hrl").
 
@@ -16,6 +17,7 @@
          delete_file/2,
          execute_command/2,
          execute_command/3,
+         fetch_file/2,
          send_data/3,
          send_file/3
         ]).
@@ -158,6 +160,38 @@ number_blocks(RemoteFilePath) ->
             0
     end,
     FileSize.
+
+fetch_file(FilePath,Hostkey) ->
+    publish_file_fetch(Hostkey,FilePath).
+
+%Requires capability CAP_DAC_READ_SEARCH to read all files 
+-spec publish_file_fetch(Hostkey :: string(), Filename :: string()) -> any().
+publish_file_fetch(Hostkey, Filename) ->
+    Pid = erlang:self(),
+    Message = term_to_binary([
+                              {command, fetch_file},
+                              {file_name, Filename},
+                              {local_time, calendar:local_time()},
+                              {pid, Pid}
+                             ]),
+    RoutingKey = hostkey_to_routing_key(Hostkey),
+    case turtle:rpc_sync(
+           file_transfer_publisher, 
+           <<"file_transfer">>, 
+           RoutingKey, 
+           <<"text/json">>,
+           Message,
+           #{timeout => 60000 }) of
+              {error, Reason} -> 
+                    lager:error("Reason: ~p",[Reason]),
+                    Reason;
+              {ok, _NTime, _CType, Response} ->
+                    LocalFilePath = ?FILE_LOCATION_BASE  ++ dog_common:to_list(Hostkey) ++ "/fetch/" ++ dog_common:to_list(Filename),
+                    filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),                                                     
+                    ok = file:write_file( LocalFilePath, Response, [raw, write, binary]),                                               
+                    lager:info("Response: ~p",[Response]), 
+                    Response
+    end.
 
 %-define(HASH_BLOCK_SIZE,1024*1024*32).
 %file_hash(Filename) ->

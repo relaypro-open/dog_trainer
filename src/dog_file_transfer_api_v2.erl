@@ -3,7 +3,6 @@
 
 -include("dog_trainer.hrl").
 
--define(FILE_LOCATION_BASE, "/tmp/dog_trainer/file_transfer/").
 
 -export([
          init/2, 
