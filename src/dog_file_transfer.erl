@@ -15,7 +15,7 @@
 -export([
          delete_file/2,
          execute_command/2,
-         execute_file/2,
+         execute_command/3,
          send_data/3,
          send_file/2
         ]).
@@ -31,19 +31,22 @@ hostkey_to_routing_key(Hostkey) ->
         erlang:iolist_to_binary(["*.*.*.",Hostkey]).
 
 execute_command(ExecuteCommand,Hostkey) ->
-    publish_execute_command(Hostkey,ExecuteCommand).
+  execute_command(ExecuteCommand,Hostkey, []).
 
--spec publish_execute_command(Hostkey :: string(), ExecuteCommand :: string()) -> any().
-publish_execute_command(Hostkey, ExecuteCommand) ->
+execute_command(ExecuteCommand,Hostkey,Opts) ->
+  publish_execute_command(Hostkey, ExecuteCommand, Opts).
+
+-spec publish_execute_command(Hostkey :: string(), ExecuteCommand :: string(), Opts :: list() ) -> {ok|error, iolist()}.
+publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
     Pid = erlang:self(),
     Message = term_to_binary([
                               {command, execute_command},
                               {execute_command, ExecuteCommand },
                               {local_time, calendar:local_time()},
                               {pid, Pid}
-                             ]),
+                             ] ++ Opts),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    case turtle:rpc_sync(
+    Response = case turtle:rpc_sync(
            file_transfer_publisher, 
            <<"file_transfer">>, 
            RoutingKey, 
@@ -51,40 +54,18 @@ publish_execute_command(Hostkey, ExecuteCommand) ->
            Message) of
               {error, Reason} -> 
                     lager:error("Reason: ~p",[Reason]),
-                    Reason;
-              {ok, _NTime, _CType, Response} ->
-                    ResponseDecode = jsx:decode(Response),
-                    lager:info("Response: ~p",[ResponseDecode]), 
-                    ResponseDecode
-    end.
-
-execute_file(FilePath,Hostkey) ->
-    publish_file_execute(Hostkey,FilePath).
-
--spec publish_file_execute(Hostkey :: string(), Filename :: string()) -> any().
-publish_file_execute(Hostkey, Filename) ->
-    Pid = erlang:self(),
-    Message = term_to_binary([
-                              {command, execute_file},
-                              {file_name, Filename},
-                              {local_time, calendar:local_time()},
-                              {pid, Pid}
-                             ]),
-    RoutingKey = hostkey_to_routing_key(Hostkey),
-    case turtle:rpc_sync(
-           file_transfer_publisher, 
-           <<"file_transfer">>, 
-           RoutingKey, 
-           <<"text/json">>,
-           Message) of
-              {error, Reason} -> 
-                    lager:error("Reason: ~p",[Reason]),
-                    Reason;
-              {ok, _NTime, _CType, Response} ->
-                    ResponseDecode = jsx:decode(Response),
-                    lager:info("Response: ~p",[ResponseDecode]), 
-                    ResponseDecode
-    end.
+                    {error,Reason};
+              {ok, _NTime, _CType, Payload} ->
+                    case hd(jsx:decode(Payload)) of
+                      {<<"error">>,StdErr} ->
+                        lager:error("StdErr: ~p",[StdErr]),
+                        {error, StdErr};
+                      {<<"ok">>,StdOut} ->  
+                        lager:debug("StdOut: ~p",[StdOut]),
+                        {error, StdOut}
+                    end
+    end,
+    Response.
 
 delete_file(FilePath,Hostkey) ->
     publish_file_delete(Hostkey,FilePath).

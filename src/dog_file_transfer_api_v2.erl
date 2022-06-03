@@ -3,8 +3,7 @@
 
 -include("dog_trainer.hrl").
 
--define(VALIDATION_TYPE, <<"file_transfer">>).
--define(TYPE_TABLE, file_transfer).
+-define(FILE_LOCATION_BASE, "/tmp/dog_trainer/file_transfer/").
 
 -export([
          init/2, 
@@ -35,14 +34,18 @@ from_post_multipart(Req, State) ->
   Hostkey = cowboy_req:binding(id, Req),
   lager:debug( "Hostkey= ~p~n", [Hostkey] ),
   lager:debug( "Req= ~p~n", [Req] ),
-  {Result, Req2} = acc_multipart(Hostkey, Req, []),
-  lager:debug( "Result= ~p~n", [Result] ),
-  %cowboy_req:reply(200, 
-  %                 #{<<"content-type">> => <<"application/json">>},
-  %                 jsx:encode(#{}),
-  %                 Req2).
-  %write_to_file(term_to_binary(Result)),
-  {ok, Req2, State}.
+  case dog_host:get_by_hostkey(Hostkey) of
+    {error,notfound} ->
+      cowboy_req:reply(404, 
+                       #{<<"content-type">> => <<"application/json">>},
+                       jsx:encode(<<"Hostkey not found">>),
+                       Req),
+      {ok, Req, State};
+    _ ->
+      {Result, Req2} = acc_multipart(Hostkey, Req, []),
+      lager:debug( "Result= ~p~n", [Result] ),
+      {ok, Req2, State}
+  end.
 
 terminate(_Reason, _Req, _State) ->
   ok.
@@ -56,11 +59,12 @@ acc_multipart(Hostkey, Req, Acc) ->
                          [Req3, MyBody];
                        {file, _FieldName, Filename, CType} ->
                          lager:debug("stream_file filename=~p content_type=~p~n", [Filename, CType]),
-                         {ok, IoDevice} = file:open( Filename, [raw, write, binary]),
+                         LocalFilePath = ?FILE_LOCATION_BASE  ++ dog_common:to_list(Hostkey) ++ "/send/" ++ dog_common:to_list(Filename),
+                         filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),
+                         {ok, IoDevice} = file:open( LocalFilePath, [raw, write, binary]),
                          Req5=stream_file(Req2, IoDevice),
-                         %dog_file_transfer:send_data(IoDevice,Filename,Hostkey),
                          file:close(IoDevice),
-                         dog_file_transfer:send_file(Filename,Hostkey),
+                         dog_file_transfer:send_file(LocalFilePath, Filename,Hostkey),
                          [Req5, Filename]
                      end,
       acc_multipart(Hostkey, Req4, [{Headers, Body}|Acc]);
