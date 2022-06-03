@@ -17,7 +17,7 @@
          execute_command/2,
          execute_command/3,
          send_data/3,
-         send_file/2
+         send_file/3
         ]).
 
 -export([
@@ -94,15 +94,15 @@ publish_file_delete(Hostkey, Filename) ->
                     Response
     end.
 
--spec publish_file_send(Hostkey :: string(), Filename :: string(),Data :: binary(), TotalBlocks :: integer(), CurrentBlock :: integer()) -> any().
-publish_file_send(Hostkey, Filename, Data, TotalBlocks, CurrentBlock) ->
+-spec publish_file_send(Hostkey :: string(), RemoteFilePath :: string(),Data :: binary(), TotalBlocks :: integer(), CurrentBlock :: integer()) -> any().
+publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock) ->
     UserData = #{
       file_block => Data
                 },
     Pid = erlang:self(),
     Message = term_to_binary([
                               {command, send_file},
-                              {file_name, Filename},
+                              {file_name, RemoteFilePath},
                               {total_blocks, TotalBlocks},
                               {current_block, CurrentBlock},
                               {local_time, calendar:local_time()},
@@ -119,33 +119,33 @@ publish_file_send(Hostkey, Filename, Data, TotalBlocks, CurrentBlock) ->
         #{ delivery_mode => persistent }),
     Response.
 
--spec send_file(Filename :: string(), Hostkey :: string()) -> ok | error.
-send_file(Filename, Hostkey) ->
-    lager:debug("Filename: ~p, Hostkey: ~p",[Filename,Hostkey]),
+-spec send_file(LocalFilePath :: string(), RemoteFilePath :: string(), Hostkey :: string()) -> ok | error.
+send_file(LocalFilePath, RemoteFilePath, Hostkey) ->
+    lager:debug("LocalFilePath: ~p, Hostkey: ~p",[LocalFilePath,Hostkey]),
     try 
-        {ok,IoDevice} = file:open(Filename, [read,binary,read_ahead,raw]),
-        send_data(IoDevice,Filename, Hostkey)
+        {ok,IoDevice} = file:open(LocalFilePath, [read,binary,read_ahead,raw]),
+        send_data(IoDevice,RemoteFilePath, Hostkey)
     after 
-        file:close(Filename)
+        file:close(LocalFilePath)
     end.
 
-send_data(IoDevice,Filename, Hostkey) ->
-   TotalBlocks = number_blocks(Filename),
-   send_data(IoDevice,Filename, Hostkey, TotalBlocks, 0).
+send_data(IoDevice,RemoteFilePath, Hostkey) ->
+   TotalBlocks = number_blocks(RemoteFilePath),
+   send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, 0).
 
-send_data(IoDevice,Filename, Hostkey, TotalBlocks, CurrentBlock) ->
+send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, CurrentBlock) ->
    case file:read(IoDevice, ?BLOCK_SIZE) of
        {ok, Data} ->
-           lager:debug("Filename: ~p, CurrentBlock: ~p",[Filename,CurrentBlock]),
+           lager:debug("RemoteFilePath: ~p, CurrentBlock: ~p",[RemoteFilePath,CurrentBlock]),
            % Write Data to Socket
            NextBlock = CurrentBlock + 1,
-           publish_file_send(Hostkey,Filename,Data,TotalBlocks,NextBlock),
-           send_data(IoDevice, Filename, Hostkey,TotalBlocks,NextBlock);
+           publish_file_send(Hostkey,RemoteFilePath,Data,TotalBlocks,NextBlock),
+           send_data(IoDevice, RemoteFilePath, Hostkey,TotalBlocks,NextBlock);
        eof -> ok
    end.
 
-number_blocks(Filename) ->
-    FileSize = case file:read_file_info(Filename) of
+number_blocks(RemoteFilePath) ->
+    FileSize = case file:read_file_info(RemoteFilePath) of
         {ok, FileInfo} ->
             FullBlocks = erlang:floor(FileInfo#file_info.size / ?BLOCK_SIZE),
             case FileInfo#file_info.size rem ?BLOCK_SIZE of
