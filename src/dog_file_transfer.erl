@@ -3,8 +3,6 @@
 
 -include_lib("kernel/include/file.hrl").
 
--define(BLOCK_SIZE, 131072).
-
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
@@ -18,12 +16,12 @@
          execute_command/2,
          execute_command/3,
          fetch_file/2,
-         send_data/3,
+         send_data/4,
          send_file/3
         ]).
 
 -export([
-         number_blocks/1
+         number_blocks/2
         ]).
 
 %% ------------------------------------------------------------------
@@ -96,8 +94,8 @@ publish_file_delete(Hostkey, Filename) ->
                     Response
     end.
 
--spec publish_file_send(Hostkey :: string(), RemoteFilePath :: string(),Data :: binary(), TotalBlocks :: integer(), CurrentBlock :: integer()) -> any().
-publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock) ->
+-spec publish_file_send(Hostkey :: string(), RemoteFilePath :: string(),Data :: binary(), TotalBlocks :: integer(), CurrentBlock :: integer(), MaxBlockSizeBytes :: integer()) -> any().
+publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock, MaxBlockSizeBytes) ->
     UserData = #{
       file_block => Data
                 },
@@ -107,6 +105,7 @@ publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock) ->
                               {file_name, RemoteFilePath},
                               {total_blocks, TotalBlocks},
                               {current_block, CurrentBlock},
+                              {max_block_size_bytes, MaxBlockSizeBytes},
                               {local_time, calendar:local_time()},
                               {pid, Pid},
                               {user_data, UserData}
@@ -123,34 +122,35 @@ publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock) ->
 
 -spec send_file(LocalFilePath :: string(), RemoteFilePath :: string(), Hostkey :: string()) -> ok | error.
 send_file(LocalFilePath, RemoteFilePath, Hostkey) ->
+    MaxBlockSizeBytes = application:get_env(dog_trainer,max_block_size_bytes,134217728),
     lager:debug("LocalFilePath: ~p, Hostkey: ~p",[LocalFilePath,Hostkey]),
     try 
         {ok,IoDevice} = file:open(LocalFilePath, [read,binary,read_ahead,raw]),
-        send_data(IoDevice,RemoteFilePath, Hostkey)
+        send_data(IoDevice,RemoteFilePath, Hostkey, MaxBlockSizeBytes)
     after 
         file:close(LocalFilePath)
     end.
 
-send_data(IoDevice,RemoteFilePath, Hostkey) ->
-   TotalBlocks = number_blocks(RemoteFilePath),
-   send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, 0).
+send_data(IoDevice,RemoteFilePath, Hostkey, MaxBlockSizeBytes) ->
+   TotalBlocks = number_blocks(RemoteFilePath, MaxBlockSizeBytes),
+   send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, 0).
 
-send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, CurrentBlock) ->
-   case file:read(IoDevice, ?BLOCK_SIZE) of
+send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, CurrentBlock) ->
+   case file:read(IoDevice, MaxBlockSizeBytes) of
        {ok, Data} ->
-           lager:debug("RemoteFilePath: ~p, CurrentBlock: ~p",[RemoteFilePath,CurrentBlock]),
+       lager:debug("RemoteFilePath: ~p, MaxBlockSizeBytes: ~p, CurrentBlock: ~p",[RemoteFilePath,MaxBlockSizeBytes,CurrentBlock]),
            % Write Data to Socket
            NextBlock = CurrentBlock + 1,
-           publish_file_send(Hostkey,RemoteFilePath,Data,TotalBlocks,NextBlock),
-           send_data(IoDevice, RemoteFilePath, Hostkey,TotalBlocks,NextBlock);
+           publish_file_send(Hostkey,RemoteFilePath,Data,TotalBlocks,NextBlock, MaxBlockSizeBytes),
+           send_data(IoDevice, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, NextBlock);
        eof -> ok
    end.
 
-number_blocks(RemoteFilePath) ->
+number_blocks(RemoteFilePath, MaxBlockSizeBytes) ->
     FileSize = case file:read_file_info(RemoteFilePath) of
         {ok, FileInfo} ->
-            FullBlocks = erlang:floor(FileInfo#file_info.size / ?BLOCK_SIZE),
-            case FileInfo#file_info.size rem ?BLOCK_SIZE of
+            FullBlocks = erlang:floor(FileInfo#file_info.size / MaxBlockSizeBytes),
+            case FileInfo#file_info.size rem MaxBlockSizeBytes of
                N when N > 0 ->
                    FullBlocks + 1;
                _ ->
