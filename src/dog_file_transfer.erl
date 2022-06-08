@@ -89,9 +89,13 @@ publish_file_delete(Hostkey, Filename) ->
               {error, Reason} -> 
                     lager:error("Reason: ~p",[Reason]),
                     Reason;
-              {ok, _NTime, _CType, Response} ->
-                    lager:info("Response: ~p",[Response]), 
-                    Response
+              {ok, _NTime, _CType, Payload} ->
+          case hd(jsx:decode(Payload)) of
+              {<<"error">>,Error} ->
+                  {error, Error};
+              <<"ok">> ->
+                  ok
+          end
     end.
 
 -spec publish_file_send(Hostkey :: string(), RemoteFilePath :: string(),Data :: binary(), TotalBlocks :: integer(), CurrentBlock :: integer(), MaxBlockSizeBytes :: integer()) -> any().

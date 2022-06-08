@@ -1,19 +1,20 @@
 -module(dog_file_transfer_api_v2).
-%-behaviour(cowboy_rest).
+-behaviour(cowboy_rest).
 
 -include("dog_trainer.hrl").
 
-
 -export([
          init/2, 
-         %handle/2, 
          terminate/3
         ]).
-%-export([allowed_methods/2]).
-%-export([content_types_accepted/2]).
-%-export([content_types_provided/2]).
-%-export([from_post_multipart/2]).
-%-export([to_json/2]).
+-export([allowed_methods/2]).
+-export([content_types_accepted/2]).
+-export([content_types_provided/2]).
+-export([from_post_multipart/2]).
+-export([to_json/2]).
+-export([to_text/2]).
+-export([resource_exists/2]).
+-export([delete_resource/2]).
 
 %API
 %-export([
@@ -22,12 +23,7 @@
 %        ]).
 
 init(Req, Opts) ->
-	%{cowboy_rest, Req, Opts}.
-  from_post_multipart(Req, Opts).
-  %{ok, Req, Opts}.
-
-
-%AcceptCallback(Req, State) -> {Result, Req, State}
+	{cowboy_rest, Req, Opts}.
 
 from_post_multipart(Req, State) ->
   Hostkey = cowboy_req:binding(id, Req),
@@ -35,19 +31,28 @@ from_post_multipart(Req, State) ->
   lager:debug( "Req= ~p~n", [Req] ),
   case dog_host:get_by_hostkey(Hostkey) of
     {error,notfound} ->
-      cowboy_req:reply(404, 
+      Req@2 = cowboy_req:reply(404, 
                        #{<<"content-type">> => <<"application/json">>},
                        jsx:encode(<<"Hostkey not found">>),
                        Req),
-      {ok, Req, State};
+      {stop, Req@2, State};
     _ ->
       {Result, Req2} = acc_multipart(Hostkey, Req, []),
       lager:debug( "Result= ~p~n", [Result] ),
-      {ok, Req2, State}
+      lager:debug( "Req2= ~p~n", [Req2] ),
+      {true, Req2, State}
   end.
 
 terminate(_Reason, _Req, _State) ->
   ok.
+
+resource_exists(Req, State) ->
+  case cowboy_req:method(Req) of
+    <<"POST">> -> 
+      {false,Req,State};
+    <<"DELETE">> -> 
+      {true,Req,State}
+  end.
 
 acc_multipart(Hostkey, Req, Acc) ->
   case cowboy_req:read_part(Req) of
@@ -83,78 +88,53 @@ stream_file(Req, IoDevice) ->
       stream_file(Req2, IoDevice)
   end.
 
-%content_types_provided(Req, State) ->
-%	{[
-%		{<<"application/json">>, to_json}
-%	], Req, State}.
-%
-%content_types_accepted(Req, State) ->
-%    case cowboy_req:method(Req) of
-%            
-%        <<"POST">> ->
-%            {[ 
-%              {<<"multipart/form-data">>, from_post_multipart}
-%             ], Req, State}
-%    end.
-%
-%allowed_methods(Req, State) ->
-%        {[<<"POST">>, <<"DELETE">>], Req, State}.
-%
-%to_json(Req, State) ->
-%  lager:debug("State: ~p~n",[State]),
-%    %Id = cowboy_req:binding(id, Req),
-%    %Sub = cowboy_req:binding(sub, Req),
-%    %Object = maps:get(<<"object">>,State),
-%    Json = jsx:encode(State),
-%    {Json, Req, State}.
+content_types_provided(Req, State) ->
+	{[
+		{<<"application/json">>, to_json},
+		{<<"multipart/form-data">>, to_json},
+		{<<"text/plain">>, to_text}
+	], Req, State}.
 
-%from_post_multipart(Req@0, State) ->
-%    Path = cowboy_req:path(Req@0),
-%    %_Handler = get_handler_module(Path),
-%    %_HandlerPath = get_handler_path(Path),
-%    lager:debug("State: ~p~n",[State]),
-%    lager:debug("Path: ~p~n",[Path]).
+content_types_accepted(Req, State) ->
+    case cowboy_req:method(Req) of
+        <<"POST">> ->
+            {[ 
+              {<<"multipart/form-data">>, from_post_multipart}%,
+              %{<<"application/octet-stream">>, from_post_multipart}
+             ], Req, State}
+    end.
 
-%-spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists }.
-%create(ZoneMap@0) ->
-%  pass.
-%{ok, ZoneMap@1} = dog_zone:cleanup(ZoneMap@0),
-%Name = maps:get(<<"name">>, ZoneMap@1),
-%{ok, ExistingZones} = get_all(),
-%ExistingNames = [maps:get(<<"name">>,Zone) || Zone <- ExistingZones],
-%case lists:member(Name, ExistingNames) of
-%    false ->
-%        {ok, R} = dog_rethink:run(
-%                                  fun(X) -> 
-%                                          reql:db(X, dog),
-%                                          reql:table(X, ?TYPE_TABLE),
-%                                          reql:insert(X, ZoneMap@1,#{return_changes => always})
-%                                  end),
-%        NewVal = maps:get(<<"new_val">>,hd(maps:get(<<"changes">>,R))),
-%        {ok, NewVal};
-%    true ->
-%        {error, name_exists}
-%end.
+allowed_methods(Req, State) ->
+        {[<<"POST">>, <<"DELETE">>], Req, State}.
 
-%-spec delete(ZoneId :: binary()) -> ok | {error, Error :: map()}.
-%delete(Id) ->
-%  pass.
-%case dog_zone:in_active_profile(Id) of
-%      {false,[]} -> 
-%          {ok, R} = dog_rethink:run(
-%                                    fun(X) -> 
-%                                            reql:db(X, dog),
-%                                            reql:table(X, ?TYPE_TABLE),
-%                                            reql:get(X, Id),
-%                                            reql:delete(X)
-%                                    end),
-%          lager:debug("delete R: ~p~n",[R]),
-%          Deleted = maps:get(<<"deleted">>, R),
-%          case Deleted of
-%              1 -> ok;
-%              _ -> {error,#{<<"error">> => <<"error">>}}
-%          end;
-%      {true,Profiles} ->
-%          lager:info("zone ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
-%          {error,#{ <<"errors">> => #{<<"in active profile">> => Profiles}}}
-%   end.
+to_text(Req, State) ->
+  {State,Req,State}.
+
+to_json(Req, State) ->
+  lager:debug("State: ~p~n",[State]),
+    %Id = cowboy_req:binding(id, Req),
+    %Sub = cowboy_req:binding(sub, Req),
+    Object = maps:get(<<"object">>,State),
+    Json = jsx:encode(Object),
+    {Json, Req, State}.
+
+delete_resource(Req@0, State) ->
+  Id = cowboy_req:binding(id, Req@0),
+  Path = case cowboy_req:match_qs([{path, [], plain}], Req@0) of
+      #{path := Value} ->
+             Value;
+      _ -> 
+          undefined
+  end,
+  lager:debug("ID: ~p, Path:~p",[Id,Path]),
+  {Result,Req@1} = case dog_file_transfer:delete_file(Path,Id) of
+                     ok -> 
+                       {true,Req@0};
+                     timeout ->
+                       ErrorReq = cowboy_req:set_resp_body(jsx:encode(agent_timeout),Req@0),
+                       {false,ErrorReq};
+                     {error, Error} -> 
+                       ErrorReq = cowboy_req:set_resp_body(jsx:encode(Error),Req@0),
+                       {false,ErrorReq}
+                   end,
+  {Result, Req@1, State}.
