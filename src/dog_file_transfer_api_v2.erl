@@ -1,5 +1,4 @@
 -module(dog_file_transfer_api_v2).
--behaviour(cowboy_rest).
 
 -include("dog_trainer.hrl").
 
@@ -11,6 +10,7 @@
 -export([content_types_accepted/2]).
 -export([content_types_provided/2]).
 -export([from_post_multipart/2]).
+-export([from_post_json/2]).
 -export([to_json/2]).
 -export([to_text/2]).
 -export([resource_exists/2]).
@@ -42,6 +42,48 @@ from_post_multipart(Req, State) ->
       lager:debug( "Req2= ~p~n", [Req2] ),
       {true, Req2, State}
   end.
+
+from_post_json(Req, State) ->
+  lager:debug("Req: ~p", [Req]),
+  Hostkey = cowboy_req:binding(id, Req),
+  Body = cowboy_req:read_urlencoded_body(Req),
+  {ok, [{Content, true}], _} = Body,
+  lager:debug("Body: ~p", [Body]),
+  Message = jsx:decode(Content,[return_maps]),
+  lager:debug("Message: ~p",[Message]),
+  case dog_host:get_by_hostkey(Hostkey) of
+    {error,notfound} ->
+      Req@2 = cowboy_req:reply(404, 
+                       #{<<"content-type">> => <<"application/json">>},
+                       jsx:encode(<<"Hostkey not found">>),
+                       Req),
+      {stop, Req@2, State};
+    _ ->
+      %Message = jsx:decode(State,[return_maps]),
+      Command = maps:get(<<"command">>,Message),
+      Opts = case maps:get(<<"opts">>,Message,[]) of
+               [] -> [];
+               Value -> hd(Value)
+             end,
+      UseShell = erlang:binary_to_atom(maps:get(<<"use_shell">>,Opts,<<"false">>)),
+      User = dog_common:to_list(maps:get(<<"user">>,Opts,"dog")),
+      NewOpts = [{use_shell, UseShell},{user, User}],
+      lager:debug("NewOpts: ~p",[NewOpts]),
+      case dog_file_transfer:execute_command(Command,Hostkey,NewOpts) of
+        {error,Stderr} ->
+          Req@2 = cowboy_req:reply(400, 
+                           #{<<"content-type">> => <<"application/json">>},
+                           jsx:encode(#{error => Stderr}),
+                           Req),
+          {stop, Req@2, State};
+        {ok,Stdout} ->
+          Req@2 = cowboy_req:reply(200, 
+                           #{<<"content-type">> => <<"application/json">>},
+                           jsx:encode(#{ok => Stdout}),
+                           Req),
+          {stop, Req@2, State}
+      end
+  end. 
 
 terminate(_Reason, _Req, _State) ->
   ok.
@@ -99,8 +141,8 @@ content_types_accepted(Req, State) ->
     case cowboy_req:method(Req) of
         <<"POST">> ->
             {[ 
-              {<<"multipart/form-data">>, from_post_multipart}%,
-              %{<<"application/octet-stream">>, from_post_multipart}
+              {<<"multipart/form-data">>, from_post_multipart},
+              {<<"application/json">>, from_post_json}
              ], Req, State}
     end.
 
@@ -114,8 +156,8 @@ to_json(Req, State) ->
   lager:debug("State: ~p~n",[State]),
     %Id = cowboy_req:binding(id, Req),
     %Sub = cowboy_req:binding(sub, Req),
-    Object = maps:get(<<"object">>,State),
-    Json = jsx:encode(Object),
+    %Object = maps:get(<<"object">>,State),
+    Json = jsx:encode(State),
     {Json, Req, State}.
 
 delete_resource(Req@0, State) ->

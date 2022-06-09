@@ -62,7 +62,7 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
                         {error, StdErr};
                       {<<"ok">>,StdOut} ->  
                         lager:debug("StdOut: ~p",[StdOut]),
-                        {error, StdOut}
+                        {ok, StdOut}
                     end
     end,
     Response.
