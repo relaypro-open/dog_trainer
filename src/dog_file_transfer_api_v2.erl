@@ -11,16 +11,11 @@
 -export([content_types_provided/2]).
 -export([from_post_multipart/2]).
 -export([from_post_json/2]).
+-export([to_file/2]).
 -export([to_json/2]).
 -export([to_text/2]).
 -export([resource_exists/2]).
 -export([delete_resource/2]).
-
-%API
-%-export([
-%         create/1,
-%         delete/1
-%        ]).
 
 init(Req, Opts) ->
 	{cowboy_rest, Req, Opts}.
@@ -59,7 +54,6 @@ from_post_json(Req, State) ->
                        Req),
       {stop, Req@2, State};
     _ ->
-      %Message = jsx:decode(State,[return_maps]),
       Command = maps:get(<<"command">>,Message),
       Opts = case maps:get(<<"opts">>,Message,[]) of
                [] -> [];
@@ -93,7 +87,35 @@ resource_exists(Req, State) ->
     <<"POST">> -> 
       {false,Req,State};
     <<"DELETE">> -> 
-      {true,Req,State}
+      {true,Req,State};
+    <<"GET">> ->
+      Id = cowboy_req:binding(id, Req),
+      Path = case cowboy_req:match_qs([{path, [], plain}], Req) of
+          #{path := Value} ->
+                 Value;
+          _ -> undefined
+      end,
+      lager:debug("ID: ~p, Path:~p",[Id,Path]),
+      case dog_file_transfer:fetch_file(Path,Id) of
+          timeout ->
+              Req@2 = cowboy_req:reply(500, 
+                                       #{<<"content-type">> => <<"application/json">>},
+                                       jsx:encode(#{error => timeout}),
+                                       Req),
+              {false, Req@2, State};
+          {error, Error} -> 
+              Req@2 = cowboy_req:reply(400, 
+                                       #{<<"content-type">> => <<"application/json">>},
+                                       jsx:encode(#{error => Error}),
+                                       Req),
+              {false, Req@2, State};
+          Result ->
+              Req@2 = cowboy_req:reply(200, 
+                                       #{<<"content-type">> => <<"application/octet-stream">> },
+                                       Result,
+                                       Req),
+              {stop, Req@2, State}
+      end
   end.
 
 acc_multipart(Hostkey, Req, Acc) ->
@@ -134,7 +156,8 @@ content_types_provided(Req, State) ->
 	{[
 		{<<"application/json">>, to_json},
 		{<<"multipart/form-data">>, to_json},
-		{<<"text/plain">>, to_text}
+		{<<"text/plain">>, to_text},
+        {<<"application/octet-stream">>, to_file}
 	], Req, State}.
 
 content_types_accepted(Req, State) ->
@@ -147,9 +170,12 @@ content_types_accepted(Req, State) ->
     end.
 
 allowed_methods(Req, State) ->
-        {[<<"POST">>, <<"DELETE">>], Req, State}.
+        {[<<"POST">>, <<"DELETE">>, <<"GET">>], Req, State}.
 
 to_text(Req, State) ->
+  {State,Req,State}.
+
+to_file(Req, State) ->
   {State,Req,State}.
 
 to_json(Req, State) ->
