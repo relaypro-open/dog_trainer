@@ -185,16 +185,29 @@ publish_file_fetch(Hostkey, Filename) ->
            RoutingKey, 
            <<"text/json">>,
            Message,
-           #{timeout => 60000 }) of
+           #{timeout => 20000 }) of
               {error, Reason} -> 
                     lager:error("Reason: ~p",[Reason]),
-                    Reason;
-              {ok, _NTime, _CType, Response} ->
-                    LocalFilePath = ?FILE_LOCATION_BASE  ++ dog_common:to_list(Hostkey) ++ "/fetch/" ++ dog_common:to_list(Filename),
-                    filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),                                                     
-                    ok = file:write_file( LocalFilePath, Response, [raw, write, binary]),                                               
-                    lager:info("Response: ~p",[Response]), 
-                    Response
+                    {error, Reason};
+              {ok, _NTime, CType, Response} ->
+                    lager:debug("CType: ~p",[CType]),
+                    case CType of
+                        <<"application/octet-stream">> -> 
+                            LocalFilePath = ?FILE_LOCATION_BASE  ++ dog_common:to_list(Hostkey) ++ "/fetch/" ++ dog_common:to_list(Filename),
+                            filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),                                                     
+                            ok = file:write_file( LocalFilePath, Response, [raw, write, binary]),                                               
+                            lager:info("Response: ~p",[Response]), 
+                            Response;
+                        <<"text/json">> ->
+                            case hd(jsx:decode(Response)) of
+                              {<<"error">>,StdErr} ->
+                                lager:error("StdErr: ~p",[StdErr]),
+                                {error, StdErr};
+                              {<<"ok">>,StdOut} ->  
+                                lager:debug("StdOut: ~p",[StdOut]),
+                                {ok, StdOut}
+                            end
+                    end
     end.
 
 %-define(HASH_BLOCK_SIZE,1024*1024*32).

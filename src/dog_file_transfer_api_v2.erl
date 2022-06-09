@@ -102,13 +102,13 @@ resource_exists(Req, State) ->
                                        #{<<"content-type">> => <<"application/json">>},
                                        jsx:encode(#{error => timeout}),
                                        Req),
-              {false, Req@2, State};
+              {stop, Req@2, State};
           {error, Error} -> 
               Req@2 = cowboy_req:reply(400, 
                                        #{<<"content-type">> => <<"application/json">>},
                                        jsx:encode(#{error => Error}),
                                        Req),
-              {false, Req@2, State};
+              {stop, Req@2, State};
           Result ->
               Req@2 = cowboy_req:reply(200, 
                                        #{<<"content-type">> => <<"application/octet-stream">> },
