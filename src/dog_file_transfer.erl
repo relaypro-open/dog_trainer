@@ -196,7 +196,7 @@ publish_file_fetch(Hostkey, Filename) ->
                             LocalFilePath = ?FILE_LOCATION_BASE  ++ dog_common:to_list(Hostkey) ++ "/fetch/" ++ dog_common:to_list(Filename),
                             filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),                                                     
                             ok = file:write_file( LocalFilePath, Response, [raw, write, binary]),                                               
-                            lager:info("Response: ~p",[Response]), 
+                            lager:info("Response Size: ~p",[length(Response)]), 
                             Response;
                         <<"text/json">> ->
                             case hd(jsx:decode(Response)) of
