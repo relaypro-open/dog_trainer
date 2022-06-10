@@ -20,32 +20,9 @@
 init(Req, Opts) ->
 	{cowboy_rest, Req, Opts}.
 
-from_post_multipart(Req, State) ->
-  Hostkey = cowboy_req:binding(id, Req),
-  lager:debug( "Hostkey= ~p~n", [Hostkey] ),
-  lager:debug( "Req= ~p~n", [Req] ),
-  case dog_host:get_by_hostkey(Hostkey) of
-    {error,notfound} ->
-      Req@2 = cowboy_req:reply(404, 
-                       #{<<"content-type">> => <<"application/json">>},
-                       jsx:encode(<<"Hostkey not found">>),
-                       Req),
-      {stop, Req@2, State};
-    _ ->
-      {Result, Req2} = acc_multipart(Hostkey, Req, []),
-      lager:debug( "Result= ~p~n", [Result] ),
-      lager:debug( "Req2= ~p~n", [Req2] ),
-      {true, Req2, State}
-  end.
-
 from_post_json(Req, State) ->
   lager:debug("Req: ~p", [Req]),
   Hostkey = cowboy_req:binding(id, Req),
-  Body = cowboy_req:read_urlencoded_body(Req),
-  {ok, [{Content, true}], _} = Body,
-  lager:debug("Body: ~p", [Body]),
-  Message = jsx:decode(Content,[return_maps]),
-  lager:debug("Message: ~p",[Message]),
   case dog_host:get_by_hostkey(Hostkey) of
     {error,notfound} ->
       Req@2 = cowboy_req:reply(404, 
@@ -54,30 +31,36 @@ from_post_json(Req, State) ->
                        Req),
       {stop, Req@2, State};
     _ ->
-      Command = maps:get(<<"command">>,Message),
-      Opts = case maps:get(<<"opts">>,Message,[]) of
-               [] -> [];
-               Value -> hd(Value)
-             end,
-      UseShell = erlang:binary_to_atom(maps:get(<<"use_shell">>,Opts,<<"false">>)),
-      User = dog_common:to_list(maps:get(<<"user">>,Opts,"dog")),
-      NewOpts = [{use_shell, UseShell},{user, User}],
-      lager:debug("NewOpts: ~p",[NewOpts]),
-      case dog_file_transfer:execute_command(Command,Hostkey,NewOpts) of
-        {error,Stderr} ->
+      Body = cowboy_req:read_body(Req),
+      lager:debug("Body: ~p", [Body]),
+      {ok, Content, _} = Body,
+      lager:debug("Content: ~p", [Content]),
+      Message = jsx:decode(Content,[return_maps]),
+      Response = handle_command(Hostkey,Message),
+      case Response of
+          {error,StdErr} ->
           Req@2 = cowboy_req:reply(400, 
                            #{<<"content-type">> => <<"application/json">>},
-                           jsx:encode(#{error => Stderr}),
+                           jsx:encode(#{error => StdErr}),
                            Req),
           {stop, Req@2, State};
-        {ok,Stdout} ->
+          {ok,StdOut} ->
           Req@2 = cowboy_req:reply(200, 
                            #{<<"content-type">> => <<"application/json">>},
-                           jsx:encode(#{ok => Stdout}),
+                           jsx:encode(#{ok => StdOut}),
                            Req),
           {stop, Req@2, State}
       end
-  end. 
+  end.
+
+handle_command(Hostkey,Message) ->
+  lager:debug("Message: ~p",[Message]),
+  Command = maps:get(<<"command">>,Message),
+  UseShell = erlang:binary_to_atom(maps:get(<<"use_shell">>,Message,<<"true">>)),
+  User = dog_common:to_list(maps:get(<<"user">>,Message,"root")),
+  NewOpts = [{use_shell, UseShell},{user, User}],
+  lager:debug("NewOpts: ~p",[NewOpts]),
+  dog_file_transfer:execute_command(Command,Hostkey,NewOpts).
 
 terminate(_Reason, _Req, _State) ->
   ok.
@@ -118,6 +101,32 @@ resource_exists(Req, State) ->
       end
   end.
 
+from_post_multipart(Req, State) ->
+  Hostkey = cowboy_req:binding(id, Req),
+  lager:debug( "Hostkey= ~p~n", [Hostkey] ),
+  lager:debug( "Req= ~p~n", [Req] ),
+  case dog_host:get_by_hostkey(Hostkey) of
+    {error,notfound} ->
+      Req@2 = cowboy_req:reply(404, 
+                       #{<<"content-type">> => <<"application/json">>},
+                       jsx:encode(<<"Hostkey not found">>),
+                       Req),
+      {stop, Req@2, State};
+    _ ->
+      {Result, Req@2} = acc_multipart(Hostkey, Req, []),
+      lager:debug( "Result= ~p~n", [Result] ),
+      lager:debug( "Req@2= ~p~n", [Req@2] ),
+      ParsedResult = jsx:encode(lists:map(fun(X) ->
+                                        element(1,X)
+                                 end,Result)),
+      lager:debug( "ParsedResult= ~p~n", [ParsedResult] ),
+      Req@3 = cowboy_req:reply(200, 
+                       #{<<"content-type">> => <<"application/json">>},
+                       ParsedResult,
+                       Req@2),
+      {stop, Req@3, State}
+  end.
+
 acc_multipart(Hostkey, Req, Acc) ->
   case cowboy_req:read_part(Req) of
     {ok, Headers, Req2} ->
@@ -125,15 +134,15 @@ acc_multipart(Hostkey, Req, Acc) ->
                        {data, _FieldName} ->
                          {ok, MyBody, Req3} = cowboy_req:part_body(Req2),
                          [Req3, MyBody];
-                       {file, _FieldName, Filename, CType} ->
-                         lager:debug("stream_file filename=~p content_type=~p~n", [Filename, CType]),
-                         LocalFilePath = ?FILE_LOCATION_BASE  ++ dog_common:to_list(Hostkey) ++ "/send/" ++ dog_common:to_list(Filename),
+                       {file, _FieldName, RemoteFilePath, CType} ->
+                         lager:debug("stream_file filename=~p content_type=~p~n", [RemoteFilePath, CType]),
+                         LocalFilePath = ?FILE_LOCATION_BASE  ++ dog_common:to_list(Hostkey) ++ "/send/" ++ dog_common:to_list(RemoteFilePath),
                          filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),
                          {ok, IoDevice} = file:open( LocalFilePath, [raw, write, binary]),
                          Req5=stream_file(Req2, IoDevice),
                          file:close(IoDevice),
-                         dog_file_transfer:send_file(LocalFilePath, Filename,Hostkey),
-                         [Req5, Filename]
+                         dog_file_transfer:send_file(LocalFilePath, RemoteFilePath,Hostkey),
+                         [Req5, RemoteFilePath]
                      end,
       acc_multipart(Hostkey, Req4, [{Headers, Body}|Acc]);
     {done, Req2} ->
