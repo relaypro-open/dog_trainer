@@ -21,46 +21,53 @@ init(Req, Opts) ->
 	{cowboy_rest, Req, Opts}.
 
 from_post_json(Req, State) ->
-  lager:debug("Req: ~p", [Req]),
-  Hostkey = cowboy_req:binding(id, Req),
-  case dog_host:get_by_hostkey(Hostkey) of
-    {error,notfound} ->
-      Req@2 = cowboy_req:reply(404, 
-                       #{<<"content-type">> => <<"application/json">>},
-                       jsx:encode(<<"Hostkey not found">>),
-                       Req),
-      {stop, Req@2, State};
-    _ ->
-      Body = cowboy_req:read_body(Req),
-      lager:debug("Body: ~p", [Body]),
-      {ok, Content, _} = Body,
-      lager:debug("Content: ~p", [Content]),
-      Message = jsx:decode(Content,[return_maps]),
-      Response = handle_command(Hostkey,Message),
-      case Response of
-          {error,StdErr} ->
-          Req@2 = cowboy_req:reply(400, 
-                           #{<<"content-type">> => <<"application/json">>},
-                           jsx:encode(#{error => StdErr}),
-                           Req),
-          {stop, Req@2, State};
-          {ok,StdOut} ->
-          Req@2 = cowboy_req:reply(200, 
-                           #{<<"content-type">> => <<"application/json">>},
-                           jsx:encode(#{ok => StdOut}),
-                           Req),
-          {stop, Req@2, State}
-      end
-  end.
+    lager:debug("Req: ~p", [Req]),
+    Hostkey = cowboy_req:binding(id, Req),
+    case dog_host:get_by_hostkey(Hostkey) of
+        {error,notfound} ->
+            Req@2 = cowboy_req:reply(404, 
+                                     #{<<"content-type">> => <<"application/json">>},
+                                     jsx:encode(<<"Hostkey not found">>),
+                                     Req),
+            {stop, Req@2, State};
+        _ ->
+            Body = cowboy_req:read_body(Req),
+            lager:debug("Body: ~p", [Body]),
+            {ok, Content, _} = Body,
+            lager:debug("Content: ~p", [Content]),
+            Message = jsx:decode(Content,[return_maps]),
+            Response = handle_command(Hostkey,Message),
+            case Response of
+                {error,StdErr} ->
+                    Req@2 = cowboy_req:reply(400, 
+                                             #{<<"content-type">> => <<"application/json">>},
+                                             jsx:encode(#{Hostkey => #{retcode => 1, stdout => <<"">>, stderr => StdErr}}),
+                                             Req),
+                    {stop, Req@2, State};
+                {ok,[]} ->
+                    Req@2 = cowboy_req:reply(200,
+                                             #{<<"content-type">> => <<"application/json">>},
+                                             jsx:encode(#{Hostkey => #{retcode => 0, stdout => <<"">>, stderr => <<"">>}}),
+                                             Req),
+                    {stop, Req@2, State};
+                {ok,StdOut} ->
+                    Req@2 = cowboy_req:reply(200,
+                                             #{<<"content-type">> => <<"application/json">>},
+                                             jsx:encode(#{Hostkey => #{retcode => 0, stdout => string:trim(StdOut), stderr => <<"">>}}),
+                                             Req),
+                    {stop, Req@2, State}
+            end
+    end.
 
 handle_command(Hostkey,Message) ->
   lager:debug("Message: ~p",[Message]),
   Command = maps:get(<<"command">>,Message),
-  UseShell = erlang:binary_to_atom(maps:get(<<"use_shell">>,Message,<<"true">>)),
-  User = dog_common:to_list(maps:get(<<"user">>,Message,"root")),
+  UseShell = erlang:binary_to_atom(maps:get(<<"use_shell">>,Message,<<"false">>)),
+  User = dog_common:to_list(maps:get(<<"user">>,Message,"dog")),
   NewOpts = [{use_shell, UseShell},{user, User}],
   lager:debug("NewOpts: ~p",[NewOpts]),
-  dog_file_transfer:execute_command(Command,Hostkey,NewOpts).
+  CommandBase64 = base64:encode(Command),
+  dog_file_transfer:execute_command(CommandBase64,Hostkey,NewOpts).
 
 terminate(_Reason, _Req, _State) ->
   ok.
