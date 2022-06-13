@@ -38,10 +38,11 @@ execute_command(ExecuteCommand,Hostkey,Opts) ->
 
 -spec publish_execute_command(Hostkey :: string(), ExecuteCommand :: string(), Opts :: list() ) -> {ok|error, iolist()}.
 publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
+    ExecuteCommandBase64 = base64:encode(ExecuteCommand),
     Pid = erlang:self(),
     Message = term_to_binary([
                               {command, execute_command},
-                              {execute_command, ExecuteCommand },
+                              {execute_command, ExecuteCommandBase64 },
                               {local_time, calendar:local_time()},
                               {pid, Pid}
                              ] ++ Opts),
@@ -56,7 +57,9 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
                     lager:error("Reason: ~p",[Reason]),
                     {error,Reason};
               {ok, _NTime, _CType, Payload} ->
+                    lager:debug("Payload: ~p",[Payload]),
                     case hd(jsx:decode(Payload)) of
+                    %case Payload of
                       {<<"error">>,StdErr} ->
                         lager:error("StdErr: ~p",[StdErr]),
                         {error, StdErr};

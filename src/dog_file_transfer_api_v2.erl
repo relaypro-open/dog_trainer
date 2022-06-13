@@ -66,8 +66,7 @@ handle_command(Hostkey,Message) ->
   User = dog_common:to_list(maps:get(<<"user">>,Message,"dog")),
   NewOpts = [{use_shell, UseShell},{user, User}],
   lager:debug("NewOpts: ~p",[NewOpts]),
-  CommandBase64 = base64:encode(Command),
-  dog_file_transfer:execute_command(CommandBase64,Hostkey,NewOpts).
+  dog_file_transfer:execute_command(Command,Hostkey,NewOpts).
 
 terminate(_Reason, _Req, _State) ->
   ok.
