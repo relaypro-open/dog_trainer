@@ -23,6 +23,14 @@ init(Req, Opts) ->
 from_post_json(Req, State) ->
     lager:debug("Req: ~p", [Req]),
     Hostkey = cowboy_req:binding(id, Req),
+    ApiUserName = cowboy_req:header(<<"x-consumer-username">>, Req),
+    ConsumerCustomId = cowboy_req:header(<<"x-consumer-custom-id">>, Req),
+    ConsumerId = cowboy_req:header(<<"x-consumer-id">>, Req),
+    CredentialIdentifier = cowboy_req:header(<<"x-credential-identifier">>, Req),
+    lager:debug("ApiUserName: ~p",[ApiUserName]),
+    lager:debug("ConsumerCustomId: ~p",[ConsumerCustomId]),
+    lager:debug("ConsumerId: ~p",[ConsumerId]),
+    lager:debug("CredentialIdentifier: ~p",[CredentialIdentifier]),
     case dog_host:get_by_hostkey(Hostkey) of
         {error,notfound} ->
             Req@2 = cowboy_req:reply(404, 
@@ -36,7 +44,7 @@ from_post_json(Req, State) ->
             {ok, Content, _} = Body,
             lager:debug("Content: ~p", [Content]),
             Message = jsx:decode(Content,[return_maps]),
-            Response = handle_command(Hostkey,Message),
+            Response = handle_command(Hostkey,Message,ApiUserName),
             case Response of
                 {error,StdErr} ->
                     Req@2 = cowboy_req:reply(400, 
@@ -59,12 +67,12 @@ from_post_json(Req, State) ->
             end
     end.
 
-handle_command(Hostkey,Message) ->
+handle_command(Hostkey,Message,ApiUserName) ->
   lager:debug("Message: ~p",[Message]),
   Command = maps:get(<<"command">>,Message),
   UseShell = erlang:binary_to_atom(maps:get(<<"use_shell">>,Message,<<"false">>)),
   User = dog_common:to_list(maps:get(<<"user">>,Message,"dog")),
-  NewOpts = [{use_shell, UseShell},{user, User}],
+  NewOpts = [{use_shell, UseShell},{user, User},{api_user, ApiUserName}],
   lager:debug("NewOpts: ~p",[NewOpts]),
   dog_file_transfer:execute_command(Command,Hostkey,NewOpts).
 
@@ -79,13 +87,16 @@ resource_exists(Req, State) ->
       {true,Req,State};
     <<"GET">> ->
       Id = cowboy_req:binding(id, Req),
+      ApiUserName = cowboy_req:header(<<"x-consumer-username">>, Req),
+      lager:debug("ApiUserName: ~p",[ApiUserName]),
       Path = case cowboy_req:match_qs([{path, [], plain}], Req) of
           #{path := Value} ->
                  Value;
           _ -> undefined
       end,
       lager:debug("ID: ~p, Path:~p",[Id,Path]),
-      case dog_file_transfer:fetch_file(Path,Id) of
+      Opts = [{api_user, ApiUserName}],
+      case dog_file_transfer:fetch_file(Path,Id,Opts) of
           timeout ->
               Req@2 = cowboy_req:reply(500, 
                                        #{<<"content-type">> => <<"application/json">>},
@@ -108,6 +119,8 @@ resource_exists(Req, State) ->
   end.
 
 from_post_multipart(Req, State) ->
+  ApiUserName = cowboy_req:header(<<"x-consumer-username">>, Req),
+  Opts = [{api_user, ApiUserName}],
   Hostkey = cowboy_req:binding(id, Req),
   lager:debug( "Hostkey= ~p~n", [Hostkey] ),
   lager:debug( "Req= ~p~n", [Req] ),
@@ -119,7 +132,7 @@ from_post_multipart(Req, State) ->
                        Req),
       {stop, Req@2, State};
     _ ->
-      {Result, Req@2} = acc_multipart(Hostkey, Req, []),
+      {Result, Req@2} = acc_multipart(Hostkey, Req, [], Opts),
       lager:debug( "Result= ~p~n", [Result] ),
       lager:debug( "Req@2= ~p~n", [Req@2] ),
       ParsedResult = jsx:encode(lists:map(fun(X) ->
@@ -133,7 +146,7 @@ from_post_multipart(Req, State) ->
       {stop, Req@3, State}
   end.
 
-acc_multipart(Hostkey, Req, Acc) ->
+acc_multipart(Hostkey, Req, Acc, Opts) ->
   case cowboy_req:read_part(Req) of
     {ok, Headers, Req2} ->
             [Req4, Body] = case cow_multipart:form_data(Headers) of
@@ -147,10 +160,10 @@ acc_multipart(Hostkey, Req, Acc) ->
                          {ok, IoDevice} = file:open( LocalFilePath, [raw, write, binary]),
                          Req5=stream_file(Req2, IoDevice),
                          file:close(IoDevice),
-                         dog_file_transfer:send_file(LocalFilePath, RemoteFilePath,Hostkey),
+                         dog_file_transfer:send_file(LocalFilePath, RemoteFilePath,Hostkey,Opts),
                          [Req5, RemoteFilePath]
                      end,
-      acc_multipart(Hostkey, Req4, [{Headers, Body}|Acc]);
+      acc_multipart(Hostkey, Req4, [{Headers, Body}|Acc], Opts);
     {done, Req2} ->
       {lists:reverse(Acc), Req2}
   end.
@@ -202,6 +215,7 @@ to_json(Req, State) ->
     {Json, Req, State}.
 
 delete_resource(Req@0, State) ->
+  ApiUserName = cowboy_req:header(<<"x-consumer-username">>, Req@0),
   Id = cowboy_req:binding(id, Req@0),
   Path = case cowboy_req:match_qs([{path, [], plain}], Req@0) of
       #{path := Value} ->
@@ -210,7 +224,8 @@ delete_resource(Req@0, State) ->
           undefined
   end,
   lager:debug("ID: ~p, Path:~p",[Id,Path]),
-  {Result,Req@1} = case dog_file_transfer:delete_file(Path,Id) of
+  Opts = [{api_user, ApiUserName}],
+  {Result,Req@1} = case dog_file_transfer:delete_file(Path,Id,Opts) of
                      ok -> 
                        {true,Req@0};
                      timeout ->

@@ -12,12 +12,12 @@
 %% ------------------------------------------------------------------
 
 -export([
-         delete_file/2,
+         delete_file/3,
          execute_command/2,
          execute_command/3,
-         fetch_file/2,
-         send_data/4,
-         send_file/3
+         fetch_file/3,
+         send_data/5,
+         send_file/4
         ]).
 
 -export([
@@ -70,18 +70,18 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
     end,
     Response.
 
-delete_file(FilePath,Hostkey) ->
-    publish_file_delete(Hostkey,FilePath).
+delete_file(FilePath,Hostkey,Opts) ->
+    publish_file_delete(Hostkey,FilePath,Opts).
 
--spec publish_file_delete(Hostkey :: string(), Filename :: string()) -> any().
-publish_file_delete(Hostkey, Filename) ->
+-spec publish_file_delete(Hostkey :: string(), Filename :: string(), Opts :: list()) -> any().
+publish_file_delete(Hostkey, Filename, Opts) ->
     Pid = erlang:self(),
     Message = term_to_binary([
                               {command, delete_file},
                               {file_name, Filename},
                               {local_time, calendar:local_time()},
                               {pid, Pid}
-                             ]),
+                             ] ++ Opts),
     RoutingKey = hostkey_to_routing_key(Hostkey),
     case turtle:rpc_sync(
            file_transfer_publisher, 
@@ -101,8 +101,8 @@ publish_file_delete(Hostkey, Filename) ->
           end
     end.
 
--spec publish_file_send(Hostkey :: string(), RemoteFilePath :: string(),Data :: binary(), TotalBlocks :: integer(), CurrentBlock :: integer(), MaxBlockSizeBytes :: integer()) -> any().
-publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock, MaxBlockSizeBytes) ->
+-spec publish_file_send(Hostkey :: string(), RemoteFilePath :: string(),Data :: binary(), TotalBlocks :: integer(), CurrentBlock :: integer(), MaxBlockSizeBytes :: integer(), Opts :: list()) -> any().
+publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock, MaxBlockSizeBytes, Opts) ->
     UserData = #{
       file_block => Data
                 },
@@ -116,7 +116,7 @@ publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock, MaxB
                               {local_time, calendar:local_time()},
                               {pid, Pid},
                               {user_data, UserData}
-                             ]),
+                             ] ++ Opts),
     RoutingKey = hostkey_to_routing_key(Hostkey),
     lager:debug("RoutingKey: ~p",[RoutingKey]),
     Response = turtle:publish(file_transfer_publisher,
@@ -127,29 +127,29 @@ publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock, MaxB
         #{ delivery_mode => persistent }),
     Response.
 
--spec send_file(LocalFilePath :: string(), RemoteFilePath :: string(), Hostkey :: string()) -> ok | error.
-send_file(LocalFilePath, RemoteFilePath, Hostkey) ->
+-spec send_file(LocalFilePath :: string(), RemoteFilePath :: string(), Hostkey :: string(), Opts :: list()) -> ok | error.
+send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
     MaxBlockSizeBytes = application:get_env(dog_trainer,max_block_size_bytes,134217728),
     lager:debug("LocalFilePath: ~p, Hostkey: ~p",[LocalFilePath,Hostkey]),
     try 
         {ok,IoDevice} = file:open(LocalFilePath, [read,binary,read_ahead,raw]),
-        send_data(IoDevice,RemoteFilePath, Hostkey, MaxBlockSizeBytes)
+        send_data(IoDevice,RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts)
     after 
         file:close(LocalFilePath)
     end.
 
-send_data(IoDevice,RemoteFilePath, Hostkey, MaxBlockSizeBytes) ->
+send_data(IoDevice,RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts) ->
    TotalBlocks = number_blocks(RemoteFilePath, MaxBlockSizeBytes),
-   send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, 0).
+   send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, 0, Opts).
 
-send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, CurrentBlock) ->
+send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, CurrentBlock, Opts) ->
    case file:read(IoDevice, MaxBlockSizeBytes) of
        {ok, Data} ->
        lager:debug("RemoteFilePath: ~p, MaxBlockSizeBytes: ~p, CurrentBlock: ~p",[RemoteFilePath,MaxBlockSizeBytes,CurrentBlock]),
            % Write Data to Socket
            NextBlock = CurrentBlock + 1,
-           publish_file_send(Hostkey,RemoteFilePath,Data,TotalBlocks,NextBlock, MaxBlockSizeBytes),
-           send_data(IoDevice, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, NextBlock);
+           publish_file_send(Hostkey,RemoteFilePath,Data,TotalBlocks,NextBlock, MaxBlockSizeBytes, Opts),
+           send_data(IoDevice, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, NextBlock, Opts);
        eof -> ok
    end.
 
@@ -168,19 +168,19 @@ number_blocks(RemoteFilePath, MaxBlockSizeBytes) ->
     end,
     FileSize.
 
-fetch_file(FilePath,Hostkey) ->
-    publish_file_fetch(Hostkey,FilePath).
+fetch_file(FilePath,Hostkey,Opts) ->
+    publish_file_fetch(Hostkey,FilePath,Opts).
 
 %Requires capability CAP_DAC_READ_SEARCH to read all files 
--spec publish_file_fetch(Hostkey :: string(), Filename :: string()) -> any().
-publish_file_fetch(Hostkey, Filename) ->
+-spec publish_file_fetch(Hostkey :: string(), Filename :: string(), Opts :: list()) -> any().
+publish_file_fetch(Hostkey, Filename, Opts) ->
     Pid = erlang:self(),
     Message = term_to_binary([
                               {command, fetch_file},
                               {file_name, Filename},
                               {local_time, calendar:local_time()},
                               {pid, Pid}
-                             ]),
+                             ] ++ Opts),
     RoutingKey = hostkey_to_routing_key(Hostkey),
     case turtle:rpc_sync(
            file_transfer_publisher, 
