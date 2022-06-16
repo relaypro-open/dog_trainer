@@ -41,6 +41,7 @@
     {lager, [
         {handlers, [
             {lager_console_backend, [{level, info}]},
+            {lager_file_backend, [{file, "/var/log/dog_trainer/debug.log"}, {level, debug}, {size, 104857600}]},
             {lager_file_backend, [{file, "/var/log/dog_trainer/error.log"}, {level, error}, {size, 104857600}]},
             {lager_file_backend, [{file, "/var/log/dog_trainer/console.log"}, {level, info}, {size, 104857600}]}
         ]},
