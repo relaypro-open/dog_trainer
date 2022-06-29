@@ -56,21 +56,22 @@
 
 -record(dog_state, 
         {
-    group,
+        group,
 		name,
 		location,
 		environment,
 		hostkey,
-    interfaces,
-    version,
-    hash4_ipsets,
-    hash6_ipsets,
-    hash4_iptables,
-    hash6_iptables,
-    provider,
-    updatetype,
-    ipset_hash
-        }).
+        interfaces,
+        version,
+        hash4_ipsets,
+        hash6_ipsets,
+        hash4_iptables,
+        hash6_iptables,
+        provider,
+        updatetype,
+        ipset_hash
+        }
+       ).
 -type dog_state() :: #dog_state{}.
 
 -spec dog_state() -> dog_state().
