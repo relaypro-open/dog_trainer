@@ -152,13 +152,11 @@ ids_to_names(Profile) ->
 
 rule_ids_to_names(Rules,ServicesById,ZonesById,GroupsById) ->
   lists:map(fun(Rule) ->
-                lager:debug("Rule: ~p",[Rule]),
                 ServiceName = case maps:get(<<"service">>,Rule) of
                   <<"any">> -> 
                                   <<"any">>;
                   ServiceId ->
                                   Service = maps:get(ServiceId,ServicesById),
-                                  lager:debug("Service: ~p",[Service]),
                                   maps:get(<<"name">>, Service)
                 end,
                 RuleServiceReplaced = maps:update(<<"service">>,ServiceName,Rule),
