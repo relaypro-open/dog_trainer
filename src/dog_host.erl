@@ -657,7 +657,8 @@ get_by_name(Name) ->
                                fun(X) -> 
                                        reql:db(X, dog), 
                                        reql:table(X, ?TYPE_TABLE),
-                                       reql:get_all(X, Name, #{index => <<"name">>})
+                                       reql:get_all(X, Name, #{index => <<"name">>}),
+                                       reql:filter(X,#{<<"active">> => <<"active">>})
                                end),
     {ok, R3} = rethink_cursor:all(R),
     Result = lists:flatten(R3),
@@ -727,7 +728,7 @@ get_all_active() ->
 
 -spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists }.
 create(HostMap@0) ->
-    Name = maps:get(<<"name">>, HostMap@0),
+    %Name = maps:get(<<"name">>, HostMap@0),
     Hostkey = maps:get(<<"hostkey">>, HostMap@0, notfound),
     case Hostkey of
       notfound ->
@@ -749,10 +750,8 @@ create(HostMap@0) ->
                                   },
           MergedHostMap = maps:merge(DefaultValuesHostMap, HostMap@0),
 
-          case lists:member(Name, ExistingHostkeys) of
+          case lists:member(Hostkey, ExistingHostkeys) of
               false ->
-                  %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-                  %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
                   {ok, R} = dog_rethink:run(
                                             fun(X) -> 
                                                     reql:db(X, dog),

@@ -1,9 +1,8 @@
 -module(dog_file_transfer).
+-include("dog_trainer.hrl").
 
 -include_lib("kernel/include/file.hrl").
 
--define(BLOCK_SIZE, 4096).
-
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
@@ -13,13 +12,16 @@
 %% ------------------------------------------------------------------
 
 -export([
-         delete_file/2,
-         execute_file/2,
-         send_file/2
+         delete_file/3,
+         execute_command/2,
+         execute_command/3,
+         fetch_file/3,
+         send_data/5,
+         send_file/4
         ]).
 
 -export([
-         number_blocks/1
+         number_blocks/2
         ]).
 
 %% ------------------------------------------------------------------
@@ -28,63 +30,59 @@
 hostkey_to_routing_key(Hostkey) ->
         erlang:iolist_to_binary(["*.*.*.",Hostkey]).
 
-execute_file(FilePath,Hostkey) ->
-    publish_file_execute(Hostkey,FilePath).
+execute_command(ExecuteCommand,Hostkey) ->
+  execute_command(ExecuteCommand,Hostkey, []).
 
--spec publish_file_execute(Hostkey :: string(), Filename :: string()) -> any().
-publish_file_execute(Hostkey, Filename) ->
-    %lager:info("IpsetExternalMap: ~p",[IpsetExternalMap]),
+execute_command(ExecuteCommand,Hostkey,Opts) ->
+  publish_execute_command(Hostkey, ExecuteCommand, Opts).
+
+-spec publish_execute_command(Hostkey :: string(), ExecuteCommand :: string(), Opts :: list() ) -> {ok|error, iolist()}.
+publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
+    ExecuteCommandBase64 = base64:encode(ExecuteCommand),
     Pid = erlang:self(),
     Message = term_to_binary([
-                              {command, execute_file},
-                              {file_name, Filename},
+                              {command, execute_command},
+                              {execute_command, ExecuteCommandBase64 },
                               {local_time, calendar:local_time()},
                               {pid, Pid}
-                             ]),
+                             ] ++ Opts),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    %Response = turtle:publish(file_transfer_publisher,
-    %    <<"file_transfer">>,
-    %    RoutingKey,
-    %    <<"text/json">>,
-    %    Message,
-    %    #{ delivery_mode => persistent }),
-    case turtle:rpc_sync(
+    Response = case turtle:rpc_sync(
            file_transfer_publisher, 
            <<"file_transfer">>, 
            RoutingKey, 
            <<"text/json">>,
            Message) of
               {error, Reason} -> 
-                    %ReasonDecode = jsx:decode(Reason),
                     lager:error("Reason: ~p",[Reason]),
-                    Reason;
-              {ok, _NTime, _CType, Response} ->
-                    ResponseDecode = jsx:decode(Response),
-                    lager:info("Response: ~p",[ResponseDecode]), 
-                    ResponseDecode
-    end.
+                    {error,Reason};
+              {ok, _NTime, _CType, Payload} ->
+                    lager:debug("Payload: ~p",[Payload]),
+                    case hd(jsx:decode(Payload)) of
+                    %case Payload of
+                      {<<"error">>,StdErr} ->
+                        lager:error("StdErr: ~p",[StdErr]),
+                        {error, StdErr};
+                      {<<"ok">>,StdOut} ->  
+                        lager:debug("StdOut: ~p",[StdOut]),
+                        {ok, StdOut}
+                    end
+    end,
+    Response.
 
-delete_file(FilePath,Hostkey) ->
-    publish_file_delete(Hostkey,FilePath).
+delete_file(FilePath,Hostkey,Opts) ->
+    publish_file_delete(Hostkey,FilePath,Opts).
 
--spec publish_file_delete(Hostkey :: string(), Filename :: string()) -> any().
-publish_file_delete(Hostkey, Filename) ->
-    %lager:info("IpsetExternalMap: ~p",[IpsetExternalMap]),
+-spec publish_file_delete(Hostkey :: string(), Filename :: string(), Opts :: list()) -> any().
+publish_file_delete(Hostkey, Filename, Opts) ->
     Pid = erlang:self(),
     Message = term_to_binary([
                               {command, delete_file},
                               {file_name, Filename},
                               {local_time, calendar:local_time()},
                               {pid, Pid}
-                             ]),
+                             ] ++ Opts),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    %Response = turtle:publish(file_transfer_publisher,
-    %    <<"file_transfer">>,
-    %    RoutingKey,
-    %    <<"text/json">>,
-    %    Message,
-    %    #{ delivery_mode => persistent }),
-    %Response.
     case turtle:rpc_sync(
            file_transfer_publisher, 
            <<"file_transfer">>, 
@@ -94,27 +92,31 @@ publish_file_delete(Hostkey, Filename) ->
               {error, Reason} -> 
                     lager:error("Reason: ~p",[Reason]),
                     Reason;
-              {ok, _NTime, _CType, Response} ->
-                    lager:info("Response: ~p",[Response]), 
-                    Response
+              {ok, _NTime, _CType, Payload} ->
+          case hd(jsx:decode(Payload)) of
+              {<<"error">>,Error} ->
+                  {error, Error};
+              <<"ok">> ->
+                  ok
+          end
     end.
 
--spec publish_file_send(Hostkey :: string(), Filename :: string(),Data :: binary(), TotalBlocks :: integer(), CurrentBlock :: integer()) -> any().
-publish_file_send(Hostkey, Filename, Data, TotalBlocks, CurrentBlock) ->
-    %lager:info("IpsetExternalMap: ~p",[IpsetExternalMap]),
+-spec publish_file_send(Hostkey :: string(), RemoteFilePath :: string(),Data :: binary(), TotalBlocks :: integer(), CurrentBlock :: integer(), MaxBlockSizeBytes :: integer(), Opts :: list()) -> any().
+publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock, MaxBlockSizeBytes, Opts) ->
     UserData = #{
       file_block => Data
                 },
     Pid = erlang:self(),
     Message = term_to_binary([
                               {command, send_file},
-                              {file_name, Filename},
+                              {file_name, RemoteFilePath},
                               {total_blocks, TotalBlocks},
                               {current_block, CurrentBlock},
+                              {max_block_size_bytes, MaxBlockSizeBytes},
                               {local_time, calendar:local_time()},
                               {pid, Pid},
                               {user_data, UserData}
-                             ]),
+                             ] ++ Opts),
     RoutingKey = hostkey_to_routing_key(Hostkey),
     lager:debug("RoutingKey: ~p",[RoutingKey]),
     Response = turtle:publish(file_transfer_publisher,
@@ -124,55 +126,38 @@ publish_file_send(Hostkey, Filename, Data, TotalBlocks, CurrentBlock) ->
         Message,
         #{ delivery_mode => persistent }),
     Response.
-    %case turtle:rpc_sync(
-    %       file_transfer_publisher, 
-    %       <<"file_transfer">>, 
-    %       RoutingKey, 
-    %       <<"text/json">>,
-    %       Message) of
-    %          {error, Reason} -> 
-    %                lager:error("Reason: ~p",[Reason]),
-    %                Reason;
-    %          {ok, _NTime, _CType, Response} ->
-    %                lager:info("Response: ~p",[Response]), 
-    %                Response
-    %end.
 
--spec send_file(Filename :: string(), Hostkey :: string()) -> ok | error.
-send_file(Filename, Hostkey) ->
-    lager:debug("Filename: ~p, Hostkey: ~p",[Filename,Hostkey]),
+-spec send_file(LocalFilePath :: string(), RemoteFilePath :: string(), Hostkey :: string(), Opts :: list()) -> ok | error.
+send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
+    MaxBlockSizeBytes = application:get_env(dog_trainer,max_block_size_bytes,134217728),
+    lager:debug("LocalFilePath: ~p, Hostkey: ~p",[LocalFilePath,Hostkey]),
     try 
-        {ok,IoDevice} = file:open(Filename, [read,binary,read_ahead,raw]),
-        send_data(IoDevice,Filename, Hostkey)
+        {ok,IoDevice} = file:open(LocalFilePath, [read,binary,read_ahead,raw]),
+        send_data(IoDevice,RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts)
     after 
-        file:close(Filename)
+        file:close(LocalFilePath)
     end.
-    %{ok,IoDevice} = file:open(Filename, [read,binary,read_ahead,raw]),
-    %Response = send_data(IoDevice,Filename, Hostkey),
-    %lager:debug("Response: ~p",[Response]),
-    %file:close(Filename).
 
-send_data(IoDevice,Filename, Hostkey) ->
-   TotalBlocks = number_blocks(Filename),
-   send_data(IoDevice,Filename, Hostkey, TotalBlocks, 0).
+send_data(IoDevice,RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts) ->
+   TotalBlocks = number_blocks(RemoteFilePath, MaxBlockSizeBytes),
+   send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, 0, Opts).
 
-send_data(IoDevice,Filename, Hostkey, TotalBlocks, CurrentBlock) ->
-   case file:read(IoDevice, ?BLOCK_SIZE) of
+send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, CurrentBlock, Opts) ->
+   case file:read(IoDevice, MaxBlockSizeBytes) of
        {ok, Data} ->
-           lager:debug("Filename: ~p, CurrentBlock: ~p",[Filename,CurrentBlock]),
+       lager:debug("RemoteFilePath: ~p, MaxBlockSizeBytes: ~p, CurrentBlock: ~p",[RemoteFilePath,MaxBlockSizeBytes,CurrentBlock]),
            % Write Data to Socket
-           %send_data(Device, Socket)
            NextBlock = CurrentBlock + 1,
-           publish_file_send(Hostkey,Filename,Data,TotalBlocks,NextBlock),
-           send_data(IoDevice, Filename, Hostkey,TotalBlocks,NextBlock);
+           publish_file_send(Hostkey,RemoteFilePath,Data,TotalBlocks,NextBlock, MaxBlockSizeBytes, Opts),
+           send_data(IoDevice, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, NextBlock, Opts);
        eof -> ok
    end.
 
-number_blocks(Filename) ->
-    FileSize = case file:read_file_info(Filename) of
+number_blocks(RemoteFilePath, MaxBlockSizeBytes) ->
+    FileSize = case file:read_file_info(RemoteFilePath) of
         {ok, FileInfo} ->
-            FullBlocks = erlang:floor(FileInfo#file_info.size / ?BLOCK_SIZE),
-            case FileInfo#file_info.size rem ?BLOCK_SIZE of
+            FullBlocks = erlang:floor(FileInfo#file_info.size / MaxBlockSizeBytes),
+            case FileInfo#file_info.size rem MaxBlockSizeBytes of
                N when N > 0 ->
                    FullBlocks + 1;
                _ ->
@@ -182,6 +167,51 @@ number_blocks(Filename) ->
             0
     end,
     FileSize.
+
+fetch_file(FilePath,Hostkey,Opts) ->
+    publish_file_fetch(Hostkey,FilePath,Opts).
+
+%Requires capability CAP_DAC_READ_SEARCH to read all files 
+-spec publish_file_fetch(Hostkey :: string(), Filename :: string(), Opts :: list()) -> any().
+publish_file_fetch(Hostkey, Filename, Opts) ->
+    Pid = erlang:self(),
+    Message = term_to_binary([
+                              {command, fetch_file},
+                              {file_name, Filename},
+                              {local_time, calendar:local_time()},
+                              {pid, Pid}
+                             ] ++ Opts),
+    RoutingKey = hostkey_to_routing_key(Hostkey),
+    case turtle:rpc_sync(
+           file_transfer_publisher, 
+           <<"file_transfer">>, 
+           RoutingKey, 
+           <<"text/json">>,
+           Message,
+           #{timeout => 20000 }) of
+              {error, Reason} -> 
+                    lager:error("Reason: ~p",[Reason]),
+                    {error, Reason};
+              {ok, _NTime, CType, Response} ->
+                    lager:debug("CType: ~p",[CType]),
+                    case CType of
+                        <<"application/octet-stream">> -> 
+                            LocalFilePath = ?FILE_LOCATION_BASE  ++ dog_common:to_list(Hostkey) ++ "/fetch/" ++ dog_common:to_list(Filename),
+                            filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),                                                     
+                            ok = file:write_file( LocalFilePath, Response, [raw, write, binary]),                                               
+                            lager:info("Response size in bytes: ~p",[erlang:size(Response)]), 
+                            Response;
+                        <<"text/json">> ->
+                            case hd(jsx:decode(Response)) of
+                              {<<"error">>,StdErr} ->
+                                lager:error("StdErr: ~p",[StdErr]),
+                                {error, StdErr};
+                              {<<"ok">>,StdOut} ->  
+                                lager:debug("StdOut: ~p",[StdOut]),
+                                {ok, StdOut}
+                            end
+                    end
+    end.
 
 %-define(HASH_BLOCK_SIZE,1024*1024*32).
 %file_hash(Filename) ->

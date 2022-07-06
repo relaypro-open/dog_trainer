@@ -31,6 +31,7 @@ get_handler_module(Path) ->
     handler_lookup(extract_module_from_path(Path,4,1)).
 
 handler_lookup(<<"external">>) -> dog_external_api_v2;
+handler_lookup(<<"file_transfer">>) -> dog_file_transfer_api_v2;
 handler_lookup(<<"group">>) -> dog_group_api_v2;
 handler_lookup(<<"host">>) -> dog_host_api_v2;
 handler_lookup(<<"link">>) -> dog_link_api_v2;
@@ -46,8 +47,11 @@ content_types_provided(Req, State) ->
 
 content_types_accepted(Req, State) ->
     case cowboy_req:method(Req) of
+            
         <<"POST">> ->
-            {[ {<<"application/json">>, from_post_json} ], Req, State};
+            {[ 
+              {<<"application/json">>, from_post_json}
+             ], Req, State};
         <<"PUT">> ->
             {[ {<<"application/json">>, from_put_json} ], Req, State}
     end.

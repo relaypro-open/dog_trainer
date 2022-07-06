@@ -12,6 +12,7 @@
 -define(POOL, pool1).
 -define(DB_NAME, <<"dog">>).
 
+-define(FILE_LOCATION_BASE, "/tmp/dog_trainer/file_transfer/").
 %-define(required(Field, Type), Field = error({field_required, Field}) :: Type).
 %-define(optional(Field, Type), Field = none :: none | {some, Type}).
 

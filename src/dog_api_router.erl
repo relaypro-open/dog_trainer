@@ -15,6 +15,8 @@ start_link() ->
             {"/api/V2/external/:id/:sub", api_handler_v2, #{}},
             {"/api/V2/externals", plural_api_handler_v2, #{}},
             {"/api/V2/externals/:sub", plural_api_handler_v2, #{}},
+            {"/api/V2/file_transfer/:id", dog_file_transfer_api_v2, #{} },
+            {"/api/V2/external/:id", api_handler_v2, #{}},
             {"/api/group", api_handler, #{} },
             {"/api/group/:id", api_handler, #{}},
             {"/api/group/:id/:sub", api_handler, #{}},

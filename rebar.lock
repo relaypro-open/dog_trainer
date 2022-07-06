@@ -94,7 +94,7 @@
        {ref,"d96bc001973c7e7e6c8d6b101f4c38a74d857cd5"}},
   0},
  {<<"rfc3339">>,
-  {git,"git://github.com/andreineculau/rfc3339.git",
+  {git,"https://github.com/andreineculau/rfc3339.git",
        {ref,"dcc77d66430490620677de8140a3415dfbd3fa61"}},
   1},
  {<<"setup">>,{pkg,<<"setup">>,<<"2.0.2">>},2},
