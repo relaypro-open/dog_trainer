@@ -10,7 +10,7 @@
                              kernel,maps_utils,public_key,
                              rabbit_common,rethink,sasl,ssl,stdlib,jsx,base16,plists,imetrics,
                              json_xema,nested,poolboy,jsn,observer_cli,erlcloud,erlsom,cache_tab,
-                             elixir,logger,xema,conv_case,flatlog
+                             elixir,logger,xema,conv_case,flatlog,jason
 ]},
               {env,[]},
               {modules,[]},
