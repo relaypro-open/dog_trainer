@@ -1,5 +1,8 @@
 -module(dog_common).
 
+-include("dog_trainer.hrl"). 
+
+
 -export([
         inverse_map_of_lists/1,
         create_hash/1,

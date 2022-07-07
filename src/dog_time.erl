@@ -1,5 +1,8 @@
 -module(dog_time).
 
+-include("dog_trainer.hrl"). 
+
+
 -export([
          merge_timestamp/1,
          timestamp/0

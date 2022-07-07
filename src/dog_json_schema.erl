@@ -22,22 +22,22 @@ validate(Type, Document) ->
   try 
     SchemaContents = get_file(Type),
     {ok, SchemaMap} = 'Elixir.Jason':decode(SchemaContents),
-    lager:debug("SchemaMap: ~p",[SchemaMap]),
+    logger:debug("SchemaMap: ~p",[SchemaMap]),
     Schema = 'Elixir.JsonXema':new(SchemaMap),
-    %lager:debug("Schema: ~p",[Schema]),
+    %logger:debug("Schema: ~p",[Schema]),
     Name = maps:get(<<"name">>, Document,<<"NONE">>),
     Id = maps:get(<<"id">>, Document,<<"NONE">>),
     Validation = 'Elixir.JsonXema':validate(Schema,Document),
     case Validation of
       ok ->
-        lager:info("Schema Validation: ~p, ~p, ~p: ~p",[Type, Name, Id, Validation]);
+        logger:info("Schema Validation: ~p, ~p, ~p: ~p",[Type, Name, Id, Validation]);
       {error, _} ->
-        lager:error("Schema Validation: ~p, ~p, ~p: ~p",[Type, Name, Id, Validation])
+        logger:error("Schema Validation: ~p, ~p, ~p: ~p",[Type, Name, Id, Validation])
     end,
     Validation
   catch
     Exception:Reason:StackTrace ->
-      lager:error("SchemaType: ~p,  Exception: ~p,  Reason: ~p,  StackTrace: ~p",[Type,Exception,Reason,StackTrace]),
+      logger:error("SchemaType: ~p,  Exception: ~p,  Reason: ~p,  StackTrace: ~p",[Type,Exception,Reason,StackTrace]),
       throw(error)
   end.
 
@@ -73,5 +73,5 @@ validate_all(Type) ->
     errors => ErrorDocuments,
     total_documents => TotalDocuments
    },
-  lager:info("Validation Results: ~p",[ResultMap]),
+  logger:info("Validation Results: ~p",[ResultMap]),
   ResultMap.

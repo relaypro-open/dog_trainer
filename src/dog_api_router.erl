@@ -1,5 +1,7 @@
 -module(dog_api_router).
 
+-include("dog_trainer.hrl"). 
+
 -export([start_link/0]).
 
 start_link() ->

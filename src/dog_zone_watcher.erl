@@ -48,7 +48,7 @@ state(Ref) ->
     gen_requery:call(Ref, state, infinity).
 
 init([]) ->
-    lager:info("init"),
+    logger:info("init"),
     % The ConnectOptions are provided to gen_rethink:connect_unlinked
     RethinkdbHost = application:get_env(dog_trainer, rethinkdb_host,"localhost"),
     RethinkdbPort = application:get_env(dog_trainer, rethinkdb_port,28015),
@@ -70,8 +70,8 @@ init([]) ->
 %% the managed connection is newly established
 handle_connection_up(Connection, State) ->
     {ok,RethinkSquashSec} = application:get_env(dog_trainer,rethink_squash_sec),
-    lager:info("handle_connection_up"),
-    lager:info("Connection: ~p", [Connection]),
+    logger:info("handle_connection_up"),
+    logger:info("Connection: ~p", [Connection]),
     Reql = reql:db(<<"dog">>),
     reql:table(Reql, <<"zone">>),
     reql:changes(Reql, #{<<"include_initial">> => false, <<"squash">> => RethinkSquashSec}),
@@ -82,11 +82,11 @@ handle_connection_up(Connection, State) ->
 %% reconnect state with exponential backoffs. Your module can still process
 %% requests during this time.
 handle_connection_down(State) ->
-    lager:info("handle_connection_down"),
+    logger:info("handle_connection_down"),
     {noreply, State}.
 
 handle_query_result(Result, State) ->
-    lager:info("Result: ~p", [Result]),
+    logger:info("Result: ~p", [Result]),
     case Result of
         [] ->
             pass;
@@ -113,15 +113,15 @@ handle_query_error(Error, State) ->
     {stop, Error, State}.
 
 handle_call(state, _From, State) ->
-    lager:debug("handle_call changefeed: ~p",[State]),
+    logger:debug("handle_call changefeed: ~p",[State]),
     {reply, State, State}.
 
 handle_cast(_Msg, State) ->
-    lager:debug("handle_cast changefeed: ~p",[State]),
+    logger:debug("handle_cast changefeed: ~p",[State]),
     {noreply, State}.
 
 handle_info(_Info, State) ->
-    lager:debug("handle_info changefeed: ~p",[State]),
+    logger:debug("handle_info changefeed: ~p",[State]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

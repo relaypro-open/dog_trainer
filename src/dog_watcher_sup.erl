@@ -5,6 +5,9 @@
 
 -module(dog_watcher_sup).
 
+-include("dog_trainer.hrl"). 
+
+
 -behaviour(supervisor).
 
 %% API

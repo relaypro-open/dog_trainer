@@ -101,7 +101,7 @@ handle_cast({add_to_queue, Groups}, State) ->
   NewState = ordsets:union(ordsets:from_list(Groups), State),  
   {noreply, NewState};
 handle_cast(Msg, State) ->
-  lager:error("unknown_message: Msg: ~p, State: ~p",[Msg, State]),
+  logger:error("unknown_message: Msg: ~p, State: ~p",[Msg, State]),
   {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -118,7 +118,7 @@ handle_info(periodic_publish, State) ->
     erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     {noreply, NewState};
 handle_info(Info, State) ->
-  lager:error("unknown_message: Info: ~p, State: ~p",[Info, State]),
+  logger:error("unknown_message: Info: ~p, State: ~p",[Info, State]),
   {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -128,7 +128,7 @@ handle_info(Info, State) ->
 %%----------------------------------------------------------------------
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    lager:info("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    logger:info("terminate: Reason: ~p, State: ~p", [Reason, State]),
     {close}.
 
 -spec code_change(_, State::ips_state(), _) -> {ok, State::ips_state()}.
@@ -146,7 +146,7 @@ do_periodic_publish([]) ->
 do_periodic_publish(State) ->
     case dog_agent_checker:check() of
         true ->
-            lager:info("State: ~p",[State]),
+            logger:info("State: ~p",[State]),
             Groups = ordsets:to_list(State),
             imetrics:set_gauge(publish_queue_length, length(Groups)),
             PeriodicPublishMax = application:get_env(dog_trainer,periodic_publish_max,10),
@@ -162,7 +162,7 @@ do_periodic_publish(State) ->
             {MergedIpsets, _InternalIpsets} = dog_ipset:create_ipsets(),
             %Publish ipsets even if the Group doesn't have an associated Profile:
             %NonBlankGroups = lists:filter(fun(Group) -> Group =/= <<>> end, Groups),
-            %lager:info("NonBlankGroups: ~p",[NonBlankGroups]),
+            %logger:info("NonBlankGroups: ~p",[NonBlankGroups]),
             %case length(NonBlankGroups) > 0 of
             %  true ->
             %    dog_ipset:update_ipsets(all_envs);
@@ -187,13 +187,13 @@ do_periodic_publish(State) ->
                     end
                 catch 
                     profile_not_found ->
-                        lager:info("profile_not_found in group: ~p",[Group]),
+                        logger:info("profile_not_found in group: ~p",[Group]),
                         {Group, profile_not_found}
                 end
                           end, GroupsWithoutEmptyProfiles),
-            lager:info("PublishList: ~p",[PublishList]),
+            logger:info("PublishList: ~p",[PublishList]),
             {ok, ordsets:from_list(LeftoverGroups) };
         false ->
-            lager:info("Skipping, dog_agent_checker:check() false"),
+            logger:info("Skipping, dog_agent_checker:check() false"),
             {ok, State }
     end.

@@ -1,4 +1,7 @@
 -module(dog_file_transfer_sup).
+
+-include("dog_trainer.hrl"). 
+
 -include_lib("amqp_client/include/amqp_client.hrl").
 
 -export([
@@ -6,8 +9,6 @@
          init/1
        ]).
 -behaviour(supervisor).
-
--define(SERVER, ?MODULE).
 
 -spec start_link() -> 'ignore' | {'error',_} | {'ok',pid()}.
 start_link() ->

@@ -18,7 +18,7 @@
 
 -spec update_group_iptables(GroupZoneName :: binary(), GroupType :: binary() ) -> 'ok'.
 update_group_iptables(GroupZoneName, GroupType) ->
-    lager:info("GroupZoneName: ~p",[GroupZoneName]),
+    logger:info("GroupZoneName: ~p",[GroupZoneName]),
     Groups = case application:get_env(dog_trainer,generate_unset_tables,true) of 
         true -> 
             {ok, GroupsList} = case GroupType of
@@ -43,22 +43,22 @@ update_group_iptables(GroupZoneName, GroupType) ->
             end,
             GroupsList
     end,
-    lager:info("Effected Groups: ~p",[Groups]),
-    lager:info("add_to_queue: ~p",[Groups]),
+    logger:info("Effected Groups: ~p",[Groups]),
+    logger:info("add_to_queue: ~p",[Groups]),
     dog_profile_update_agent:add_to_queue(Groups),
     ok.
 
 -spec update_group_ec2_sgs(GroupZoneName :: binary()) -> 'ok'.
 update_group_ec2_sgs(GroupZoneName) ->
     {ok, GroupList} = dog_group:role_group_effects_groups(GroupZoneName),
-    lager:debug("GroupList: ~p~n",[GroupList]),
+    logger:debug("GroupList: ~p~n",[GroupList]),
     plists:map(fun(Group) ->
                 dog_ec2_sg:publish_ec2_sg_by_name(Group)
               end,GroupList).
 
 -spec update_all_iptables() -> 'ok'.
 update_all_iptables() ->
-    lager:debug("update_all_iptables:start"),
+    logger:debug("update_all_iptables:start"),
     {ok, Groups} = dog_group:get_active_groups(),
     GroupNames = [ maps:get(<<"name">>,Group) || Group <- Groups],
     ChunkedGroupNames = chunk_list(GroupNames,2),
@@ -66,7 +66,7 @@ update_all_iptables() ->
         dog_profile_update_agent:add_to_queue(GroupName),
         timer:sleep(1000)
     end,ChunkedGroupNames),
-    lager:debug("update_all_iptables:end"),
+    logger:debug("update_all_iptables:end"),
     ok.
 
 chunk_list(List) ->
@@ -110,7 +110,7 @@ write_to_temp_file4(Ruleset) ->
 %    Result = os:cmd(Cmd),
 %    case Result of
 %        [] ->
-%           lager:info("iptables valid"), 
+%           logger:info("iptables valid"), 
 %            ok;
 %        _ -> 
 %            error
@@ -122,7 +122,7 @@ backup_ruleset4() ->
     Result = os:cmd(Cmd),
     case Result of
         [] ->
-           lager:info("iptables backed up"), 
+           logger:info("iptables backed up"), 
             ok;
         _ -> 
             error
@@ -133,7 +133,7 @@ update_iptables4(TempFile) ->
     ok = backup_ruleset4(),
     ok = delete_iptables_tempfile(TempFile),
     %TODO
-    lager:info("Iptables updated."),
+    logger:info("Iptables updated."),
     ok.
 
 -spec valid_iptables() -> binary().
@@ -161,7 +161,7 @@ COMMIT
 
 -spec publish_to_queue(RoutingKey :: binary(), R4IpsetsRuleset :: list() | boolean(), R6IpsetsRuleset :: list() | boolean(), R4IptablesRuleset :: list() | boolean(), R6IptablesRuleset :: list() | boolean(), Ipsets :: list()) -> any().
 publish_to_queue(RoutingKey, R4IpsetsRuleset, R6IpsetsRuleset, R4IptablesRuleset, R6IptablesRuleset, Ipsets) ->
-    lager:info("RoutingKey: ~p",[RoutingKey]),
+    logger:info("RoutingKey: ~p",[RoutingKey]),
     UserData = #{
       ruleset4_ipset => R4IpsetsRuleset,
       ruleset6_ipset => R6IpsetsRuleset,

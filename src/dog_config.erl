@@ -11,7 +11,7 @@
 -spec publish_host_config(Hostkey :: binary()) -> any().
 publish_host_config(Hostkey) ->
     {ok, ConfigMap} = dog_host:get_by_hostkey(Hostkey),
-    lager:info("ConfigMap: ~p~n",[ConfigMap]),
+    logger:info("ConfigMap: ~p~n",[ConfigMap]),
     UserData = #{config => ConfigMap},
     Count = 1,
     Pid = erlang:self(),
@@ -40,7 +40,7 @@ update_host_keepalive(Hostkey) ->
 
 -spec update_host_hashes(Hostname :: binary() , Hash4Ipsets :: iolist() ,Hash6Ipsets :: iolist() ,Hash4Iptables :: iolist() ,Hash6Iptables :: iolist(), IpsetHash :: iolist() ) -> ok.
 update_host_hashes(Hostname,Hash4Ipsets,Hash6Ipsets,Hash4Iptables,Hash6Iptables,IpsetHash) ->
-  lager:debug("Hostname: ~p, Hashes: ~p,~p,~p,~p,~p",[Hostname, Hash4Ipsets,Hash6Ipsets,Hash4Iptables,Hash6Iptables,IpsetHash]),
+  logger:debug("Hostname: ~p, Hashes: ~p,~p,~p,~p,~p",[Hostname, Hash4Ipsets,Hash6Ipsets,Hash4Iptables,Hash6Iptables,IpsetHash]),
   %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
   %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
   {ok, _R} = dog_rethink:run(

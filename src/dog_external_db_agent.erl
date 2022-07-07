@@ -120,17 +120,17 @@ handle_call(_Request, _From, State) ->
 handle_cast(stop, State) ->
   {stop, normal, State};
 handle_cast(Msg, State) ->
-  lager:error("unknown_message: Msg: ~p, State: ~p",[Msg, State]),
+  logger:error("unknown_message: Msg: ~p, State: ~p",[Msg, State]),
   {noreply, State}.
 
 -spec handle_info(_,_) -> {'noreply',_}.
 handle_info(Info, State) ->
-  lager:error("unknown_message: Info: ~p, State: ~p",[Info, State]),
+  logger:error("unknown_message: Info: ~p, State: ~p",[Info, State]),
   {noreply, State}.
 
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-  lager:info("terminate: Reason: ~p, State: ~p", [Reason, State]),
+  logger:info("terminate: Reason: ~p, State: ~p", [Reason, State]),
   {close}.
 
 -spec code_change(_, State::ips_state(), _) -> {ok, State::ips_state()}.

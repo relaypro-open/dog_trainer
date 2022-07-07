@@ -7,6 +7,9 @@
 
 -behaviour(supervisor).
 
+-include("dog_trainer.hrl"). 
+
+
 %% API
 -export([
         start_link/0

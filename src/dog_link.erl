@@ -35,27 +35,27 @@ init() ->
 -spec get(Name :: binary()) -> [map()].
 get(Name) ->
    {ok, LinkDefinition} = get_by_name(Name),
-   lager:debug("LinkDefinition: ~p",[LinkDefinition]),
+   logger:debug("LinkDefinition: ~p",[LinkDefinition]),
    Link = maps:get(<<"links">>,LinkDefinition),
    Link.
 
 -spec get_name_by_id(Id :: binary()) -> Name :: binary() | {error, Error :: atom()}.
 get_name_by_id(Id) ->
-   lager:debug("Id: ~p",[Id]),
+   logger:debug("Id: ~p",[Id]),
    case get_by_id(Id) of
        {ok, LinkDefinition} -> 
-           lager:debug("LinkDefinition: ~p",[LinkDefinition]),
+           logger:debug("LinkDefinition: ~p",[LinkDefinition]),
            Name = maps:get(<<"name">>,LinkDefinition),
            Name;
        {error, Error} ->
-            lager:error("error, link id not found: ~p, ~p",[Id, Error]),
+            logger:error("error, link id not found: ~p, ~p",[Id, Error]),
             {error, Error}
    end.
 
 -spec get_id_by_name(Name :: binary()) -> [iolist()].
 get_id_by_name(Name) ->
    {ok, LinkDefinition} = get_by_name(Name),
-   lager:debug("LinkDefinition: ~p",[LinkDefinition]),
+   logger:debug("LinkDefinition: ~p",[LinkDefinition]),
    Id = maps:get(<<"id">>,LinkDefinition),
    Id.
 
@@ -73,7 +73,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] -> 
-            lager:error("error, link name not found: ~p",[Name]),
+            logger:error("error, link name not found: ~p",[Name]),
             {error, notfound};
             %throw(link_not_found);
         _ -> 
@@ -109,7 +109,7 @@ is_enabled(Id) ->
 delete(Id) ->
     case is_enabled(Id) of
         true ->
-            lager:info("link ~p not deleted, is enabled~n",[Id]),
+            logger:info("link ~p not deleted, is enabled~n",[Id]),
             {error,#{<<"errors">> => #{<<"unable to delete">> => <<"link enabled">>}}};
         false -> 
             delete_related_external(Id),
@@ -120,7 +120,7 @@ delete(Id) ->
                                               reql:get(X, Id),
                                               reql:delete(X)
                                       end),
-            lager:debug("delete R: ~p~n",[R]),
+            logger:debug("delete R: ~p~n",[R]),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 -> ok;
@@ -130,7 +130,7 @@ delete(Id) ->
 
 -spec delete_related_external(Id :: binary()) -> (ok | error).
 delete_related_external(Id) ->
-    lager:debug("Id: ~p",[Id]),
+    logger:debug("Id: ~p",[Id]),
     {ok, Link} = get_by_id(Id),
     LinkName = maps:get(<<"name">>,Link),
     dog_external:delete(LinkName).
@@ -151,7 +151,7 @@ update(Id, UpdateMap) ->
                                   reql:get(X, Id),
                                   reql:update(X,UpdateMap)
                           end),
-                    lager:debug("update R: ~p~n", [R]),
+                    logger:debug("update R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced,Unchanged} of
@@ -186,7 +186,7 @@ create(LinkMap@0) ->
                                   reql:insert(X, LinkMap@0)
                           end),
                     Key = hd(maps:get(<<"generated_keys">>,R)),
-                    lager:debug("create R: ~p~n", [R]),
+                    logger:debug("create R: ~p~n", [R]),
                     create_empty_external(Name),
                     {ok, Key};
                 {error, Error} ->
@@ -245,9 +245,9 @@ get_all_active() ->
                                reql:filter(X,#{<<"enabled">> => true})
                            end),
   {ok, Result} = rethink_cursor:all(R),
-  lager:debug("Result: ~p",[Result]),
+  logger:debug("Result: ~p",[Result]),
   Links = hd(hd((Result))),
-  lager:debug("Links: ~p",[Links]),
+  logger:debug("Links: ~p",[Links]),
   case Links of
     [] ->
       {ok, []};
@@ -267,9 +267,9 @@ get_all_active_outbound() ->
                                reql:filter(X,#{<<"enabled">> => true})
                            end),
   {ok, Result} = rethink_cursor:all(R),
-  lager:debug("Result: ~p",[Result]),
+  logger:debug("Result: ~p",[Result]),
   Links = hd(hd((Result))),
-  lager:debug("Links: ~p",[Links]),
+  logger:debug("Links: ~p",[Links]),
   case Links of
     {ok, []} ->
       {ok, []};

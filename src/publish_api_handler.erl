@@ -21,7 +21,7 @@ allowed_methods(Req, State) ->
 to_json(Req, State) ->
     Json = case cowboy_req:match_qs([{group, [], plain}], Req) of
         #{group := GroupName} ->
-            lager:info("add_to_queue: ~p",[GroupName]),
+            logger:info("add_to_queue: ~p",[GroupName]),
             dog_profile_update_agent:add_to_queue([GroupName]),
             %ok = dog_profile:publish_ruleset(GroupName),
             jsx:encode(ok);

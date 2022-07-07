@@ -126,7 +126,7 @@ create_initial_global_hash(Connection) ->
 		reql:table(X, ipset)
 	end),
     {ok, Result} = rethink_cursor:all(R),
-    lager:debug("Result: ~p",[Result]),
+    logger:debug("Result: ~p",[Result]),
     case lists:flatten(Result) of
         [] ->
           Record = #{
