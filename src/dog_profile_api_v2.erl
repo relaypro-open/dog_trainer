@@ -24,7 +24,7 @@
 -spec create(Profile :: map()) -> {'ok', iolist() } | {atom(), binary()}.
 create(Profile) ->
     Profile@0 = names_to_ids(Profile),
-    lager:debug("Profile@0: ~p~n",[Profile@0]),
+    logger:debug("Profile@0: ~p~n",[Profile@0]),
     Timestamp = dog_time:timestamp(),
     case dog_json_schema:validate(?VALIDATION_TYPE,Profile@0) of
         ok ->
@@ -38,7 +38,7 @@ create(Profile) ->
             NewVal = maps:get(<<"new_val">>,hd(maps:get(<<"changes">>,R))),
             {ok, NewVal};
         {error, Error} ->
-            lager:error("~p",[Error]),
+            logger:error("~p",[Error]),
             Response = dog_parse:validation_error(Error),
             {validation_error, Response}
     end.
@@ -88,7 +88,7 @@ update(Id, UpdateMap, _InPlace) ->
 -spec update_in_place(Id :: binary(), UpdateMap :: map()) -> {false, atom()} | {validation_error, iolist()} | {true, binary()}.
 update_in_place(Id, UpdateMapWithNames) ->
     UpdateMap = names_to_ids(UpdateMapWithNames),
-    lager:info("update_in_place"),
+    logger:info("update_in_place"),
     case get_by_id(Id) of
         {ok,OldProfile} ->
             NewProfile = maps:merge(OldProfile,UpdateMap),
@@ -101,7 +101,7 @@ update_in_place(Id, UpdateMapWithNames) ->
                                   reql:get(X, Id),
                                   reql:update(X,UpdateMap,#{return_changes => always})
                           end),
-                    lager:debug("update R: ~p~n", [R]),
+                    logger:debug("update R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced,Unchanged} of

@@ -61,7 +61,7 @@ resource_exists(Req@0, State@0) ->
             Path = cowboy_req:path(Req@0),
             Handler = get_handler_module(Path),
             Body = cowboy_req:read_urlencoded_body(Req@0),
-            lager:info("~p",[Body]),
+            logger:info("~p",[Body]),
             {ok, [{NewContent, true}], Req@1} = Body,
             Map = jsx:decode(NewContent,[return_maps]),
             ObjectName = maps:get(<<"name">>, Map),
@@ -81,7 +81,7 @@ resource_exists(Req@0, State@0) ->
             Path = cowboy_req:path(Req@0),
             Handler = get_handler_module(Path),
             Body = cowboy_req:read_urlencoded_body(Req@0),
-            lager:info("~p",[Body]),
+            logger:info("~p",[Body]),
             {ok, [{NewContent, true}], Req@1} = Body,
             Map = jsx:decode(NewContent,[return_maps]),
             ObjectName = maps:get(<<"name">>, Map),
@@ -159,7 +159,7 @@ from_post_json(Req@0, State) ->
                     SuccessMap = #{<<"id">> => Id, <<"result">> => <<"created">>},
                     Req@1 = cowboy_req:set_resp_body([jsx:encode(SuccessMap)],Req@0),
                     Uri = io_lib:format("~s/~s/~s", [?ROOT, HandlerPath, erlang:binary_to_list(Id)]),
-                    lager:info("Uri: ~p~n",[Uri]),
+                    logger:info("Uri: ~p~n",[Uri]),
                     {{true, list_to_binary(Uri)}, Req@1, State}
             end;
         {ok, Result} ->
@@ -185,7 +185,7 @@ from_put_json(Req@0, State) ->
     SuccessMap = #{<<"id">> => Id},
     Req@1 = cowboy_req:set_resp_body([jsx:encode(SuccessMap)],Req@0),
     InPlace = cowboy_req:match_qs([{inplace, [], plain}], Req@1),
-    lager:info("InPlace: ~p",[InPlace]),
+    logger:info("InPlace: ~p",[InPlace]),
     Response = case InPlace of
         #{inplace := <<"True">>} ->
                 Handler:update(Id,UpdateMap,true);
@@ -194,14 +194,14 @@ from_put_json(Req@0, State) ->
     end,
     case Response of
         {false, Error} when is_atom(Error) ->
-            lager:info("{false, ~p}",[Error]),
+            logger:info("{false, ~p}",[Error]),
             Req@2 = cowboy_req:set_resp_body([atom_to_list(Error)],Req@1),
             {false, Req@2, State};
         {false, ObjectId} ->
-            lager:info("{false, ~p}",[ObjectId]),
+            logger:info("{false, ~p}",[ObjectId]),
             SuccessMap2 = #{<<"id">> => ObjectId},
             Uri = io_lib:format("~s/~s/~s", [?ROOT, HandlerPath, binary_to_list(ObjectId)]),
-            lager:info("ObjectId: ~p",[ObjectId]),
+            logger:info("ObjectId: ~p",[ObjectId]),
             Req@2 = cowboy_req:reply(303,
                                            #{<<"content-type">> => <<"application/json">>,
                                             <<"location">> => Uri},
@@ -209,10 +209,10 @@ from_put_json(Req@0, State) ->
                                            Req@1),
             {stop, Req@2, State};
         {true, ObjectId} ->
-            lager:info("{true, ~p}",[ObjectId]),
+            logger:info("{true, ~p}",[ObjectId]),
             SuccessMap2 = #{<<"id">> => ObjectId},
             Uri = io_lib:format("~s/~s/~s", [?ROOT, HandlerPath, binary_to_list(ObjectId)]),
-            lager:info("ObjectId: ~p",[ObjectId]),
+            logger:info("ObjectId: ~p",[ObjectId]),
             Req@2 = cowboy_req:reply(303,
                                            #{<<"content-type">> => <<"application/json">>,
                                             <<"location">> => Uri},
@@ -344,7 +344,7 @@ to_text(Req, State) ->
                             end,
                             case cowboy_req:match_qs([{git_diff, [], plain}], Req) of
                                 #{git_diff := plain} ->
-                                    lager:debug("here ~n", []),
+                                    logger:debug("here ~n", []),
                                     case dog_profile:get_by_id(Id) of
                                         {ok, Profile_} ->
                                             {ok, T_} = dog_profile:to_text(Profile_),
@@ -353,7 +353,7 @@ to_text(Req, State) ->
                                             Error_
                                     end;
                                 #{git_diff := DiffId_} ->
-                                    lager:debug("here WHAT~n", []),
+                                    logger:debug("here WHAT~n", []),
                                     ProfileResult1_ = dog_profile:get_by_id(Id),
                                     ProfileResult2_ = dog_profile:get_by_id(DiffId_),
                                     case {ProfileResult1_, ProfileResult2_} of

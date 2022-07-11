@@ -48,7 +48,7 @@ state(Ref) ->
     gen_requery:call(Ref, state, infinity).
 
 init([]) ->
-    lager:info("init"),
+    logger:info("init"),
     % The ConnectOptions are provided to gen_rethink:connect_unlinked
     RethinkdbHost = application:get_env(dog_trainer, rethinkdb_host,"localhost"),
     RethinkdbPort = application:get_env(dog_trainer, rethinkdb_port,28015),
@@ -70,8 +70,8 @@ init([]) ->
 %% the managed connection is newly established
 handle_connection_up(Connection, State) ->
     {ok,RethinkSquashSec} = application:get_env(dog_trainer,rethink_squash_sec),
-    lager:info("handle_connection_up"),
-    lager:info("Connection: ~p", [Connection]),
+    logger:info("handle_connection_up"),
+    logger:info("Connection: ~p", [Connection]),
     Reql = reql:db(<<"dog">>),
     reql:table(Reql, <<"service">>),
     reql:changes(Reql, #{<<"include_initial">> => false, <<"squash">> => RethinkSquashSec}),
@@ -82,12 +82,12 @@ handle_connection_up(Connection, State) ->
 %% reconnect state with exponential backoffs. Your module can still process
 %% requests during this time.
 handle_connection_down(State) ->
-    lager:info("handle_connection_down"),
+    logger:info("handle_connection_down"),
     {noreply, State}.
 
 handle_query_result(Result, State) ->
-    lager:info("Result: ~p", [Result]),
-    lager:info("dog_service_watcher calling update_all_iptables"),
+    logger:info("Result: ~p", [Result]),
+    logger:info("dog_service_watcher calling update_all_iptables"),
     %TODO detect which groups are effected by service change
     case Result of
         [] ->
@@ -95,24 +95,24 @@ handle_query_result(Result, State) ->
         _ ->
             imetrics:add_m(watcher,service_update),
             lists:foreach(fun(Entry) ->
-                lager:info("Entry: ~p",[Entry]),
+                logger:info("Entry: ~p",[Entry]),
                 ServiceId = case maps:get(<<"new_val">>,Entry) of
                     null ->
                         maps:get(<<"id">>,maps:get(<<"old_val">>,Entry));
                     _ ->
                         maps:get(<<"id">>,maps:get(<<"new_val">>,Entry))
                 end,
-                lager:info("ServiceId: ~p",[ServiceId]),
+                logger:info("ServiceId: ~p",[ServiceId]),
                 {ok, ProfilesWithService} = dog_service:where_used(ServiceId),
-                lager:info("ProfilesWithService: ~p",[ProfilesWithService]),
+                logger:info("ProfilesWithService: ~p",[ProfilesWithService]),
                 GroupIdsWithProfile = lists:flatten(
                     lists:map(fun(ProfileId) -> 
                         dog_profile:where_used(ProfileId)
                                                   end, ProfilesWithService)),
-                lager:info("GroupIdsWithProfile : ~p",[GroupIdsWithProfile]),
+                logger:info("GroupIdsWithProfile : ~p",[GroupIdsWithProfile]),
                 GroupIdsWithProfile2 = lists:flatten([element(2,GroupId) || GroupId <- GroupIdsWithProfile]),
                 GroupNamesWithProfile = [element(2,dog_group:get_name_by_id(GroupId)) || GroupId <- GroupIdsWithProfile2],
-                lager:info("GroupNamesWithProfile: ~p",[GroupNamesWithProfile]),
+                logger:info("GroupNamesWithProfile: ~p",[GroupNamesWithProfile]),
                 dog_profile_update_agent:add_to_queue(GroupNamesWithProfile)
             end, Result)
     end,
@@ -125,15 +125,15 @@ handle_query_error(Error, State) ->
     {stop, Error, State}.
 
 handle_call(state, _From, State) ->
-    lager:debug("handle_call changefeed: ~p",[State]),
+    logger:debug("handle_call changefeed: ~p",[State]),
     {reply, State, State}.
 
 handle_cast(_Msg, State) ->
-    lager:debug("handle_cast changefeed: ~p",[State]),
+    logger:debug("handle_cast changefeed: ~p",[State]),
     {noreply, State}.
 
 handle_info(_Info, State) ->
-    lager:debug("handle_info changefeed: ~p",[State]),
+    logger:debug("handle_info changefeed: ~p",[State]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

@@ -22,11 +22,11 @@ start(_StartType, _StartArgs) ->
 
 %%--------------------------------------------------------------------
 prep_stop(_State) ->
-    %lager:info("Stopping consumer of inbound queue"),
+    %logger:info("Stopping consumer of inbound queue"),
     %supervisor:terminate_child(dog_thumper_sup, ips),
-    lager:info("Waiting for outbound queue to clear"),
+    logger:info("Waiting for outbound queue to clear"),
     wait_for_queue_empty(),
-    lager:info("Stopping dog_trainer").
+    logger:info("Stopping dog_trainer").
 
 stop(_State) ->
     ok.
@@ -39,7 +39,7 @@ wait_for_queue_empty() ->
         0 ->
             true;
         QueueLength ->
-            lager:info("Outbound queue length: ~p",[QueueLength]),
+            logger:info("Outbound queue length: ~p",[QueueLength]),
             PollTimeMilliseconds = application:get_env(dog_trainer,queue_poll_time_seconds,5) * 1000,
             timer:sleep(PollTimeMilliseconds),
             wait_for_queue_empty()

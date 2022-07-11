@@ -1,6 +1,6 @@
 -module(dog_host).
 
-%-include("dog_trainer.hrl").
+-include("dog_trainer.hrl").
 
 -define(VALIDATION_TYPE, <<"host">>).
 -define(TYPE_TABLE, host).
@@ -69,8 +69,8 @@ keepalive_check() ->
     Now =  erlang:system_time(second),
     {ok, KeepAliveAlertSeconds} = application:get_env(dog_trainer,keepalive_alert_seconds),
     TimeCutoff = Now - KeepAliveAlertSeconds,
-    lager:debug("Now: ~p",[calendar:system_time_to_rfc3339(Now)]),
-    lager:debug("TimeCutoff: ~p",[calendar:system_time_to_rfc3339(TimeCutoff)]),
+    logger:debug("Now: ~p",[calendar:system_time_to_rfc3339(Now)]),
+    logger:debug("TimeCutoff: ~p",[calendar:system_time_to_rfc3339(TimeCutoff)]),
     keepalive_check(TimeCutoff).
 
 -spec keepalive_check(TimeCutoff :: number()) -> {ok,list()}.
@@ -85,14 +85,14 @@ keepalive_check(TimeCutoff) ->
         reql:pluck(X, [<<"id">>,<<"name">>,<<"keepalive_timestamp">>])
 	end),
     {ok, ResultTime} = rethink_cursor:all(R),
-    lager:debug("ResultTime: ~p",[ResultTime]),
+    logger:debug("ResultTime: ~p",[ResultTime]),
     R1 = lists:flatten(ResultTime),
     Ids = [maps:get(<<"id">>,X) || X <- R1],
     Names = [maps:get(<<"name">>,X) || X <- R1],
     Timestamps = [ maps:get(<<"keepalive_timestamp">>,X) || X <- R1],
     ZippedList = lists:zip3(Ids,Names,Timestamps),
     OldAgents = [#{<<"id">> => Id,<<"name">> => Name,<<"keepalive_timestamp">> => TimeStamp} || {Id,Name,TimeStamp} <- ZippedList, TimeStamp < TimeCutoff],
-    lager:info("OldAgents: ~p",[OldAgents]),
+    logger:info("OldAgents: ~p",[OldAgents]),
     {ok, OldAgents}.
 
 -spec retirement_check() ->{ok, Unalive :: list()}.
@@ -100,8 +100,8 @@ retirement_check() ->
     Now =  erlang:system_time(second),
     KeepAliveAlertSeconds = application:get_env(dog_trainer,retirement_alert_seconds,86400),
     TimeCutoff = Now - KeepAliveAlertSeconds,
-    lager:debug("Now: ~p",[calendar:system_time_to_rfc3339(Now)]),
-    lager:debug("TimeCutoff: ~p",[calendar:system_time_to_rfc3339(TimeCutoff)]),
+    logger:debug("Now: ~p",[calendar:system_time_to_rfc3339(Now)]),
+    logger:debug("TimeCutoff: ~p",[calendar:system_time_to_rfc3339(TimeCutoff)]),
     retirement_check(TimeCutoff).
 
 -spec retirement_check(TimeCutoff :: number()) -> {ok,list()}.
@@ -116,14 +116,14 @@ retirement_check(TimeCutoff) ->
         reql:pluck(X, [<<"id">>,<<"name">>,<<"keepalive_timestamp">>])
 	end),
     {ok, ResultTime} = rethink_cursor:all(R),
-    lager:debug("ResultTime: ~p",[ResultTime]),
+    logger:debug("ResultTime: ~p",[ResultTime]),
     R1 = lists:flatten(ResultTime),
     Ids = [maps:get(<<"id">>,X) || X <- R1],
     Names = [maps:get(<<"name">>,X) || X <- R1],
     Timestamps = [ maps:get(<<"keepalive_timestamp">>,X) || X <- R1],
     ZippedList = lists:zip3(Ids,Names,Timestamps),
     OldAgents = [#{<<"id">> => Id,<<"name">> => Name,<<"keepalive_timestamp">> => TimeStamp} || {Id,Name,TimeStamp} <- ZippedList, TimeStamp < TimeCutoff],
-    lager:info("OldAgents: ~p",[OldAgents]),
+    logger:info("OldAgents: ~p",[OldAgents]),
     {ok, OldAgents}.
 
 %-spec group_hashes() -> {ok, map()}.
@@ -193,7 +193,7 @@ hash_fail_count(HostId) ->
             reql:get(X,HostId),
             reql:get_field(X,<<"hash_fail_count">>)
         end),
-    lager:debug("HostHashFailCount: ~p",[HostHashFailCount]),
+    logger:debug("HostHashFailCount: ~p",[HostHashFailCount]),
     HostHashFailCount.
 
 -spec hash_fail_count_update(HostId :: binary(), Count :: number()) -> {true, binary()} | {false, atom()}.
@@ -207,7 +207,7 @@ hash_fail_count_update(HostId, Count) ->
             reql:get(X,HostId),
             reql:update(X,#{<<"hash_fail_count">> => Count})
         end),
-    lager:debug("update R: ~p~n", [R]),
+    logger:debug("update R: ~p~n", [R]),
     Replaced = maps:get(<<"replaced">>, R),
     Unchanged = maps:get(<<"unchanged">>, R),
     case {Replaced,Unchanged} of
@@ -266,9 +266,9 @@ hash_check(Host) ->
      <<"ipset_hash_age_check">> => IpsetHashAgeCheck,
      <<"iptables_hash_age_check">> => IptablesHashCheck
      },
-    lager:debug("HashStatus: ~p",[HashStatus]),
-    lager:debug("IptablesHashCheck,IpsetHashCheck: ~p, ~p",[IptablesHashCheck,IpsetHashCheck]),
-    lager:debug("IptablesHashAgeCheck: ~s,  IpsetHashAgeCheck: ~s",[IptablesHashAgeCheck,IpsetHashAgeCheck]),
+    logger:debug("HashStatus: ~p",[HashStatus]),
+    logger:debug("IptablesHashCheck,IpsetHashCheck: ~p, ~p",[IptablesHashCheck,IpsetHashCheck]),
+    logger:debug("IptablesHashAgeCheck: ~s,  IpsetHashAgeCheck: ~s",[IptablesHashAgeCheck,IpsetHashAgeCheck]),
     case {IptablesHashCheck,IpsetHashCheck} of
         {true,true} ->
             iptables_hash_age_update(HostId, Now),
@@ -326,8 +326,8 @@ ipset_hash_age_check(HostId) ->
     Now =  erlang:system_time(second),
     KeepAliveAlertSeconds = application:get_env(dog_trainer,hashcheck_alert_seconds,30),
     TimeCutoff = Now - KeepAliveAlertSeconds,
-    lager:debug("Now: ~p",[calendar:system_time_to_rfc3339(Now)]),
-    lager:debug("TimeCutoff: ~p",[calendar:system_time_to_rfc3339(TimeCutoff)]),
+    logger:debug("Now: ~p",[calendar:system_time_to_rfc3339(Now)]),
+    logger:debug("TimeCutoff: ~p",[calendar:system_time_to_rfc3339(TimeCutoff)]),
     ipset_hash_age_check(HostId, TimeCutoff).
 
 -spec ipset_hash_age_check(HostId :: binary(), TimeCutoff :: number()) -> boolean().
@@ -341,7 +341,7 @@ ipset_hash_age_check(HostId, TimeCutoff) ->
             reql:get(X,HostId),
             reql:get_field(X,<<"ipset_hash_timestamp">>)
         end),
-    lager:debug("IpsetHashTimestamp, TimeCutoff: ~p, ~p",[IpsetHashTimestamp,TimeCutoff]),
+    logger:debug("IpsetHashTimestamp, TimeCutoff: ~p, ~p",[IpsetHashTimestamp,TimeCutoff]),
     case IpsetHashTimestamp of
         <<>> ->
             Now =  erlang:system_time(second),
@@ -356,8 +356,8 @@ iptables_hash_age_check(HostId) ->
     Now =  erlang:system_time(second),
     KeepAliveAlertSeconds = application:get_env(dog_trainer,hashcheck_alert_seconds,30),
     TimeCutoff = Now - KeepAliveAlertSeconds,
-    lager:debug("Now: ~p",[calendar:system_time_to_rfc3339(Now)]),
-    lager:debug("TimeCutoff: ~p",[calendar:system_time_to_rfc3339(TimeCutoff)]),
+    logger:debug("Now: ~p",[calendar:system_time_to_rfc3339(Now)]),
+    logger:debug("TimeCutoff: ~p",[calendar:system_time_to_rfc3339(TimeCutoff)]),
     iptables_hash_age_check(HostId, TimeCutoff).
 
 -spec iptables_hash_age_check(HostId :: binary(), TimeCutoff :: number()) -> boolean().
@@ -371,7 +371,7 @@ iptables_hash_age_check(HostId, TimeCutoff) ->
             reql:get(X,HostId),
             reql:get_field(X,<<"iptables_hash_timestamp">>)
         end),
-    lager:debug("IptablesHashTimestamp: ~p",[IptablesHashTimestamp]),
+    logger:debug("IptablesHashTimestamp: ~p",[IptablesHashTimestamp]),
     case IptablesHashTimestamp of
         <<>> ->
             Now =  erlang:system_time(second),
@@ -392,7 +392,7 @@ iptables_hash_age_update(HostId, Timestamp) ->
             reql:get(X,HostId),
             reql:update(X,#{<<"iptables_hash_timestamp">> => Timestamp})
         end),
-    lager:debug("update R: ~p~n", [R]),
+    logger:debug("update R: ~p~n", [R]),
     Replaced = maps:get(<<"replaced">>, R),
     Unchanged = maps:get(<<"unchanged">>, R),
     case {Replaced,Unchanged} of
@@ -412,7 +412,7 @@ ipset_hash_age_update(HostId, Timestamp) ->
             reql:get(X,HostId),
             reql:update(X,#{<<"ipset_hash_timestamp">> => Timestamp})
         end),
-    lager:debug("update R: ~p~n", [R]),
+    logger:debug("update R: ~p~n", [R]),
     Replaced = maps:get(<<"replaced">>, R),
     Unchanged = maps:get(<<"unchanged">>, R),
     case {Replaced,Unchanged} of
@@ -425,8 +425,8 @@ ipset_hash_age_update(HostId, Timestamp) ->
 %    Now =  erlang:system_time(second),
 %    KeepAliveAlertSeconds = application:get_env(dog_trainer,hashcheck_alert_seconds,30),
 %    TimeCutoff = Now - KeepAliveAlertSeconds,
-%    lager:debug("Now: ~p",[calendar:system_time_to_rfc3339(Now)]),
-%    lager:debug("TimeCutoff: ~p",[calendar:system_time_to_rfc3339(TimeCutoff)]),
+%    logger:debug("Now: ~p",[calendar:system_time_to_rfc3339(Now)]),
+%    logger:debug("TimeCutoff: ~p",[calendar:system_time_to_rfc3339(TimeCutoff)]),
 %    hash_age_check(TimeCutoff).
 
 %-spec hash_age_check(TimeCutoff :: number()) -> {ok, list()}.
@@ -442,14 +442,14 @@ ipset_hash_age_update(HostId, Timestamp) ->
 %            reql:pluck(X,[<<"id">>,<<"name">>,<<"hash_timestamp">>,<<"keepalive_timestamp">>])
 %        end),
 %    {ok, ResultTime} = rethink_cursor:all(R),
-%    lager:info("ResultTime: ~p",[ResultTime]),
+%    logger:info("ResultTime: ~p",[ResultTime]),
 %    R1 = lists:flatten(ResultTime),
 %    Ids = [maps:get(<<"id">>,X) || X <- R1],
 %    Names = [maps:get(<<"name">>,X) || X <- R1],
 %    Timestamps = [ maps:get(<<"hash_timestamp">>,X) || X <- R1],
 %    ZippedList = lists:zip3(Ids,Names,Timestamps),
 %    OldAgents = [#{<<"id">> => Id,<<"name">> => Name,<<"hash_timestamp">> => TimeStamp} || {Id,Name,TimeStamp} <- ZippedList, TimeStamp < TimeCutoff],
-%    lager:info("OldAgents: ~p",[OldAgents]),
+%    logger:info("OldAgents: ~p",[OldAgents]),
 %    {ok, OldAgents}.
 
 -spec keepalive_age_check() -> {ok, Unalive :: list()}.
@@ -457,8 +457,8 @@ keepalive_age_check() ->
     Now =  erlang:system_time(second),
     KeepAliveAlertSeconds = application:get_env(dog_trainer,keepalive_alert_seconds,1800),
     TimeCutoff = Now - KeepAliveAlertSeconds,
-    lager:debug("Now: ~p",[calendar:system_time_to_rfc3339(Now)]),
-    lager:debug("TimeCutoff: ~p",[calendar:system_time_to_rfc3339(TimeCutoff)]),
+    logger:debug("Now: ~p",[calendar:system_time_to_rfc3339(Now)]),
+    logger:debug("TimeCutoff: ~p",[calendar:system_time_to_rfc3339(TimeCutoff)]),
     keepalive_age_check(TimeCutoff).
 
 -spec keepalive_age_check(TimeCutoff :: number()) -> {ok, list()}.
@@ -473,19 +473,19 @@ keepalive_age_check(TimeCutoff) ->
             reql:pluck(X,[<<"id">>,<<"name">>,<<"keepalive_timestamp">>])
         end),
     {ok, ResultTime} = rethink_cursor:all(R),
-    lager:info("ResultTime: ~p",[ResultTime]),
+    logger:info("ResultTime: ~p",[ResultTime]),
     R1 = lists:flatten(ResultTime),
     Ids = [maps:get(<<"id">>,X) || X <- R1],
     Names = [maps:get(<<"name">>,X) || X <- R1],
     Timestamps = [ maps:get(<<"keepalive_timestamp">>,X) || X <- R1],
     ZippedList = lists:zip3(Ids,Names,Timestamps),
     OldAgents = [#{<<"id">> => Id,<<"name">> => Name,<<"keepalive_timestamp">> => TimeStamp} || {Id,Name,TimeStamp} <- ZippedList, TimeStamp < TimeCutoff],
-    lager:info("OldAgents: ~p",[OldAgents]),
+    logger:info("OldAgents: ~p",[OldAgents]),
     {ok, OldAgents}.
 
 %-spec iptables_check_hashes(HostChecks :: list()) -> {list(), list()}.
 %iptables_check_hashes(HostChecks) ->
-%    lager:info("HostChecks: ~p",[HostChecks]),
+%    logger:info("HostChecks: ~p",[HostChecks]),
 %    lists:partition(fun(Host) ->
 %                HashCheck4Ipsets = maps:get(<<"hash4_ipsets">>,Host),
 %                HashCheck6Ipsets = maps:get(<<"hash6_ipsets">>,Host),
@@ -506,10 +506,10 @@ iptables_hash_logic(HashCheck4Ipsets, HashCheck6Ipsets, HashCheck4Iptables, Hash
 
 -spec send_retirement_alert(Host :: binary()) -> ok.
 send_retirement_alert(Host) ->
-    lager:info("Host: ~p", [Host]),
+    logger:info("Host: ~p", [Host]),
     HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
     HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
-    lager:info("Retirement alert sent: ~p, ~p",[HostName, HostKey]),
+    logger:info("Retirement alert sent: ~p, ~p",[HostName, HostKey]),
     {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
     {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
     {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
@@ -528,10 +528,10 @@ send_retirement_alert(Host) ->
 
 -spec send_keepalive_alert(Host :: binary()) -> ok.
 send_keepalive_alert(Host) ->
-    lager:info("Host: ~p", [Host]),
+    logger:info("Host: ~p", [Host]),
     HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
     HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
-    lager:info("Keepalive disconnect alert sent: ~p, ~p",[HostName, HostKey]),
+    logger:info("Keepalive disconnect alert sent: ~p, ~p",[HostName, HostKey]),
     {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
     {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
     {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
@@ -550,10 +550,10 @@ send_keepalive_alert(Host) ->
 
 -spec send_keepalive_recover(Host :: map()) -> ok.
 send_keepalive_recover(Host) ->
-    lager:info("Host: ~p", [Host]),
+    logger:info("Host: ~p", [Host]),
     HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
     HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
-    lager:info("Keepalive recover alert sent: ~p, ~p",[HostName, HostKey]),
+    logger:info("Keepalive recover alert sent: ~p, ~p",[HostName, HostKey]),
     {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
     {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
     {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
@@ -575,13 +575,13 @@ send_hash_alert(Host, HashStatus) ->
     HashAlertEnabled = application:get_env(dog_trainer,hash_alert_enabled,true),
     case HashAlertEnabled of
         true ->
-            lager:info("Host: ~p", [Host]),
+            logger:info("Host: ~p", [Host]),
             HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
             HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
             GroupName = maps:get(<<"group">>,Host),
             {ok,IpsetHashes} = dog_ipset:latest_hash(),
             {ok,Group} = dog_group:get_by_name(GroupName),
-            lager:info("Hash alert sent: ~p",[Host]),
+            logger:info("Hash alert sent: ~p",[Host]),
             {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
             {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
             {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
@@ -605,13 +605,13 @@ send_hash_recover(Host, HashStatus) ->
     HashAlertEnabled = application:get_env(dog_trainer,hash_alert_enabled,true),
     case HashAlertEnabled of
         true ->
-            lager:info("Host: ~p", [Host]),
+            logger:info("Host: ~p", [Host]),
             HostName = binary:bin_to_list(maps:get(<<"name">>,Host)),
             HostKey = binary:bin_to_list(maps:get(<<"hostkey">>,Host)),
             GroupName = maps:get(<<"group">>,Host),
             {ok,IpsetHashes} = dog_ipset:latest_hash(),
             {ok,Group} = dog_group:get_by_name(GroupName),
-            lager:info("Hash alert sent: ~p",[Host]),
+            logger:info("Hash alert sent: ~p",[Host]),
             {ok, SmtpRelay} = application:get_env(dog_trainer,smtp_relay),
             {ok, SmtpUsername} = application:get_env(dog_trainer,smtp_username),
             {ok, SmtpPassword} = application:get_env(dog_trainer,smtp_password),
@@ -781,7 +781,7 @@ update(Id, UpdateMap) ->
                                   reql:get(X, Id),
                                   reql:update(X,UpdateMap)
                               end),
-                    lager:debug("update R: ~p~n", [R]),
+                    logger:debug("update R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced,Unchanged} of
@@ -826,7 +826,7 @@ delete(Id) ->
                                       reql:get(X, Id),
                                       reql:delete(X)
                               end),
-    lager:debug("delete R: ~p~n",[R]),
+    logger:debug("delete R: ~p~n",[R]),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -835,7 +835,7 @@ delete(Id) ->
 
 %-spec update_active(Id :: binary(), ActiveState :: binary() ) -> { true, binary() } | {false, no_updated}.
 %update_active(Id, ActiveState) ->
-%    lager:debug("Setting agent active state: ~p, ~p",[Id,ActiveState]),
+%    logger:debug("Setting agent active state: ~p, ~p",[Id,ActiveState]),
 %    {ok, R} = dog_rethink:run(
 %          fun(X) -> 
 %                  reql:db(X, dog),
@@ -898,7 +898,7 @@ get_state_from_host(Host) ->
 
 -spec set_state_by_id(Id :: binary(), State :: binary() ) -> {true,binary()} | {false,binary()} | {false, no_updated}.
 set_state_by_id(Id, State) ->
-    lager:debug("Setting agent ~p state to: ~p",[Id,State]),
+    logger:debug("Setting agent ~p state to: ~p",[Id,State]),
     {Active, Hashpass } = case State of
         <<"retired">> ->
             {<<"retired">>,true};
@@ -961,10 +961,10 @@ get_all_active_interfaces() ->
         end),
     {ok, Result} = rethink_cursor:all(R),
     Interfaces = lists:flatten(Result),
-    lager:info("Interfaces: ~p",[Interfaces]),
-    %lager:debug("Interfaces: ~p",[Interfaces]),
+    logger:info("Interfaces: ~p",[Interfaces]),
+    %logger:debug("Interfaces: ~p",[Interfaces]),
     Interfaces@1 = dog_group:merge(Interfaces),
-    %lager:debug("Interfaces@1: ~p",[Interfaces@1]),
+    %logger:debug("Interfaces@1: ~p",[Interfaces@1]),
     case Interfaces@1 of
         [] -> {ok, []};
         _ -> {ok, Interfaces@1}
@@ -1008,19 +1008,19 @@ get_all_active_interfaces() ->
 %
 %-spec set_hosts_active( Ids :: list() ) -> ok.
 %set_hosts_active(Ids) ->
-%    lager:info("set_hosts_active: ~p",[Ids]),
+%    logger:info("set_hosts_active: ~p",[Ids]),
 %    lists:foreach(fun(Id) -> set_active_by_id(Id) end, Ids),
 %    ok.
 %
 %-spec set_hosts_inactive( Ids :: list() ) -> ok.
 %set_hosts_inactive(Ids) ->
-%    lager:info("set_hosts_inactive: ~p",[Ids]),
+%    logger:info("set_hosts_inactive: ~p",[Ids]),
 %    lists:foreach(fun(Id) -> set_inactive_by_id(Id) end, Ids),
 %    ok.
 %
 %-spec set_hosts_retired( Ids :: list() ) -> ok.
 %set_hosts_retired(Ids) ->
-%    lager:info("set_hosts_retired: ~p",[Ids]),
+%    logger:info("set_hosts_retired: ~p",[Ids]),
 %    lists:foreach(fun(Id) -> set_retired_by_id(Id) end, Ids),
 %    ok.
 
@@ -1051,7 +1051,7 @@ state_event(HostMap, Event, HashStatus) ->
     Id = maps:get(<<"id">>,HostMap),
     {ok, OldState} = get_state_from_host(HostMap),
     NewState = new_state(HostMap, OldState, Event,HashStatus),
-    lager:debug("Id: ~p, Event: ~p, OldState: ~p, NewState: ~p",[Id,Event,OldState,NewState]),
+    logger:debug("Id: ~p, Event: ~p, OldState: ~p, NewState: ~p",[Id,Event,OldState,NewState]),
     case OldState == NewState of
         false -> 
             set_state_by_id(Id,NewState);
@@ -1120,5 +1120,5 @@ new_state(HostMap, <<"retired">>, pass_hashcheck, _HashStatus) ->
     <<"active">>;
 
 new_state(HostMap, State,Event,_HashStatus) -> 
-    lager:error("Invalid event: ~p, for state : ~p for host: ~p combination", [Event,State,HostMap]),
+    logger:error("Invalid event: ~p, for state : ~p for host: ~p combination", [Event,State,HostMap]),
     State.

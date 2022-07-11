@@ -32,11 +32,11 @@ generate_ruleset(ProfileJson,Type,Version,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ip
                  ServiceIdMap) ->
   try 
     Docker = get_docker(maps:get(<<"docker">>,ProfileJson, <<"undefined">>)),
-    lager:debug("Docker: ~p",[Docker]),
+    logger:debug("Docker: ~p",[Docker]),
     ProfileId = maps:get(<<"id">>,ProfileJson),
     ProfileName = maps:get(<<"name">>,ProfileJson),
     InboundJson = maps:get(<<"inbound">>,maps:get(<<"rules">>,ProfileJson)),
-    %lager:info("InboundJson: ~p",[InboundJson]),
+    %logger:info("InboundJson: ~p",[InboundJson]),
     InboundJsonWithIndex = lists:zip(lists:seq(1, length(InboundJson)), InboundJson),
     InboundRules = lists:map(fun({Index,L}) ->
                                  try
@@ -45,8 +45,8 @@ generate_ruleset(ProfileJson,Type,Version,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ip
                                    Rules
                                  catch
                                    Exception:Reason:Stacktrace ->
-                                     lager:error("Error in profile ~p (~p) rule number: ~p",[ProfileName, ProfileId, Index]),
-                                     lager:error("Exception: ~p, Reason: ~p, Stacktrace: ~p",[Exception,Reason,Stacktrace]),
+                                     logger:error("Error in profile ~p (~p) rule number: ~p",[ProfileName, ProfileId, Index]),
+                                     logger:error("Exception: ~p, Reason: ~p, Stacktrace: ~p",[Exception,Reason,Stacktrace]),
                                      throw(Exception)
                                  end
                              end, InboundJsonWithIndex),
@@ -67,8 +67,8 @@ generate_ruleset(ProfileJson,Type,Version,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ip
                                                 Rules
                                               catch
                                                 Exception:Reason:Stacktrace ->
-                                                  lager:error("Error in profile ~p (~p) rule number: ~p",[ProfileName, ProfileId, Index]),
-                                                  lager:error("Exception: ~p, Reason: ~p, Stacktrace: ~p",[Exception,Reason,Stacktrace]),
+                                                  logger:error("Error in profile ~p (~p) rule number: ~p",[ProfileName, ProfileId, Index]),
+                                                  logger:error("Exception: ~p, Reason: ~p, Stacktrace: ~p",[Exception,Reason,Stacktrace]),
                                                   throw(Exception)
                                               end
                                           end 
@@ -83,8 +83,8 @@ generate_ruleset(ProfileJson,Type,Version,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ip
                                     Rules
                                   catch
                                     Exception:Reason:Stacktrace ->
-                                      lager:error("Error in profile ~p (~p) rule number: ~p",[ProfileName, ProfileId, Index]),
-                                      lager:error("Exception: ~p, Reason: ~p, Stacktrace: ~p",[Exception,Reason,Stacktrace]),
+                                      logger:error("Error in profile ~p (~p) rule number: ~p",[ProfileName, ProfileId, Index]),
+                                      logger:error("Exception: ~p, Reason: ~p, Stacktrace: ~p",[Exception,Reason,Stacktrace]),
                                       throw(Exception)
                                   end
                               end, OutboundJsonWithIndex),
@@ -110,7 +110,7 @@ generate_ruleset(ProfileJson,Type,Version,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ip
   catch
     Exception:Reason:Stacktrace ->
       imetrics:add_m(generate_ruleset,"error"),
-      lager:error("Exception: ~p, Reason: ~p, Stacktrace: ~p",[Exception,Reason,Stacktrace]),
+      logger:error("Exception: ~p, Reason: ~p, Stacktrace: ~p",[Exception,Reason,Stacktrace]),
       throw(Reason)
   after
     {ok, []}
@@ -316,7 +316,7 @@ json_to_rules(Json, Direction, Symmetric, Type, Version, Ipv4RoleMap, Ipv6RoleMa
         <<" ">> -> 
           [];
         ServiceId ->
-          %lager:info("ServiceId: ~p",[ServiceId]),
+          %logger:info("ServiceId: ~p",[ServiceId]),
           %ServiceName = case bin_uppercase(dog_service:get_name_by_id(ServiceId)) of
           ServiceName = get_service_name(ServiceId, ServiceIdMap),
           %{ok, ServiceDefinition} = get_service_by_id(ServiceId),
@@ -324,7 +324,7 @@ json_to_rules(Json, Direction, Symmetric, Type, Version, Ipv4RoleMap, Ipv6RoleMa
           Services = maps:get(<<"services">>,ServiceDefinition),
           Rules = json_to_rule(Json, ServiceName, Services, Direction, Symmetric, Type, Version, Ipv4RoleMap,
                                Ipv6RoleMap, Ipv4ZoneMap, Ipv6ZoneMap, GroupIdMap, ZoneIdMap),
-          lager:debug("Rules: ~p~n" , [Rules]),
+          logger:debug("Rules: ~p~n" , [Rules]),
           Rules
       end
   end.
@@ -345,9 +345,9 @@ json_to_rule(Json, ServiceName, Services, Direction, Symmetric, Type, Version, I
                     EnvSep = <<"#">>,
                     <<Environment/bitstring,EnvSep/bitstring,LocalGroup/bitstring>>
                         end,
-                %lager:info("Group: ~p",[Group]),
+                %logger:info("Group: ~p",[Group]),
                 GroupType = maps:get(<<"group_type">>,Json),
-                %lager:info("GroupType: ~p",[GroupType]),
+                %logger:info("GroupType: ~p",[GroupType]),
                 %{ok, GroupName} = case GroupType of
                 GroupName =  case Environment of
                                <<"local">> ->
@@ -355,7 +355,7 @@ json_to_rule(Json, ServiceName, Services, Direction, Symmetric, Type, Version, I
                                _ ->
                                  Group
                              end,
-                %lager:info("GroupName: ~p",[GroupName]),
+                %logger:info("GroupName: ~p",[GroupName]),
                 Sep = <<"_">>,
                 %TODO: fix ipsetname to match dog_ipset module name 
                 IpsetName = get_ipset_name(GroupName,GroupType,Sep,Version),
@@ -375,7 +375,7 @@ json_to_rule(Json, ServiceName, Services, Direction, Symmetric, Type, Version, I
                 PortParameter = get_port_parameter(Protocol,MultiplePorts,Direction,ProtocolModule),
                 SourceParameter = get_source_parameter(Direction),
                 InterfaceString = get_interface(maps:get(<<"interface">>,Json)),
-                %lager:debug("InterfaceString: ~p~n",[InterfaceString]),
+                %logger:debug("InterfaceString: ~p~n",[InterfaceString]),
                 Interface = get_interface(InterfaceString, Direction),
                 Action = get_action(maps:get(<<"action">>,Json),Version,RuleType), 
                 CommentJson = get_comment(maps:get(<<"comment">>,Json)),
@@ -484,15 +484,15 @@ generate_basic_rule_unset(Group,Chain,SourceParameter,Interface,ProtocolString,P
                                  %{ok, Addresses} = dog_group:get_all_ipv4s_by_id(Group),
                                  lists:reverse(Addresses)
                              end,
-             %lager:info("Group: ~p",[Group]),
-             %lager:info("RoleAddresses: ~p",[RoleAddresses]),
+             %logger:info("Group: ~p",[Group]),
+             %logger:info("RoleAddresses: ~p",[RoleAddresses]),
              lists:map(fun(X) ->
                            io_lib:format("-A ~s ~s ~s~s~s~s ~s~s~s -j ~s~n",[Chain,SourceParameter,X,Interface,
                                                                              ProtocolString,PortParameter,Ports,States,
                                                                              Comment,Action])
                        end, RoleAddresses)
          end,
-  %lager:info("Rule: ~p",[Rule]),
+  %logger:info("Rule: ~p",[Rule]),
   Rule.
 %BAD:
 %-A OUTPUT -m set --match-set all-active_g_v4 src -p tcp -m tcp --sport 8301 -m state --state RELATED,ESTABLISHED -m comment --comment serf_raft_tcp 
@@ -695,10 +695,10 @@ get_ports_list(Direction,Protocol,Ports) ->
 get_port_parameter(Protocol,MultiplePorts,Direction,ProtocolModule) ->
   case lists:member(Protocol,[<<"udp">>,<<"tcp">>,<<"icmp">>,<<"ipv6-icmp">>,<<"udplite">>,<<"esp">>,<<"ah">>,<<"sctp">>]) of
     false ->
-      lager:debug("Protocol: ~p not in list",[Protocol]),
+      logger:debug("Protocol: ~p not in list",[Protocol]),
       io_lib:format("",[]);
     true ->
-      lager:debug("Protocol: ~p is in list",[Protocol]),
+      logger:debug("Protocol: ~p is in list",[Protocol]),
       case Protocol of
         <<"icmp">> -> 
           " -m icmp --icmp-type";
@@ -784,7 +784,7 @@ get_active(Active) ->
 
 -spec get_states(States :: iolist(), Symmetric :: boolean() ) -> 'error' | string().
 get_states(States, Symmetric) ->
-  lager:debug("States: ~p~n", [States]),
+  logger:debug("States: ~p~n", [States]),
   case States of
     [] -> 
       case Symmetric of 
@@ -834,7 +834,7 @@ get_service(Service) ->
 
 -spec get_ports(iolist()) -> iolist().
 get_ports(Ports) ->
-  %lager:info("Ports: ~p",[Ports]),
+  %logger:info("Ports: ~p",[Ports]),
   lists:join(",",[binary_to_list(X) || X <- Ports]).
 
 -spec get_interface(binary()) -> binary().

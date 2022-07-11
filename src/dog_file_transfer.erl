@@ -54,17 +54,17 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
            <<"text/json">>,
            Message) of
               {error, Reason} -> 
-                    lager:error("Reason: ~p",[Reason]),
+                    logger:error("Reason: ~p",[Reason]),
                     {error,Reason};
               {ok, _NTime, _CType, Payload} ->
-                    lager:debug("Payload: ~p",[Payload]),
+                    logger:debug("Payload: ~p",[Payload]),
                     case hd(jsx:decode(Payload)) of
                     %case Payload of
                       {<<"error">>,StdErr} ->
-                        lager:error("StdErr: ~p",[StdErr]),
+                        logger:error("StdErr: ~p",[StdErr]),
                         {error, StdErr};
                       {<<"ok">>,StdOut} ->  
-                        lager:debug("StdOut: ~p",[StdOut]),
+                        logger:debug("StdOut: ~p",[StdOut]),
                         {ok, StdOut}
                     end
     end,
@@ -90,7 +90,7 @@ publish_file_delete(Hostkey, Filename, Opts) ->
            <<"text/json">>,
            Message) of
               {error, Reason} -> 
-                    lager:error("Reason: ~p",[Reason]),
+                    logger:error("Reason: ~p",[Reason]),
                     Reason;
               {ok, _NTime, _CType, Payload} ->
           case hd(jsx:decode(Payload)) of
@@ -118,7 +118,7 @@ publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock, MaxB
                               {user_data, UserData}
                              ] ++ Opts),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    lager:debug("RoutingKey: ~p",[RoutingKey]),
+    logger:debug("RoutingKey: ~p",[RoutingKey]),
     Response = turtle:publish(file_transfer_publisher,
         <<"file_transfer">>,
         RoutingKey,
@@ -130,7 +130,7 @@ publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock, MaxB
 -spec send_file(LocalFilePath :: string(), RemoteFilePath :: string(), Hostkey :: string(), Opts :: list()) -> ok | error.
 send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
     MaxBlockSizeBytes = application:get_env(dog_trainer,max_block_size_bytes,134217728),
-    lager:debug("LocalFilePath: ~p, Hostkey: ~p",[LocalFilePath,Hostkey]),
+    logger:debug("LocalFilePath: ~p, Hostkey: ~p",[LocalFilePath,Hostkey]),
     try 
         {ok,IoDevice} = file:open(LocalFilePath, [read,binary,read_ahead,raw]),
         send_data(IoDevice,RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts)
@@ -145,7 +145,7 @@ send_data(IoDevice,RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts) ->
 send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, CurrentBlock, Opts) ->
    case file:read(IoDevice, MaxBlockSizeBytes) of
        {ok, Data} ->
-       lager:debug("RemoteFilePath: ~p, MaxBlockSizeBytes: ~p, CurrentBlock: ~p",[RemoteFilePath,MaxBlockSizeBytes,CurrentBlock]),
+       logger:debug("RemoteFilePath: ~p, MaxBlockSizeBytes: ~p, CurrentBlock: ~p",[RemoteFilePath,MaxBlockSizeBytes,CurrentBlock]),
            % Write Data to Socket
            NextBlock = CurrentBlock + 1,
            publish_file_send(Hostkey,RemoteFilePath,Data,TotalBlocks,NextBlock, MaxBlockSizeBytes, Opts),
@@ -190,24 +190,24 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
            Message,
            #{timeout => 20000 }) of
               {error, Reason} -> 
-                    lager:error("Reason: ~p",[Reason]),
+                    logger:error("Reason: ~p",[Reason]),
                     {error, Reason};
               {ok, _NTime, CType, Response} ->
-                    lager:debug("CType: ~p",[CType]),
+                    logger:debug("CType: ~p",[CType]),
                     case CType of
                         <<"application/octet-stream">> -> 
                             LocalFilePath = ?FILE_LOCATION_BASE  ++ dog_common:to_list(Hostkey) ++ "/fetch/" ++ dog_common:to_list(Filename),
                             filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),                                                     
                             ok = file:write_file( LocalFilePath, Response, [raw, write, binary]),                                               
-                            lager:info("Response size in bytes: ~p",[erlang:size(Response)]), 
+                            logger:info("Response size in bytes: ~p",[erlang:size(Response)]), 
                             Response;
                         <<"text/json">> ->
                             case hd(jsx:decode(Response)) of
                               {<<"error">>,StdErr} ->
-                                lager:error("StdErr: ~p",[StdErr]),
+                                logger:error("StdErr: ~p",[StdErr]),
                                 {error, StdErr};
                               {<<"ok">>,StdOut} ->  
-                                lager:debug("StdOut: ~p",[StdOut]),
+                                logger:debug("StdOut: ~p",[StdOut]),
                                 {ok, StdOut}
                             end
                     end

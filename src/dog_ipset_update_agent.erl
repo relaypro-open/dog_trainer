@@ -107,7 +107,7 @@ handle_cast({add_to_queue, Groups}, State) ->
   NewState = ordsets:union(ordsets:from_list(Groups), State),
   {noreply, NewState};
 handle_cast(Msg, State) ->
-  lager:error("unknown_message: Msg: ~p, State: ~p",[Msg, State]),
+  logger:error("unknown_message: Msg: ~p, State: ~p",[Msg, State]),
   {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -124,7 +124,7 @@ handle_info(periodic_publish, State) ->
     erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     {noreply, NewState};
 handle_info(Info, State) ->
-  lager:error("unknown_message: Info: ~p, State: ~p",[Info, State]),
+  logger:error("unknown_message: Info: ~p, State: ~p",[Info, State]),
   {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -134,7 +134,7 @@ handle_info(Info, State) ->
 %%----------------------------------------------------------------------
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    lager:info("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    logger:info("terminate: Reason: ~p, State: ~p", [Reason, State]),
     {close}.
 
 -spec code_change(_, State::ips_state(), _) -> {ok, State::ips_state()}.
@@ -155,16 +155,16 @@ do_periodic_publish(State) ->
                         lists:foreach(fun(S) ->
                             case S of
                                 update ->
-                                    lager:info("State: ~p",[State]),
+                                    logger:info("State: ~p",[State]),
                                     dog_ipset:update_ipsets(all_envs);
                                 force ->
-                                    lager:info("State: ~p",[State]),
+                                    logger:info("State: ~p",[State]),
                                     dog_ipset:force_update_ipsets()
                             end
                                       end, State)
             end,
             {ok, ordsets:new()};
         false ->
-            lager:info("Skipping, dog_agent_checker:check() false"),
+            logger:info("Skipping, dog_agent_checker:check() false"),
             {ok, State}
     end.

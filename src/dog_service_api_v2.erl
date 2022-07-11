@@ -35,7 +35,7 @@ create(ServiceMap@0) ->
                                   reql:table(X, ?TYPE_TABLE),
                                   reql:insert(X, ServiceMap@0,#{return_changes => always})
                           end),
-                    lager:debug("create R: ~p~n", [R]),
+                    logger:debug("create R: ~p~n", [R]),
                     NewVal = maps:get(<<"new_val">>,hd(maps:get(<<"changes">>,R))),
                     {ok, NewVal};
                 {error, Error} ->
@@ -57,14 +57,14 @@ delete(Id) ->
                                               reql:get(X, Id),
                                               reql:delete(X)
                                       end),
-            lager:debug("delete R: ~p~n",[R]),
+            logger:debug("delete R: ~p~n",[R]),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 -> ok;
                 _ -> {error,#{<<"error">> => <<"error">>}}
             end;
         {true,Profiles} ->
-            lager:info("service ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
+            logger:info("service ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
             {error,#{<<"errors">> => #{<<"in active profile">> => Profiles}}}
      end.
 
@@ -112,7 +112,7 @@ update(Id, UpdateMap) ->
                                   reql:get(X, Id),
                                   reql:update(X,UpdateMap,#{return_changes => always})
                           end),
-                    lager:debug("update R: ~p~n", [R]),
+                    logger:debug("update R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced,Unchanged} of

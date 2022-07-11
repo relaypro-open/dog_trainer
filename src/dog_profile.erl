@@ -60,7 +60,7 @@ init() ->
 %    Result = dog_profile:get_by_name(Name),
 %    case Result of
 %        {error, _Error} ->
-%            lager:info("No profile associated with group id: ~p",[Name]),
+%            logger:info("No profile associated with group id: ~p",[Name]),
 %            throw(profile_not_found);
 %        {ok, ProfileJson} ->
 %            IpsetsRuleset = dog_ruleset:generate_ruleset(ProfileJson, ipsets, <<"v4">>),
@@ -72,7 +72,7 @@ init() ->
 generate_ipv6_ruleset_by_id(Id) ->
     case get_by_id(Id) of
         {error, _Error} ->
-            lager:info("No profile associated with group id: ~p",[Id]),
+            logger:info("No profile associated with group id: ~p",[Id]),
             throw(profile_not_found);
         {ok, ProfileJson} ->
              IpsetsRulesetResult = dog_ruleset:generate_ruleset(ProfileJson, ipsets, <<"v6">>),
@@ -84,7 +84,7 @@ generate_ipv6_ruleset_by_id(Id) ->
 %generate_ipv6_ruleset_by_name(Name) ->
 %    case get_by_name(Name) of
 %        {error, _Error} ->
-%            lager:info("No profile associated with group id: ~p",[Name]),
+%            logger:info("No profile associated with group id: ~p",[Name]),
 %            throw(profile_not_found);
 %        {ok, ProfileJson} ->
 %            IpsetsRulesetResult = dog_ruleset:generate_ruleset(ProfileJson, ipsets, <<"v6">>),
@@ -108,7 +108,7 @@ generate_ipv4_ruleset_by_id(Id) ->
 generate_ipv4_ruleset_by_group_name(GroupName,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap) ->
     case dog_group:get_profile_by_name(GroupName) of
         {error,_Error} ->
-            lager:info("No profile associated with group: ~p",[GroupName]),
+            logger:info("No profile associated with group: ~p",[GroupName]),
             throw(profile_not_found);
         {ok, ProfileJson} ->
             write_profile_to_file(ProfileJson, GroupName),
@@ -133,7 +133,7 @@ generate_ipv6_ruleset_by_group_id(GroupId) ->
 
 -spec profile_not_found(GroupId :: binary()) -> no_return(). 
 profile_not_found(GroupId) ->
-          lager:info("No profile associated with group id: ~p",[GroupId]),
+          logger:info("No profile associated with group id: ~p",[GroupId]),
           throw(profile_not_found).
 
 %-spec generate_ipv6_ruleset_by_group_name(GroupName :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
@@ -146,7 +146,7 @@ generate_ipv6_ruleset_by_group_name(GroupName,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMa
     Response = dog_group:get_profile_by_name(GroupName),
     case Response of
         {error, _Reason} ->
-            lager:info("No profile associated with group name: ~p",[GroupName]),
+            logger:info("No profile associated with group name: ~p",[GroupName]),
             throw(profile_not_found);
         {ok, ProfileJson} ->
             write_profile_to_file(ProfileJson, GroupName),
@@ -245,7 +245,7 @@ normalize_ruleset(Ruleset) ->
 -spec create_hash(Ruleset :: iodata() ) -> binary().
 create_hash(Ruleset) ->
     RulesetTrimmed = normalize_ruleset(Ruleset),
-    lager:info("RulesetTrimmed: ~p",[RulesetTrimmed]),
+    logger:info("RulesetTrimmed: ~p",[RulesetTrimmed]),
     BitString = base16:encode(crypto:hash(sha256, RulesetTrimmed)),
     Binary = binary:list_to_bin(erlang:bitstring_to_list(BitString)),
     Binary.
@@ -268,19 +268,19 @@ create_hash(Ruleset) ->
 -spec create_ruleset(RoutingKey :: binary(), Group :: binary(), Environment :: binary(), Location :: binary(), HostKey :: binary(), Ipv4RoleMap :: map(), Ipv6RoleMap :: map() ,Ipv4ZoneMap :: map() ,Ipv6ZoneMap :: map() ,ZoneIdMap :: map() ,GroupIdMap :: map(), ServiceIdMap :: map(), Ipsets :: iolist()) -> 
   error | {R4IpsetsRuleset :: iolist(), R6IpsetsRuleset :: iolist(), R4IptablesRuleset :: iolist(), R6IptablesRuleset :: iolist()}.
 create_ruleset(RoutingKey, Group, _Environment, _Location, _HostKey,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap,_Ipsets) ->
-    lager:info("creating Ipv4,Ipv6 rulesets, ipsets: ~p",[RoutingKey]),
+    logger:info("creating Ipv4,Ipv6 rulesets, ipsets: ~p",[RoutingKey]),
     {R4IpsetsResult, R4IptablesResult} = generate_ipv4_ruleset_by_group_name(Group,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap),
     {R6IpsetsResult, R6IptablesResult} = generate_ipv6_ruleset_by_group_name(Group,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap),
     AnyError = lists:any(fun(X) -> X == error end,[R4IpsetsResult,R6IpsetsResult,R4IptablesResult,R6IptablesResult]),
     AnyNull = lists:any(fun(X) -> X == null end,[R4IpsetsResult,R6IpsetsResult,R4IptablesResult,R6IptablesResult]),
     case AnyError of
         true ->
-            lager:info("Error generating at least one Ipv4,Ipv6 ruleset or ipsets, not publishing: ~p",[RoutingKey]),
+            logger:info("Error generating at least one Ipv4,Ipv6 ruleset or ipsets, not publishing: ~p",[RoutingKey]),
             error;
         false ->
             case AnyNull of
                 true ->
-                    lager:info("Found null Ipset or IpRuleset, not publishing: ~p",[RoutingKey]),
+                    logger:info("Found null Ipset or IpRuleset, not publishing: ~p",[RoutingKey]),
                     {false, false, false, false};
                 false ->
                     {ok, R4IpsetsRuleset} = R4IpsetsResult, 
@@ -337,7 +337,7 @@ date_string() ->
 
 -spec create(Profile :: map()) -> {'ok', iolist() } | {atom(), binary()}.
 create(Profile@0) ->
-    lager:debug("Profile@0: ~p~n",[Profile@0]),
+    logger:debug("Profile@0: ~p~n",[Profile@0]),
     Timestamp = dog_time:timestamp(),
     case dog_json_schema:validate(?VALIDATION_TYPE,Profile@0) of
         ok ->
@@ -353,7 +353,7 @@ create(Profile@0) ->
             Key = hd(maps:get(<<"generated_keys">>,R)),
             {ok, Key};
         {error, Error} ->
-            lager:error("~p",[Error]),
+            logger:error("~p",[Error]),
             Response = dog_parse:validation_error(Error),
             {validation_error, Response}
     end.
@@ -382,7 +382,7 @@ get_all() ->
 %        {ok, Profile} ->
 %            {ok, maps:get(<<"id">>,Profile)};
 %        {error, Error} ->
-%            lager:error("profile name not found: ~p, ~p",[ProfileName,Error]),
+%            logger:error("profile name not found: ~p, ~p",[ProfileName,Error]),
 %            {error, Error}
 %    end.
 
@@ -447,7 +447,7 @@ get_by_id(Id) ->
                                  end),
     case R of
         {ok, null} ->
-            lager:debug("profile id null return value: ~p",[Id]),
+            logger:debug("profile id null return value: ~p",[Id]),
             {error, notfound};
         {ok, Result} ->
             {ok, Result}
@@ -460,8 +460,8 @@ update(Id, UpdateMap) ->
 
 -spec update(Id :: binary(), UpdateMap :: map(), InPlace :: boolean() ) -> {atom(), Id :: iolist()} | {false, atom()}.
 update(Id, UpdateMap, InPlace) ->
-    lager:debug("Id: ~p~n",[Id]),
-    lager:debug("UpdateMap: ~p~n",[UpdateMap]),
+    logger:debug("Id: ~p~n",[Id]),
+    logger:debug("UpdateMap: ~p~n",[UpdateMap]),
     case get_by_id(Id) of
         {ok, Profile@0} ->
             Profile@1 = maps:merge(Profile@0,UpdateMap),
@@ -481,7 +481,7 @@ update(Id, UpdateMap, InPlace) ->
                                             {false, error_replacing_profile}
                                     end;
                                 {ok,UpdateName} ->
-                                    lager:debug("UpdateName: ~p",[UpdateName]),
+                                    logger:debug("UpdateName: ~p",[UpdateName]),
                                     case dog_group:replace_profile_by_profile_id(Id,Id2,UpdateName) of
                                         [] -> % This profile not associated with any group
                                             {true, Id2};
@@ -499,7 +499,7 @@ update(Id, UpdateMap, InPlace) ->
 
 -spec update_in_place(Id :: binary(), UpdateMap :: map()) -> {false, atom()} | {validation_error, iolist()} | {true, binary()}.
 update_in_place(Id, UpdateMap) ->
-    lager:info("update_in_place"),
+    logger:info("update_in_place"),
     case get_by_id(Id) of
         {ok,OldProfile} ->
             NewProfile = maps:merge(OldProfile,UpdateMap),
@@ -514,7 +514,7 @@ update_in_place(Id, UpdateMap) ->
                                   reql:get(X, Id),
                                   reql:update(X,UpdateMap)
                           end),
-                    lager:debug("update R: ~p~n", [R]),
+                    logger:debug("update R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced,Unchanged} of
@@ -546,14 +546,14 @@ delete(Id) ->
                                               reql:get(X, Id),
                                               reql:delete(X)
                                       end),
-            lager:debug("delete R: ~p~n",[R]),
+            logger:debug("delete R: ~p~n",[R]),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 -> ok;
                 _ -> {error,#{<<"error">> => <<"error">>}}
             end;
         {ok,Groups} ->
-            lager:info("profile ~p not deleted, associated with group: ~p~n",[Id,Groups]),
+            logger:info("profile ~p not deleted, associated with group: ~p~n",[Id,Groups]),
             {error,#{<<"errors">> => #{<<"associated with group">> => Groups}}}
     end.
 
@@ -561,7 +561,7 @@ delete(Id) ->
 rule_to_text(Rule, Keys) ->
     Values = lists:map(fun(L) -> 
                                Value = maps:get(L, Rule),
-                               lager:debug("Key: ~p Value: ~p~n", [L, Value]),
+                               logger:debug("Key: ~p Value: ~p~n", [L, Value]),
                                case L of
                                    <<"group">> ->
                                        case Value of
@@ -846,7 +846,7 @@ get_ppps_inbound_ec2(ProfileJson,DestinationRegion) ->
                             end, Sources)
                   %TODO If not too long, list public+private IPs of Zone
                   %{ok, Zone} = dog_zone:get_by_id(maps:get(<<"group">>,Rule)),
-                  %lager:debug("Zone: ~p~n",[Zone]),
+                  %logger:debug("Zone: ~p~n",[Zone]),
                   %Ip4Addresses = maps:get(<<"ipv4_addresses">>,Zone),
                   %MaxEc2ZoneSize = application:get_env(dog_trainer,max_ec2_zone_size,5),
                   %case length(Ip4Addresses) of

@@ -2,6 +2,9 @@
 -export([start_link/0, init/1]).
 -behaviour(supervisor).
 
+-include("dog_trainer.hrl"). 
+
+
 -define(SUP(M), #{id => M,
                   start => {M, start_link, []},
                   type => supervisor}).

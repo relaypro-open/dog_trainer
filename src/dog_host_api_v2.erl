@@ -1,6 +1,6 @@
 -module(dog_host_api_v2).
 
-%-include("dog_trainer.hrl").
+-include("dog_trainer.hrl").
 
 -define(VALIDATION_TYPE, <<"host">>).
 -define(TYPE_TABLE, host).
@@ -31,10 +31,10 @@ create(HostMap@0) ->
   Hostkey = maps:get(<<"hostkey">>, HostMap@0, notfound),
   case Hostkey of
     notfound ->
-      lager:debug("No hostkey found"),
+      logger:debug("No hostkey found"),
       {error, no_hostkey};
     _ -> 
-      lager:debug("HostMap@0: ~p",[HostMap@0]),
+      logger:debug("HostMap@0: ~p",[HostMap@0]),
       case dog_host:get_by_hostkey(Hostkey) of
         {ok, _ExistingHost} ->
           {error,exists};
@@ -93,7 +93,7 @@ delete(Id) ->
                                       reql:get(X, Id),
                                       reql:delete(X)
                               end),
-    lager:debug("delete R: ~p~n",[R]),
+    logger:debug("delete R: ~p~n",[R]),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -114,7 +114,7 @@ update(Id, UpdateMap) ->
                          reql:get(X, Id),
                          reql:update(X,UpdateMap,#{return_changes => always})
                      end),
-          lager:debug("update R: ~p~n", [R]),
+          logger:debug("update R: ~p~n", [R]),
           Replaced = maps:get(<<"replaced">>, R),
           Unchanged = maps:get(<<"unchanged">>, R),
           case {Replaced,Unchanged} of
@@ -141,6 +141,6 @@ update_by_hostkey(HostKey, UpdateMap) ->
         {ok, Id} -> 
             update(Id, UpdateMap);
         {error, Reason} -> 
-            lager:info("Update for unknown host: ~p, Reason: ~p",[HostKey,Reason]),
+            logger:info("Update for unknown host: ~p, Reason: ~p",[HostKey,Reason]),
             create(UpdateMap)
     end.

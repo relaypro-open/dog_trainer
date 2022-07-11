@@ -11,11 +11,11 @@ read_file(FileName) ->
     case file:read_file(FileName) of
               {ok, Ruleset} -> {ok, Ruleset};
             {error,Reason} ->
-              lager:error("file error: ~p, ~p",[Reason,FileName]),
+              logger:error("file error: ~p, ~p",[Reason,FileName]),
               {error,Reason}
     end
   of
     File -> File
   catch ErrorType:ErrorReason:Stacktrace ->
-          lager:error("catch ErrorType:ErrorReason:Stacktrace",[ErrorType,ErrorReason,Stacktrace])
+          logger:error("catch ErrorType:ErrorReason:Stacktrace",[ErrorType,ErrorReason,Stacktrace])
   end.

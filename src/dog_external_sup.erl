@@ -1,6 +1,9 @@
 -module(dog_external_sup).
 -behaviour(supervisor).
 
+-include("dog_trainer.hrl"). 
+
+
 -export([start_link/0, init/1]).
 
 start_link() ->
@@ -12,7 +15,7 @@ init([]) ->
         lists:flatten(lists:map(fun(Link) ->
                       LinkName = maps:get(<<"name">>,Link),
                       %EnvName = LinkName,
-                      lager:debug("LinkName: ~p",[LinkName]),
+                      logger:debug("LinkName: ~p",[LinkName]),
                       %[
                       % dog_external_agent:inbound_service_spec(LinkName),
                       %dog_external_agent:outbound_publisher_spec(LinkName)

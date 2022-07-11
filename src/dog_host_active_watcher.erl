@@ -48,7 +48,7 @@ state(Ref) ->
     gen_requery:call(Ref, state, infinity).
 
 init([]) ->
-    lager:debug("init"),
+    logger:debug("init"),
     % The ConnectOptions are provided to gen_rethink:connect_unlinked
     RethinkdbHost = application:get_env(dog_trainer, rethinkdb_host,"localhost"),
     RethinkdbPort = application:get_env(dog_trainer, rethinkdb_port,28015),
@@ -70,8 +70,8 @@ init([]) ->
 %% the managed connection is newly established
 handle_connection_up(Connection, State) ->
     {ok,RethinkSquashSec} = application:get_env(dog_trainer,rethink_squash_sec),
-    lager:debug("handle_connection_up"),
-    lager:debug("Connection: ~p", [Connection]),
+    logger:debug("handle_connection_up"),
+    logger:debug("Connection: ~p", [Connection]),
     Reql = reql:db(<<"dog">>),
     reql:table(Reql, <<"host">>),
     reql:pluck(Reql, [<<"name">>,<<"active">>,<<"hostkey">>]), 
@@ -83,18 +83,18 @@ handle_connection_up(Connection, State) ->
 %% reconnect state with exponential backoffs. Your module can still process
 %% requests during this time.
 handle_connection_down(State) ->
-    lager:debug("handle_connection_down"),
+    logger:debug("handle_connection_down"),
     {noreply, State}.
 
 handle_query_result(Result, State) ->
-    lager:info("Result: ~p", [Result]),
+    logger:info("Result: ~p", [Result]),
     case Result of
         null ->
             pass;
         [] ->
             pass;
         _ ->
-            lager:info("Result: ~p",[Result]),
+            logger:info("Result: ~p",[Result]),
             Hostkeys = lists:map(fun(Entry) ->
                 case maps:get(<<"new_val">>,Entry,null) of 
                     null ->
@@ -105,7 +105,7 @@ handle_query_result(Result, State) ->
             end, Result),
             case Hostkeys of
                 [] ->
-                  lager:error("No Hostkeys found in changefeed: ~p",[Result]),
+                  logger:error("No Hostkeys found in changefeed: ~p",[Result]),
                   pass;
                 _ ->
                   GroupNames = lists:map(fun(Hostkey) -> 
@@ -114,11 +114,11 @@ handle_query_result(Result, State) ->
                              GroupName = maps:get(<<"group">>,Host),
                              GroupName;
                           {error, notfound} ->
-                              lager:error("Hostkey not found: ~p",[Hostkey]),
+                              logger:error("Hostkey not found: ~p",[Hostkey]),
                               []
                       end
                   end, Hostkeys),
-                  lager:info("Groups updated due to change in host active state: ~p",[GroupNames]),
+                  logger:info("Groups updated due to change in host active state: ~p",[GroupNames]),
                   case GroupNames of
                       [<<>>] ->
                           pass;
@@ -126,7 +126,7 @@ handle_query_result(Result, State) ->
                           pass;
                       _ ->
                           imetrics:add_m(watcher,host_active_update),
-                          lager:info("add_to_queue: ~p",[GroupNames]),
+                          logger:info("add_to_queue: ~p",[GroupNames]),
                           dog_profile_update_agent:add_to_queue(GroupNames)
                   end
             end
@@ -140,15 +140,15 @@ handle_query_error(Error, State) ->
     {stop, Error, State}.
 
 handle_call(state, _From, State) ->
-    lager:debug("handle_call changefeed: ~p",[State]),
+    logger:debug("handle_call changefeed: ~p",[State]),
     {reply, State, State}.
 
 handle_cast(_Msg, State) ->
-    lager:debug("handle_cast changefeed: ~p",[State]),
+    logger:debug("handle_cast changefeed: ~p",[State]),
     {noreply, State}.
 
 handle_info(_Info, State) ->
-    lager:debug("handle_info changefeed: ~p",[State]),
+    logger:debug("handle_info changefeed: ~p",[State]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

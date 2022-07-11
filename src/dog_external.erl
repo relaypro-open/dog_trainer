@@ -47,7 +47,7 @@
 %% ------------------------------------------------------------------
 -spec start_external_broker_connection(LinkName :: binary()) -> ok. 
 start_external_broker_connection(EnvName) ->
-  lager:debug("EnvName: ~p",[EnvName]),
+  logger:debug("EnvName: ~p",[EnvName]),
   {ok,Link} = dog_link:get_by_name(EnvName),
   turtle_conn:new(turtle_connection_config(Link)).
 
@@ -215,14 +215,14 @@ dump_all_active() ->
                     %Else
                     lists:map(fun(E) ->
                       ExternalName = maps:get(<<"name">>,E),
-                      lager:debug("ExternalName: ~p",[ExternalName]),
+                      logger:debug("ExternalName: ~p",[ExternalName]),
                       case dog_link:get_by_name(ExternalName) of
                                {ok, Map} -> 
-                                  lager:debug("Map: ~p",[Map]),
+                                  logger:debug("Map: ~p",[Map]),
                                     LinkAddressHandling = maps:get(<<"address_handling">>,Map),
                                     maps:put(<<"address_handling">>,LinkAddressHandling,E);
                                _ ->
-                                 lager:debug("E: ~p",[E]),
+                                 logger:debug("E: ~p",[E]),
                                  E
                              end
                     end, Else)
@@ -244,14 +244,14 @@ dump_all() ->
                     %Else
                     lists:map(fun(E) ->
                       ExternalName = maps:get(<<"name">>,E),
-                      lager:debug("ExternalName: ~p",[ExternalName]),
+                      logger:debug("ExternalName: ~p",[ExternalName]),
                       case dog_link:get_by_name(ExternalName) of
                                {ok, Map} -> 
-                                  lager:debug("Map: ~p",[Map]),
+                                  logger:debug("Map: ~p",[Map]),
                                     LinkAddressHandling = maps:get(<<"address_handling">>,Map),
                                     maps:put(<<"address_handling">>,LinkAddressHandling,E);
                                _ ->
-                                 lager:debug("E: ~p",[E]),
+                                 logger:debug("E: ~p",[E]),
                                  E
                              end
                     end, Else)
@@ -329,7 +329,7 @@ replace(Id, UpdateMap) ->
                                   reql:get(X, Id),
                                   reql:replace(X,NewExternal3)
                               end),
-                    lager:debug("replaced R: ~p~n", [R]),
+                    logger:debug("replaced R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced,Unchanged} of
@@ -418,7 +418,7 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
 %%
 %-spec publish_to_inbound_queue(IpsetExternalMap :: map()) -> any().
 %publish_to_inbound_queue(IpsetExternalMap) ->
-%    lager:debug("IpsetExternalMap: ~p",[IpsetExternalMap]),
+%    logger:debug("IpsetExternalMap: ~p",[IpsetExternalMap]),
 %    ExternalEnvName = maps:get(<<"name">>,IpsetExternalMap),
 %    {ok,LocalEnvName} = application:get_env(dog_trainer, env),
 %    UserData = #{
@@ -434,7 +434,7 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
 %                              {user_data, UserData}
 %                             ]),
 %    RoutingKey = ExternalEnvName,
-%    lager:info("~p, ~p, ~p",[Message, <<"inbound">>, RoutingKey]),
+%    logger:info("~p, ~p, ~p",[Message, <<"inbound">>, RoutingKey]),
 %    Response = thumper:publish(Message, <<"inbound">>, RoutingKey),
 %    Response.
 

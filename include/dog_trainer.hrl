@@ -24,3 +24,5 @@
       ips
        }).
 -type ips_state() :: #ips_state{}.
+
+-include_lib("kernel/include/logger.hrl").

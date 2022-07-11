@@ -1,4 +1,7 @@
 -module(turtle_test_sup).
+
+-include("dog_trainer.hrl"). 
+
 -include_lib("amqp_client/include/amqp_client.hrl").
 
 -export([
@@ -12,8 +15,6 @@
         turtle_connection_config/0
        ]).
 -behaviour(supervisor).
-
--define(SERVER, ?MODULE).
 
 -spec start_link() -> 'ignore' | {'error',_} | {'ok',pid()}.
 start_link() ->
