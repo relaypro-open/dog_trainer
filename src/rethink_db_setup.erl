@@ -25,10 +25,19 @@ table_schema() ->
     <<"zone">> => [<<"name">>]
    }.
 
+-spec wait_on_rethinkdb(Connection :: pid(),DatabaseName :: binary()) -> ok | change.
+wait_on_rethinkdb(Connection,DatabaseName) ->
+  {ok, Databases} = gen_rethink:run(Connection,
+                               fun(X) ->
+                                   reql:db(X,DatabaseName),
+                                   reql:wait(X)
+                               end).
+
 -spec setup_rethinkdb(Hostname :: string(), Port :: integer(), Username :: string(), Password :: string()) -> {ok, map()}.
 setup_rethinkdb(Hostname,Port,Username,Password) ->
   Connection = get_connection(Hostname,Port,Username,Password),
   ensure_db_exists(Connection,?DB_NAME),
+  wait_on_rethinkdb(Connection,<<"dog">>),
   maps:map(fun(TableName,FieldsList) ->
                ensure_table_exists(Connection,?DB_NAME,TableName),
                maps:from_list(lists:map(fun(FieldName) ->
