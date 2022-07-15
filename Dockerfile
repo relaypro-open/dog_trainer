@@ -22,7 +22,6 @@ CMD ["iex"]
 RUN mkdir /data
 WORKDIR /data
 
-COPY _build _build/
 COPY src src/
 COPY priv priv/
 COPY config config/
