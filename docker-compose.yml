@@ -1,9 +1,29 @@
 version: "3.9"
 services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+  dog_park:
+    build: "../dog_park"
+    ports:
+      - "3030:3030"
+    environment:
+      - NGINX_PORT=3030
+      - REACT_APP_DOG_API_HOST=http://dog.local
+      - VIRTUAL_HOST=dog.local
+      - VIRTUAL_PATH=/
+    depends_on:
+      - "dog_trainer"
   dog_trainer:
     build: .
     ports:
       - "7070:7070"
+    environment:
+      - VIRTUAL_HOST=dog.local
+      - VIRTUAL_PATH=/api
     depends_on:
       - "rethinkdb"
       - "rabbitmq"
@@ -17,7 +37,3 @@ services:
       - RABBITMQ_DEFAULT_VHOST=dog
     ports:
       - "15672:15672"
-  nginx:
-    image: "nginx"
-    depends_on:
-      - "dog_trainer"

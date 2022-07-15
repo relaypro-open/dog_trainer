@@ -26,7 +26,7 @@ COPY _build _build/
 COPY src src/
 COPY priv priv/
 COPY config config/
-COPY config/templates/local_docker.sys.config.j2 config/sys.config
+COPY config/sys.config.local_docker config/sys.config
 COPY include include/
 COPY scripts scripts/
 COPY rebar.config .
