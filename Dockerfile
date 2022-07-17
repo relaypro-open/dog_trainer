@@ -21,21 +21,28 @@ CMD ["iex"]
 #Set working directory
 RUN mkdir /data
 WORKDIR /data
-
-COPY src src/
-COPY priv priv/
-COPY config config/
-COPY config/sys.config.local_docker config/sys.config
-COPY include include/
-COPY scripts scripts/
 COPY rebar.config .
 COPY rebar.lock .
 COPY rebar3 .
-
 RUN mix do local.hex --force, local.rebar --force
 
 RUN elixir -v
 RUN ./rebar3 --version
+
+RUN ./rebar3 compile
+
+FROM base as compile
+COPY . .
+COPY --from=base /data/_build .
+#COPY src src/
+#COPY priv priv/
+#COPY config config/
+COPY config/sys.config.local_docker config/sys.config
+#COPY include include/
+#COPY scripts scripts/
+#COPY rebar.config .
+#COPY rebar.lock .
+#COPY rebar3 .
 
 #Build the release
 RUN ./rebar3 release
@@ -44,7 +51,7 @@ RUN pwd
 RUN find .
 
 #FROM alpine
-FROM erlang:23 as deploy
+FROM base as deploy
 
 #RUN apk add openssl && \
 #    apk add ncurses-libs && \
@@ -54,7 +61,7 @@ FROM erlang:23 as deploy
 RUN mkdir -p /opt/dog_trainer
 RUN mkdir -p /var/log/dog_trainer
 # Install the released application
-COPY --from=base /data/_build/default/rel/dog_trainer /opt/dog_trainer
+COPY --from=compile /data/_build/default/rel/dog_trainer /opt/dog_trainer
 #RUN sed -i 's/bin\/sh/bin\/sh -x/' /opt/dog_trainer/bin/dog_trainer
 RUN ls -latr /var/log/dog_trainer
 
