@@ -21,7 +21,7 @@ CMD ["iex"]
 #Set working directory
 RUN mkdir /data
 WORKDIR /data
-COPY rebar.config .
+COPY rebar.config.local_docker rebar.config
 COPY rebar.lock .
 COPY rebar3 .
 RUN mix do local.hex --force, local.rebar --force
