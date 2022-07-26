@@ -175,3 +175,27 @@ r.db('dog').table('group').withFields(['profile_id']).innerJoin(
     return rule('group_type').eq('ROLE')
   }).getField('group').distinct().setDifference(r.db('dog').table('group')('id').distinct())
 ```
+
+list non-existent zones in profiles (pathological case) (ignore 'cpz_any'):
+```
+  r.db('dog').table('profile')('rules')('inbound')              
+  .concatMap(function(rule) {                                                                  
+    return rule                                           
+  })
+    .filter(function(rule) {
+      return rule('group_type').eq('ZONE')
+    })
+    .getField('group').distinct().setDifference(r.db('dog').table('zone')('id').distinct())
+```
+
+list non-existent services in active profiles (pathological case) (ignore 'any'):
+```
+r.db('dog').table('group').withFields(['profile_id']).innerJoin(                            
+  r.db('dog').table('profile'),                                                             
+  function(serviceRow, profileRow) {                                                          
+    return serviceRow('profile_id').eq(profileRow('id'))})('right')('rules')('inbound')       
+  .concatMap(function(rule) {                                                               
+    return rule.pluck(["service"])                                               
+  })                        
+  .getField('service').distinct().setDifference(r.db('dog').table('service')('id').distinct())
+```
