@@ -58,17 +58,17 @@ loop(_RoutingKey, _CType, Payload, State) ->
   try
       Proplist = binary_to_term(Payload),
       UserData = proplists:get_value(user_data, Proplist),
-      logger:info("UserData: ~p",[UserData]),
+      ?LOG_INFO("UserData: ~p",[UserData]),
       Config = maps:get(config, UserData),
-      logger:info("Config: ~p",[Config]),
-      logger:info("dog_state:from_map(Config) : ~p",[dog_state:from_map(Config)]),
+      ?LOG_INFO("Config: ~p",[Config]),
+      ?LOG_INFO("dog_state:from_map(Config) : ~p",[dog_state:from_map(Config)]),
       GroupName = maps:get(<<"group">>, Config),
       UpdateType = maps:get(<<"updatetype">>, Config),
       imetrics:add_m(ips_update,erlang:atom_to_list(UpdateType)),
-      logger:info("UpdateType: ~p",[UpdateType]),
+      ?LOG_INFO("UpdateType: ~p",[UpdateType]),
       Hostname = maps:get(<<"name">>,Config),
       Hostkey = maps:get(<<"hostkey">>,Config),
-      logger:info("Hostname: ~p, Hostkey: ~p",[Hostname,Hostkey]),
+      ?LOG_INFO("Hostname: ~p, Hostkey: ~p",[Hostname,Hostkey]),
       dog_config:update_host_keepalive(Hostkey),
       case dog_host:get_by_hostkey(Hostkey) of
           {ok, HostExists} -> 
@@ -83,33 +83,33 @@ loop(_RoutingKey, _CType, Payload, State) ->
               end,
               case UpdateType of
                   force ->
-                      logger:info("got force: ~p",[Hostkey]),
+                      ?LOG_INFO("got force: ~p",[Hostkey]),
                       dog_host:update_by_hostkey(Hostkey, Config),
                       dog_ipset_update_agent:queue_force(),
                       dog_iptables:update_group_iptables(GroupName, <<"role">>);
                   update -> 
-                      logger:info("got update: ~p",[Hostkey]),
+                      ?LOG_INFO("got update: ~p",[Hostkey]),
                       dog_host:update_by_hostkey(Hostkey, Config),
                       dog_ipset_update_agent:queue_update(),
                       dog_iptables:update_group_iptables(GroupName, <<"role">>);
                   keepalive ->
-                      logger:info("got keepalive: ~p",[Hostkey]),
+                      ?LOG_INFO("got keepalive: ~p",[Hostkey]),
                       dog_host:update_by_hostkey(Hostkey, Config)
               end;
           {error, Reason} ->
               case UpdateType of
                   force ->
-                      logger:info("New host reporting: ~p",[Hostkey]),
+                      ?LOG_INFO("New host reporting: ~p",[Hostkey]),
                       dog_host:create(Config);
                   _ ->
-                      logger:info("Host update for unknown host: ~p, Reason: ~p",[Hostkey,Reason])
+                      ?LOG_INFO("Host update for unknown host: ~p, Reason: ~p",[Hostkey,Reason])
               end
       end,
       dog_agent_checker:go()
   catch
     Exception:ExceptionReason:Stacktrace ->
       imetrics:add_m(ips_update,"exception"),
-      logger:error("Exception: ~p, ExceptionReason: ~p, Stacktrace: ~p",[Exception,ExceptionReason,Stacktrace])
+      ?LOG_ERROR("Exception: ~p, ExceptionReason: ~p, Stacktrace: ~p",[Exception,ExceptionReason,Stacktrace])
   end,
   {ack,State}.
 
@@ -118,17 +118,17 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
   try
       Proplist = binary_to_term(Payload),
       UserData = proplists:get_value(user_data, Proplist),
-      logger:info("UserData: ~p",[UserData]),
+      ?LOG_INFO("UserData: ~p",[UserData]),
       Config = maps:get(config, UserData),
-      logger:info("Config: ~p",[Config]),
-      logger:info("dog_state:from_map(Config) : ~p",[dog_state:from_map(Config)]),
+      ?LOG_INFO("Config: ~p",[Config]),
+      ?LOG_INFO("dog_state:from_map(Config) : ~p",[dog_state:from_map(Config)]),
       GroupName = maps:get(<<"group">>, Config),
       UpdateType = maps:get(<<"updatetype">>, Config),
       imetrics:add_m(ips_update,erlang:atom_to_list(UpdateType)),
-      logger:info("UpdateType: ~p",[UpdateType]),
+      ?LOG_INFO("UpdateType: ~p",[UpdateType]),
       Hostname = maps:get(<<"name">>,Config),
       Hostkey = maps:get(<<"hostkey">>,Config),
-      logger:info("Hostname: ~p, Hostkey: ~p",[Hostname,Hostkey]),
+      ?LOG_INFO("Hostname: ~p, Hostkey: ~p",[Hostname,Hostkey]),
       dog_config:update_host_keepalive(Hostkey),
       case dog_host:get_by_hostkey(Hostkey) of
           {ok, HostExists} -> 
@@ -143,33 +143,33 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
               end,
               case UpdateType of
                   force ->
-                      logger:info("got force: ~p",[Hostkey]),
+                      ?LOG_INFO("got force: ~p",[Hostkey]),
                       dog_host:update_by_hostkey(Hostkey, Config),
                       dog_ipset_update_agent:queue_force(),
                       dog_iptables:update_group_iptables(GroupName, <<"role">>);
                   update -> 
-                      logger:info("got update: ~p",[Hostkey]),
+                      ?LOG_INFO("got update: ~p",[Hostkey]),
                       dog_host:update_by_hostkey(Hostkey, Config),
                       dog_ipset_update_agent:queue_update(),
                       dog_iptables:update_group_iptables(GroupName, <<"role">>);
                   keepalive ->
-                      logger:info("got keepalive: ~p",[Hostkey]),
+                      ?LOG_INFO("got keepalive: ~p",[Hostkey]),
                       dog_host:update_by_hostkey(Hostkey, Config)
               end;
           {error, Reason} ->
               case UpdateType of
                   force ->
-                      logger:info("New host reporting: ~p",[Hostkey]),
+                      ?LOG_INFO("New host reporting: ~p",[Hostkey]),
                       dog_host:create(Config);
                   _ ->
-                      logger:info("Host update for unknown host: ~p, Reason: ~p",[Hostkey,Reason])
+                      ?LOG_INFO("Host update for unknown host: ~p, Reason: ~p",[Hostkey,Reason])
               end
       end,
       dog_agent_checker:go()
   catch
     Exception:ExceptionReason:Stacktrace ->
       imetrics:add_m(ips_update,"exception"),
-      logger:error("Exception: ~p, ExceptionReason: ~p, Stacktrace: ~p",[Exception,ExceptionReason,Stacktrace])
+      ?LOG_ERROR("Exception: ~p, ExceptionReason: ~p, Stacktrace: ~p",[Exception,ExceptionReason,Stacktrace])
   end,
   ack.
 

@@ -94,7 +94,7 @@ replace(Id, UpdateMap) ->
                                   reql:get(X, Id),
                                   reql:replace(X,NewExternal3,#{return_changes => always})
                               end),
-                    logger:debug("replaced R: ~p~n", [R]),
+                    ?LOG_DEBUG("replaced R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced,Unchanged} of

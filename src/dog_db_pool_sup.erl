@@ -22,7 +22,7 @@ start_link() ->
 %%====================================================================
 init([]) ->
     {ok, Pools} = application:get_env(dog_trainer, pools),
-    logger:info("Pools: ~p",[Pools]),
+    ?LOG_INFO("Pools: ~p",[Pools]),
     PoolSpecs = lists:map(fun({Name, SizeArgs, WorkerArgs}) ->
                                   PoolArgs = [{name, {local, Name}},
                                               {worker_module, dog_poolboy_worker}] ++ SizeArgs,

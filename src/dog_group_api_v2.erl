@@ -50,7 +50,7 @@ create(Group@0) when is_map(Group@0)->
             Group@2 = case maps:find(<<"profile_name">>,Group@1) of
                 error ->
                    NewMap = maps:merge(DefaultMap,Group@1),
-                   logger:info("NewMap: ~p",[NewMap]),
+                   ?LOG_INFO("NewMap: ~p",[NewMap]),
                    NewMap;
                 {ok, _ProfileName} ->
                     ProfileId = case maps:find(<<"profile_version">>,Group@1) of
@@ -69,7 +69,7 @@ create(Group@0) when is_map(Group@0)->
                     end,
                     
                     NewMap = maps:merge(DefaultMap,Group@1),
-                    logger:info("NewMap: ~p",[NewMap]),
+                    ?LOG_INFO("NewMap: ~p",[NewMap]),
                     maps:merge(NewMap,#{<<"profile_id">> => ProfileId})
             end,
             case dog_json_schema:validate(?VALIDATION_TYPE,Group@2) of
@@ -101,14 +101,14 @@ delete(Id) ->
                                               reql:get(X, Id),
                                               reql:delete(X)
                                       end),
-            logger:debug("delete R: ~p~n",[R]),
+            ?LOG_DEBUG("delete R: ~p~n",[R]),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 -> ok;
                 _ -> {error,#{<<"error">> => <<"error">>}}
             end;
         {true,Profiles} ->
-            logger:error("group ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
+            ?LOG_ERROR("group ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
             {error,#{<<"errors">> => #{<<"in active profile">> => Profiles}}}
      end.
 
@@ -143,7 +143,7 @@ replace(Id, ReplaceMap) ->
                                   reql:get(X, Id),
                                   reql:replace(X,NewItem3,#{return_changes => always})
                               end),
-                    logger:debug("replaced R: ~p~n", [R]),
+                    ?LOG_DEBUG("replaced R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced,Unchanged} of
@@ -173,7 +173,7 @@ replace_profile_by_profile_id(OldId, NewId) ->
 
 -spec replace_profile_by_profile_id(OldId :: binary(), NewId :: binary(), ProfileName :: iolist() ) ->  list().
 replace_profile_by_profile_id(OldId, NewId, ProfileName) ->
-    logger:debug("OldId: ~p, NewId: ~p, ProfileName: ~p", [OldId, NewId, ProfileName]),
+    ?LOG_DEBUG("OldId: ~p, NewId: ~p, ProfileName: ~p", [OldId, NewId, ProfileName]),
     GroupIds = dog_group:get_ids_with_profile_id(OldId),
     Results = lists:map(fun(GroupId) ->
         update(GroupId, #{<<"profile_id">> => NewId, <<"profile_name">> => ProfileName}) end, GroupIds),
@@ -195,7 +195,7 @@ update(Id, UpdateMap) ->
                                   reql:get(X, Id),
                                   reql:update(X,UpdateMap,#{return_changes => always})
                           end),
-                    logger:debug("update R: ~p~n", [R]),
+                    ?LOG_DEBUG("update R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced,Unchanged} of

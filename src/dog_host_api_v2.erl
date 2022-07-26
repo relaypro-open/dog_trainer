@@ -31,10 +31,10 @@ create(HostMap@0) ->
   Hostkey = maps:get(<<"hostkey">>, HostMap@0, notfound),
   case Hostkey of
     notfound ->
-      logger:debug("No hostkey found"),
+      ?LOG_DEBUG("No hostkey found"),
       {error, no_hostkey};
     _ -> 
-      logger:debug("HostMap@0: ~p",[HostMap@0]),
+      ?LOG_DEBUG("HostMap@0: ~p",[HostMap@0]),
       case dog_host:get_by_hostkey(Hostkey) of
         {ok, _ExistingHost} ->
           {error,exists};
@@ -93,7 +93,7 @@ delete(Id) ->
                                       reql:get(X, Id),
                                       reql:delete(X)
                               end),
-    logger:debug("delete R: ~p~n",[R]),
+    ?LOG_DEBUG("delete R: ~p~n",[R]),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -114,7 +114,7 @@ update(Id, UpdateMap) ->
                          reql:get(X, Id),
                          reql:update(X,UpdateMap,#{return_changes => always})
                      end),
-          logger:debug("update R: ~p~n", [R]),
+          ?LOG_DEBUG("update R: ~p~n", [R]),
           Replaced = maps:get(<<"replaced">>, R),
           Unchanged = maps:get(<<"unchanged">>, R),
           case {Replaced,Unchanged} of
@@ -141,6 +141,6 @@ update_by_hostkey(HostKey, UpdateMap) ->
         {ok, Id} -> 
             update(Id, UpdateMap);
         {error, Reason} -> 
-            logger:info("Update for unknown host: ~p, Reason: ~p",[HostKey,Reason]),
+            ?LOG_INFO("Update for unknown host: ~p, Reason: ~p",[HostKey,Reason]),
             create(UpdateMap)
     end.

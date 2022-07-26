@@ -54,17 +54,17 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
            <<"text/json">>,
            Message) of
               {error, Reason} -> 
-                    logger:error("Reason: ~p",[Reason]),
+                    ?LOG_ERROR("Reason: ~p",[Reason]),
                     {error,Reason};
               {ok, _NTime, _CType, Payload} ->
-                    logger:debug("Payload: ~p",[Payload]),
+                    ?LOG_DEBUG("Payload: ~p",[Payload]),
                     case hd(jsx:decode(Payload)) of
                     %case Payload of
                       {<<"error">>,StdErr} ->
-                        logger:error("StdErr: ~p",[StdErr]),
+                        ?LOG_ERROR("StdErr: ~p",[StdErr]),
                         {error, StdErr};
                       {<<"ok">>,StdOut} ->  
-                        logger:debug("StdOut: ~p",[StdOut]),
+                        ?LOG_DEBUG("StdOut: ~p",[StdOut]),
                         {ok, StdOut}
                     end
     end,
@@ -90,7 +90,7 @@ publish_file_delete(Hostkey, Filename, Opts) ->
            <<"text/json">>,
            Message) of
               {error, Reason} -> 
-                    logger:error("Reason: ~p",[Reason]),
+                    ?LOG_ERROR("Reason: ~p",[Reason]),
                     Reason;
               {ok, _NTime, _CType, Payload} ->
           case hd(jsx:decode(Payload)) of
@@ -118,7 +118,7 @@ publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock, MaxB
                               {user_data, UserData}
                              ] ++ Opts),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    logger:debug("RoutingKey: ~p",[RoutingKey]),
+    ?LOG_DEBUG("RoutingKey: ~p",[RoutingKey]),
     Response = turtle:publish(file_transfer_publisher,
         <<"file_transfer">>,
         RoutingKey,
@@ -130,7 +130,7 @@ publish_file_send(Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock, MaxB
 -spec send_file(LocalFilePath :: string(), RemoteFilePath :: string(), Hostkey :: string(), Opts :: list()) -> ok | error.
 send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
     MaxBlockSizeBytes = application:get_env(dog_trainer,max_block_size_bytes,134217728),
-    logger:debug("LocalFilePath: ~p, Hostkey: ~p",[LocalFilePath,Hostkey]),
+    ?LOG_DEBUG("LocalFilePath: ~p, Hostkey: ~p",[LocalFilePath,Hostkey]),
     try 
         {ok,IoDevice} = file:open(LocalFilePath, [read,binary,read_ahead,raw]),
         send_data(IoDevice,RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts)
@@ -145,7 +145,7 @@ send_data(IoDevice,RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts) ->
 send_data(IoDevice,RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, CurrentBlock, Opts) ->
    case file:read(IoDevice, MaxBlockSizeBytes) of
        {ok, Data} ->
-       logger:debug("RemoteFilePath: ~p, MaxBlockSizeBytes: ~p, CurrentBlock: ~p",[RemoteFilePath,MaxBlockSizeBytes,CurrentBlock]),
+       ?LOG_DEBUG("RemoteFilePath: ~p, MaxBlockSizeBytes: ~p, CurrentBlock: ~p",[RemoteFilePath,MaxBlockSizeBytes,CurrentBlock]),
            % Write Data to Socket
            NextBlock = CurrentBlock + 1,
            publish_file_send(Hostkey,RemoteFilePath,Data,TotalBlocks,NextBlock, MaxBlockSizeBytes, Opts),
@@ -190,24 +190,24 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
            Message,
            #{timeout => 20000 }) of
               {error, Reason} -> 
-                    logger:error("Reason: ~p",[Reason]),
+                    ?LOG_ERROR("Reason: ~p",[Reason]),
                     {error, Reason};
               {ok, _NTime, CType, Response} ->
-                    logger:debug("CType: ~p",[CType]),
+                    ?LOG_DEBUG("CType: ~p",[CType]),
                     case CType of
                         <<"application/octet-stream">> -> 
                             LocalFilePath = ?FILE_LOCATION_BASE  ++ dog_common:to_list(Hostkey) ++ "/fetch/" ++ dog_common:to_list(Filename),
                             filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),                                                     
                             ok = file:write_file( LocalFilePath, Response, [raw, write, binary]),                                               
-                            logger:info("Response size in bytes: ~p",[erlang:size(Response)]), 
+                            ?LOG_INFO("Response size in bytes: ~p",[erlang:size(Response)]), 
                             Response;
                         <<"text/json">> ->
                             case hd(jsx:decode(Response)) of
                               {<<"error">>,StdErr} ->
-                                logger:error("StdErr: ~p",[StdErr]),
+                                ?LOG_ERROR("StdErr: ~p",[StdErr]),
                                 {error, StdErr};
                               {<<"ok">>,StdOut} ->  
-                                logger:debug("StdOut: ~p",[StdOut]),
+                                ?LOG_DEBUG("StdOut: ~p",[StdOut]),
                                 {ok, StdOut}
                             end
                     end

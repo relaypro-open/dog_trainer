@@ -36,7 +36,7 @@ init() ->
 -spec get(Name :: binary()) -> [map()].
 get(Name) ->
    {ok, ServiceDefinition} = get_by_name(Name),
-   logger:debug("ServiceDefinition: ~p",[ServiceDefinition]),
+   ?LOG_DEBUG("ServiceDefinition: ~p",[ServiceDefinition]),
    S = maps:get(<<"services">>,ServiceDefinition),
    Services = lists:map(fun(Service) -> parse_service(Service) end, S),
    Services.
@@ -45,14 +45,14 @@ get(Name) ->
 get_name_by_id(<<"any">>) ->
     <<"ANY">>;
 get_name_by_id(Id) ->
-   logger:debug("Id: ~p",[Id]),
+   ?LOG_DEBUG("Id: ~p",[Id]),
    case get_by_id(Id) of
        {ok, ServiceDefinition} -> 
-           logger:debug("ServiceDefinition: ~p",[ServiceDefinition]),
+           ?LOG_DEBUG("ServiceDefinition: ~p",[ServiceDefinition]),
            Name = maps:get(<<"name">>,ServiceDefinition),
            Name;
        {error, Error} ->
-            logger:error("error, service id not found: ~p, ~p",[Id, Error]),
+            ?LOG_ERROR("error, service id not found: ~p, ~p",[Id, Error]),
             {error, Error}
             %throw(service_not_found)
    end.
@@ -60,7 +60,7 @@ get_name_by_id(Id) ->
 -spec get_id_by_name(Name :: binary()) -> [iolist()].
 get_id_by_name(Name) ->
    {ok, ServiceDefinition} = get_by_name(Name),
-   logger:debug("ServiceDefinition: ~p",[ServiceDefinition]),
+   ?LOG_DEBUG("ServiceDefinition: ~p",[ServiceDefinition]),
    Id = maps:get(<<"id">>,ServiceDefinition),
    Id.
 
@@ -78,7 +78,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] -> 
-            logger:error("error, service name not found: ~p",[Name]),
+            ?LOG_ERROR("error, service name not found: ~p",[Name]),
             {error, notfound};
             %throw(service_not_found);
         _ -> {ok, hd(Result)}
@@ -140,14 +140,14 @@ delete(Id) ->
                                               reql:get(X, Id),
                                               reql:delete(X)
                                       end),
-            logger:debug("delete R: ~p~n",[R]),
+            ?LOG_DEBUG("delete R: ~p~n",[R]),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 -> ok;
                 _ -> {error,#{<<"error">> => <<"error">>}}
             end;
         {true,Profiles} ->
-            logger:info("service ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
+            ?LOG_INFO("service ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
             {error,#{<<"errors">> => #{<<"in active profile">> => Profiles}}}
      end.
 
@@ -167,7 +167,7 @@ update(Id, UpdateMap) ->
                                   reql:get(X, Id),
                                   reql:update(X,UpdateMap)
                           end),
-                    logger:debug("update R: ~p~n", [R]),
+                    ?LOG_DEBUG("update R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced,Unchanged} of
@@ -202,7 +202,7 @@ create(ServiceMap@0) ->
                                   reql:insert(X, ServiceMap@0)
                           end),
                     Key = hd(maps:get(<<"generated_keys">>,R)),
-                    logger:debug("create R: ~p~n", [R]),
+                    ?LOG_DEBUG("create R: ~p~n", [R]),
                     {ok, Key};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
@@ -263,7 +263,7 @@ where_used(ServiceId) ->
     ProfileServices = lists:map(fun(Profile) -> 
         ProfileId = maps:get(<<"id">>,Profile),
         Services = get_all_in_profile(ProfileId),
-        logger:debug("Services: ~p",[Services]),
+        ?LOG_DEBUG("Services: ~p",[Services]),
         {ProfileId, Services}
               end, Profiles),
     FilteredProfiles = lists:filtermap(fun({_Id, Services}) -> 

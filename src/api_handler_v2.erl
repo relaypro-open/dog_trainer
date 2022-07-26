@@ -65,7 +65,7 @@ resource_exists(Req@0, State@0) ->
             Path = cowboy_req:path(Req@0),
             Handler = get_handler_module(Path),
             Body = cowboy_req:read_urlencoded_body(Req@0),
-            logger:info("~p",[Body]),
+            ?LOG_INFO("~p",[Body]),
             {ok, [{NewContent, true}], Req@1} = Body,
             Map = jsx:decode(NewContent,[return_maps]),
             ObjectName = maps:get(<<"name">>, Map),
@@ -85,7 +85,7 @@ resource_exists(Req@0, State@0) ->
             Path = cowboy_req:path(Req@0),
             Handler = get_handler_module(Path),
             Body = cowboy_req:read_urlencoded_body(Req@0),
-            logger:info("~p",[Body]),
+            ?LOG_INFO("~p",[Body]),
             {ok, [{NewContent, true}], Req@1} = Body,
             Map = jsx:decode(NewContent,[return_maps]),
             ObjectName = maps:get(<<"name">>, Map),
@@ -164,7 +164,7 @@ from_post_json(Req@0, State) ->
                     Id = maps:get(<<"id">>,SuccessMap),
                     Req@1 = cowboy_req:set_resp_body([jsx:encode(SuccessMap)],Req@0),
                     Uri = io_lib:format("~s/~s/~s", [?V2ROOT, HandlerPath, erlang:binary_to_list(Id)]),
-                    %logger:info("Uri: ~p~n",[Uri]),
+                    %?LOG_INFO("Uri: ~p~n",[Uri]),
                     %{{true, list_to_binary(Uri)}, Req@1, State}
                     %{{true, term_to_binary(SuccessMap)}, Req@1, State}
                     cowboy_req:reply(201,
@@ -204,7 +204,7 @@ from_put_json(Req@0, State) ->
     SuccessMap = #{<<"id">> => Id},
     Req@1 = cowboy_req:set_resp_body([jsx:encode(SuccessMap)],Req@0),
     InPlace = cowboy_req:match_qs([{inplace, [], plain}], Req@1),
-    logger:info("InPlace: ~p",[InPlace]),
+    ?LOG_INFO("InPlace: ~p",[InPlace]),
     Response = case InPlace of
         #{inplace := <<"True">>} ->
                 Handler:update(Id,UpdateMap,true);
@@ -213,15 +213,15 @@ from_put_json(Req@0, State) ->
     end,
     case Response of
         {false, Error} when is_atom(Error) ->
-            logger:debug("{false, ~p}",[Error]),
+            ?LOG_DEBUG("{false, ~p}",[Error]),
             Req@2 = cowboy_req:set_resp_body([atom_to_list(Error)],Req@1),
             {false, Req@2, State};
         {false, ResponseMap} ->
-            %logger:info("{false, ~p}",[ObjectId]),
+            %?LOG_INFO("{false, ~p}",[ObjectId]),
             %SuccessMap2 = #{<<"id">> => ObjectId},
             ObjectId = maps:get(<<"id">>,ResponseMap),
             Uri = io_lib:format("~s/~s/~s", [?V2ROOT, HandlerPath, ObjectId]),
-            logger:debug("ObjectId: ~p",[ObjectId]),
+            ?LOG_DEBUG("ObjectId: ~p",[ObjectId]),
             %OldVal = maps:get(<<"old_val">>,hd(maps:get(<<"changes">>,ResponseMap))),
             Req@2 = cowboy_req:reply(303,
                                            #{<<"content-type">> => <<"application/json">>,
@@ -230,11 +230,11 @@ from_put_json(Req@0, State) ->
                                            Req@1),
             {stop, Req@2, State};
         {true, ResponseMap} ->
-            %logger:info("{true, ~p}",[ObjectId]),
+            %?LOG_INFO("{true, ~p}",[ObjectId]),
             %SuccessMap2 = #{<<"id">> => ObjectId},
             ObjectId = maps:get(<<"id">>,ResponseMap),
             Uri = io_lib:format("~s/~s/~s", [?V2ROOT, HandlerPath, ObjectId]),
-            logger:debug("ObjectId: ~p",[ObjectId]),
+            ?LOG_DEBUG("ObjectId: ~p",[ObjectId]),
             %NewVal = maps:get(<<"new_val">>,hd(maps:get(<<"changes">>,ResponseMap))),
             Req@2 = cowboy_req:reply(303,
                                            #{<<"content-type">> => <<"application/json">>,
@@ -367,7 +367,7 @@ to_text(Req, State) ->
                             end,
                             case cowboy_req:match_qs([{git_diff, [], plain}], Req) of
                                 #{git_diff := plain} ->
-                                    logger:debug("here ~n", []),
+                                    ?LOG_DEBUG("here ~n", []),
                                     case dog_profile:get_by_id(Id) of
                                         {ok, Profile_} ->
                                             {ok, T_} = dog_profile:to_text(Profile_),
@@ -376,7 +376,7 @@ to_text(Req, State) ->
                                             Error_
                                     end;
                                 #{git_diff := DiffId_} ->
-                                    logger:debug("here WHAT~n", []),
+                                    ?LOG_DEBUG("here WHAT~n", []),
                                     ProfileResult1_ = dog_profile:get_by_id(Id),
                                     ProfileResult2_ = dog_profile:get_by_id(DiffId_),
                                     case {ProfileResult1_, ProfileResult2_} of

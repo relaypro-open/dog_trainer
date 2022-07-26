@@ -46,14 +46,14 @@ delete(Id) ->
                                               reql:get(X, Id),
                                               reql:delete(X)
                                       end),
-            logger:debug("delete R: ~p~n",[R]),
+            ?LOG_DEBUG("delete R: ~p~n",[R]),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 -> ok;
                 _ -> {error,#{<<"error">> => <<"error">>}}
             end;
         {true,Profiles} ->
-            logger:info("zone ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
+            ?LOG_INFO("zone ~p not deleted, in profiles: ~p~n",[Id,Profiles]),
             {error,#{ <<"errors">> => #{<<"in active profile">> => Profiles}}}
      end.
 
@@ -81,7 +81,7 @@ get_by_name(Name) ->
 
 -spec update(ZoneId :: binary(), UpdateMap :: map()) -> {atom(), any()} .
 update(Id, UpdateMap@0) ->
-    logger:debug("UpdateMap: ~p~n", [UpdateMap@0]),
+    ?LOG_DEBUG("UpdateMap: ~p~n", [UpdateMap@0]),
     {ok, UpdateMap@1} = dog_zone:cleanup(UpdateMap@0),
     case get_by_id(Id) of
         {ok, OldService} ->
@@ -95,7 +95,7 @@ update(Id, UpdateMap@0) ->
                                   reql:get(X, Id),
                                   reql:update(X,UpdateMap@1,#{return_changes => always})
                           end),
-                    logger:debug("update R: ~p~n", [R]),
+                    ?LOG_DEBUG("update R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced,Unchanged} of

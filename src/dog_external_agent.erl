@@ -49,16 +49,16 @@ start_link(Link) ->
 loop(_RoutingKey, _CType, Payload, State) ->
     Proplist = binary_to_term(Payload),
     UserData = proplists:get_value(user_data, Proplist),
-    logger:debug("UserData: ~p~n",[UserData]),
+    ?LOG_DEBUG("UserData: ~p~n",[UserData]),
     Ipsets = maps:get(ipsets, UserData),
-    logger:debug("Ipsets: ~p~n",[Ipsets]),
+    ?LOG_DEBUG("Ipsets: ~p~n",[Ipsets]),
     IpsetsDecoded = jsx:decode(Ipsets),
-    logger:debug("IpsetsDecoded: ~p~n",[IpsetsDecoded]),
+    ?LOG_DEBUG("IpsetsDecoded: ~p~n",[IpsetsDecoded]),
     ExternalEnv = jsn:as_map(IpsetsDecoded),
-    logger:debug("ExternalEnv: ~p",[ExternalEnv]),
+    ?LOG_DEBUG("ExternalEnv: ~p",[ExternalEnv]),
     imetrics:add(external_ipset_update),
     ExternalEnvName = maps:get(<<"name">>,ExternalEnv),
-    logger:info("external ipsets receieved: ~p",[ExternalEnvName]),
+    ?LOG_INFO("external ipsets receieved: ~p",[ExternalEnvName]),
     {ok,ExistingExternal} = dog_external:get_by_name(ExternalEnvName),
     ExistingExternalId = maps:get(<<"id">>,ExistingExternal),
     dog_external:replace(ExistingExternalId,ExternalEnv), %TODO: create on link creation, set empty, inactive
@@ -73,7 +73,7 @@ set_link_state(
                             old_enabled_state := EnabledState,
                             old_direction_state := DirectionState}
                 ) ->
-  logger:info("New link state: EnvName: ~p, EnabledState: ~p, NewEnabledState: ~p, DirectionState: ~p, NewDirectionState: ~p",
+  ?LOG_INFO("New link state: EnvName: ~p, EnabledState: ~p, NewEnabledState: ~p, DirectionState: ~p, NewDirectionState: ~p",
              [EnvName,EnabledState,NewEnabledState,DirectionState,NewDirectionState]),
   ExternalId = case dog_external:get_by_name(EnvName) of
     {error, notfound} ->
@@ -225,7 +225,7 @@ create_outbound_publisher(EnvName) ->
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 init([Link]) ->
-  logger:debug("init"),
+  ?LOG_DEBUG("init"),
   State = #{env_name => maps:get(<<"name">>,Link),
                             new_enabled_state => maps:get(<<"enabled">>,Link),
                             new_direction_state => maps:get(<<"direction">>,Link),
@@ -242,17 +242,17 @@ handle_call(_Request, _From, State) ->
 handle_cast(stop, State) ->
   {stop, normal, State};
 handle_cast(Msg, State) ->
-  logger:error("unknown_message: Msg: ~p, State: ~p",[Msg, State]),
+  ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p",[Msg, State]),
   {noreply, State}.
 
 -spec handle_info(_,_) -> {'noreply',_}.
 handle_info(Info, State) ->
-  logger:error("unknown_message: Info: ~p, State: ~p",[Info, State]),
+  ?LOG_ERROR("unknown_message: Info: ~p, State: ~p",[Info, State]),
   {noreply, State}.
 
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-  logger:info("terminate: Reason: ~p, State: ~p", [Reason, State]),
+  ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
   {close}.
 
 -spec code_change(_, State::ips_state(), _) -> {ok, State::ips_state()}.

@@ -35,7 +35,7 @@ config(Region) ->
     {ok, Key} = application:get_env(dog_trainer, aws_key),
     {ok,Secret} = application:get_env(dog_trainer, aws_secret),
     Url = "ec2." ++ binary:bin_to_list(Region) ++ ".amazonaws.com",
-    logger:debug("Url: ~s~n",[Url]),
+    ?LOG_DEBUG("Url: ~s~n",[Url]),
     erlcloud_ec2:new(Key,
                      Secret, Url).
 
@@ -59,7 +59,7 @@ publish_ec2_sg_by_name(DogGroupName) ->
         {ok,DogGroup} ->
             publish_ec2_sgs(DogGroup);
         _ ->
-            logger:error("Group not found: ~p~n",[DogGroupName]),
+            ?LOG_ERROR("Group not found: ~p~n",[DogGroupName]),
             []
     end.
 
@@ -69,7 +69,7 @@ publish_ec2_sg_by_name(DogGroupName) ->
 %        {ok,DogGroup} ->
 %            publish_ec2_sgs(DogGroup);
 %        _ ->
-%            logger:error("Group not found: ~p~n",[DogGroupId]),
+%            ?LOG_ERROR("Group not found: ~p~n",[DogGroupId]),
 %            []
 %    end.
    
@@ -80,7 +80,7 @@ publish_ec2_sgs(DogGroup) ->
     Results = plists:map(fun(Ec2Sg) ->
                       Region = maps:get(<<"region">>,Ec2Sg),
                       SgId = maps:get(<<"sgid">>,Ec2Sg),
-                      logger:debug("Region, SgId: ~p, ~p~n",[Region,SgId]),
+                      ?LOG_DEBUG("Region, SgId: ~p, ~p~n",[Region,SgId]),
                       Ec2SgIds = dog_ec2_update_agent:ec2_security_group_ids(Region),
                       case lists:member(binary:bin_to_list(SgId),Ec2SgIds) of
                           true ->
@@ -98,9 +98,9 @@ publish_ec2_sgs(DogGroup) ->
     %UpdateEc2SgResults = {AllResult,Results},
     %case UpdateEc2SgResults of
     %    {ok,_} ->
-    %        logger:info("UpdateEc2SgResults: ~p~n",[UpdateEc2SgResults]);
+    %        ?LOG_INFO("UpdateEc2SgResults: ~p~n",[UpdateEc2SgResults]);
     %    {error,_} ->
-    %        logger:error("UpdateEc2SgResults: ~p~n",[UpdateEc2SgResults])
+    %        ?LOG_ERROR("UpdateEc2SgResults: ~p~n",[UpdateEc2SgResults])
     %end,
     %UpdateEc2SgResults.
 
@@ -113,14 +113,14 @@ publish_ec2_sg({DogGroup, Region, SgId}) ->
                   Region,
                   AddRemoveMapIngress
                   )},
-            logger:debug("Ingress Results: ~p~n",[ResultsIngress]),
+            ?LOG_DEBUG("Ingress Results: ~p~n",[ResultsIngress]),
             AddRemoveMapEgress = diff_sg_egress(SgId, Region, DogGroupId),
             ResultsEgress = {update_sg_egress(
                   SgId,
                   Region,
                   AddRemoveMapEgress
                   )},
-            logger:debug("Egress Results: ~p~n",[ResultsEgress]),
+            ?LOG_DEBUG("Egress Results: ~p~n",[ResultsEgress]),
            [ResultsIngress,ResultsEgress].
 
 diff_sg_ingress(Ec2SecurityGroupId, Region, DogGroupId) ->
@@ -128,27 +128,27 @@ diff_sg_ingress(Ec2SecurityGroupId, Region, DogGroupId) ->
     Ppps = dog_group:get_ppps_inbound_ec2(DogGroup,Region),
     DefaultPpps = default_ingress_spps_rules(Ec2SecurityGroupId),
     IngressRulesPpps = ordsets:to_list(ordsets:from_list(Ppps ++ DefaultPpps)),
-    logger:debug("IngressRulesPpps: ~p",[IngressRulesPpps]),
+    ?LOG_DEBUG("IngressRulesPpps: ~p",[IngressRulesPpps]),
     IngressRulesSpps = ppps_to_spps_ingress(IngressRulesPpps),
-    logger:debug("IngressRulesSpecs: ~p~n",[IngressRulesSpps]),
+    ?LOG_DEBUG("IngressRulesSpecs: ~p~n",[IngressRulesSpps]),
     case dog_ec2_update_agent:ec2_security_group(Ec2SecurityGroupId,Region) of
         {error,Reason} ->
-            logger:error("Ec2SecurityGroupId doesn't exist: ~p~n",[Ec2SecurityGroupId]),
+            ?LOG_ERROR("Ec2SecurityGroupId doesn't exist: ~p~n",[Ec2SecurityGroupId]),
             {error,Reason};
         _ ->
             ExistingRulesSpps = ip_permissions_ingress(Region, Ec2SecurityGroupId),
-            logger:debug("ExistingRulesSpps: ~p~n",[ExistingRulesSpps]),
+            ?LOG_DEBUG("ExistingRulesSpps: ~p~n",[ExistingRulesSpps]),
             ExistingRulesPpps = ingress_records_to_ppps(ExistingRulesSpps),
             NewAddVpcIngressPpps = ordsets:subtract(ordsets:from_list(IngressRulesPpps),ordsets:from_list(ExistingRulesPpps)), 
-            logger:debug("ExistingRulesPpps: ~p~n",[ExistingRulesPpps]),
+            ?LOG_DEBUG("ExistingRulesPpps: ~p~n",[ExistingRulesPpps]),
             RemoveVpcIngressPpps = ordsets:subtract(ordsets:from_list(ExistingRulesPpps),ordsets:from_list(IngressRulesPpps)), 
-            logger:debug("NewAddVpcIngressPpps: ~p~n",[NewAddVpcIngressPpps]),
-            logger:debug("RemoveVpcIngressPpps: ~p~n",[RemoveVpcIngressPpps]),
+            ?LOG_DEBUG("NewAddVpcIngressPpps: ~p~n",[NewAddVpcIngressPpps]),
+            ?LOG_DEBUG("RemoveVpcIngressPpps: ~p~n",[RemoveVpcIngressPpps]),
             NewAddVpcIngressSpps = ppps_to_spps_ingress(NewAddVpcIngressPpps),
             RemoveVpcIngressSpps = ppps_to_spps_ingress(RemoveVpcIngressPpps),
             SgDiff = #{<<"Add">> => NewAddVpcIngressSpps, 
               <<"Remove">> => RemoveVpcIngressSpps},
-            logger:debug("SgDiff: ~p~n",[SgDiff]),
+            ?LOG_DEBUG("SgDiff: ~p~n",[SgDiff]),
             SgDiff
     end.
 
@@ -157,14 +157,14 @@ update_sg_ingress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
     Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),
     Config = config(Region),
     NewAddVpcIngressSpecs = maps:get(<<"Add">>,AddRemoveMap),
-    logger:debug("NewAddVpcIngressSpecs: ~p~n",[NewAddVpcIngressSpecs]),
+    ?LOG_DEBUG("NewAddVpcIngressSpecs: ~p~n",[NewAddVpcIngressSpecs]),
     AddResults = case NewAddVpcIngressSpecs of
                   [] ->
                       [];
                   _ ->
                     parse_authorize_response(erlcloud_ec2:authorize_security_group_ingress(Ec2SecurityGroupIdList, NewAddVpcIngressSpecs, Config))
               end,
-    logger:debug("~p~n",[AddResults]),
+    ?LOG_DEBUG("~p~n",[AddResults]),
     RemoveVpcIngressSpecs = maps:get(<<"Remove">>,AddRemoveMap),
     RemoveResults = case RemoveVpcIngressSpecs of
                   [] ->
@@ -173,7 +173,7 @@ update_sg_ingress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
                     parse_authorize_response(erlcloud_ec2:revoke_security_group_ingress(Ec2SecurityGroupIdList, RemoveVpcIngressSpecs, Config))
               end,
     AllResults = [AddResults,RemoveResults],
-    logger:debug("AllResults: ~p~n",[AllResults]),
+    ?LOG_DEBUG("AllResults: ~p~n",[AllResults]),
     AllResultTrueFalse = lists:all(fun(X) -> (X == ok) or (X == []) end, AllResults),
     AllResult = case AllResultTrueFalse of
         true -> ok;
@@ -189,25 +189,25 @@ diff_sg_egress(Ec2SecurityGroupId, Region, DogGroupId) ->
     EgressRulesPpps = ordsets:to_list(ordsets:from_list(Ppps ++ DefaultPpps)),
     %EgressRulesPpps = Ppps ++ DefaultPpps,
     EgressRulesSpps = ppps_to_spps_egress(EgressRulesPpps),
-    logger:debug("EgressRulesSpecs: ~p~n",[EgressRulesSpps]),
+    ?LOG_DEBUG("EgressRulesSpecs: ~p~n",[EgressRulesSpps]),
     case dog_ec2_update_agent:ec2_security_group(Ec2SecurityGroupId,Region) of
         {error,Reason} ->
-            logger:error("Ec2SecurityGroupId doesn't exist: ~p~n",[Ec2SecurityGroupId]),
+            ?LOG_ERROR("Ec2SecurityGroupId doesn't exist: ~p~n",[Ec2SecurityGroupId]),
             {error,Reason};
         _ ->
             ExistingRulesSpps = ip_permissions_egress(Region, Ec2SecurityGroupId),
-            logger:debug("ExistingRulesSpps: ~p~n",[ExistingRulesSpps]),
+            ?LOG_DEBUG("ExistingRulesSpps: ~p~n",[ExistingRulesSpps]),
             ExistingRulesPpps = egress_records_to_ppps(ExistingRulesSpps),
             NewAddVpcEgressPpps = ordsets:subtract(ordsets:from_list(EgressRulesPpps),ordsets:from_list(ExistingRulesPpps)), 
-            logger:debug("ExistingRulesPpps: ~p~n",[ExistingRulesPpps]),
+            ?LOG_DEBUG("ExistingRulesPpps: ~p~n",[ExistingRulesPpps]),
             RemoveVpcEgressPpps = ordsets:subtract(ordsets:from_list(ExistingRulesPpps),ordsets:from_list(EgressRulesPpps)), 
-            logger:debug("NewAddVpcEgressPpps: ~p~n",[NewAddVpcEgressPpps]),
-            logger:debug("RemoveVpcEgressPpps: ~p~n",[RemoveVpcEgressPpps]),
+            ?LOG_DEBUG("NewAddVpcEgressPpps: ~p~n",[NewAddVpcEgressPpps]),
+            ?LOG_DEBUG("RemoveVpcEgressPpps: ~p~n",[RemoveVpcEgressPpps]),
             NewAddVpcEgressSpps = ppps_to_spps_egress(NewAddVpcEgressPpps),
             RemoveVpcEgressSpps = ppps_to_spps_egress(RemoveVpcEgressPpps),
             SgDiff = #{<<"Add">> => NewAddVpcEgressSpps, 
               <<"Remove">> => RemoveVpcEgressSpps},
-            logger:debug("SgDiff: ~p~n",[SgDiff]),
+            ?LOG_DEBUG("SgDiff: ~p~n",[SgDiff]),
             SgDiff
     end.
 
@@ -216,14 +216,14 @@ update_sg_egress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
     Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),
     Config = config(Region),
     NewAddVpcIngressSpecs = maps:get(<<"Add">>,AddRemoveMap),
-    logger:debug("NewAddVpcIngressSpecs: ~p~n",[NewAddVpcIngressSpecs]),
+    ?LOG_DEBUG("NewAddVpcIngressSpecs: ~p~n",[NewAddVpcIngressSpecs]),
     AddResults = case NewAddVpcIngressSpecs of
                   [] ->
                       [];
                   _ ->
                     parse_authorize_response(erlcloud_ec2:authorize_security_group_egress(Ec2SecurityGroupIdList, NewAddVpcIngressSpecs, Config))
               end,
-    logger:debug("~p~n",[AddResults]),
+    ?LOG_DEBUG("~p~n",[AddResults]),
     RemoveVpcIngressSpecs = maps:get(<<"Remove">>,AddRemoveMap),
     RemoveResults = case RemoveVpcIngressSpecs of
                   [] ->
@@ -232,7 +232,7 @@ update_sg_egress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
                     parse_authorize_response(erlcloud_ec2:revoke_security_group_egress(Ec2SecurityGroupIdList, RemoveVpcIngressSpecs, Config))
               end,
     AllResults = [AddResults,RemoveResults],
-    logger:debug("AllResults: ~p~n",[AllResults]),
+    ?LOG_DEBUG("AllResults: ~p~n",[AllResults]),
     AllResultTrueFalse = lists:all(fun(X) -> (X == ok) or (X == []) end, AllResults),
     AllResult = case AllResultTrueFalse of
         true -> ok;
@@ -242,7 +242,7 @@ update_sg_egress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
 
 -spec parse_authorize_response(AuthorizeResponse :: tuple()) -> ok | string().
 parse_authorize_response(AuthorizeResponse) ->
-    logger:debug("AuthorizeResponse: ~p~n",[AuthorizeResponse]),
+    ?LOG_DEBUG("AuthorizeResponse: ~p~n",[AuthorizeResponse]),
 		case AuthorizeResponse of
             {error,{_ErrorType,_ErrorCode,_ErrorHeader,ErrorDescription}} ->
 			%{error,Error} ->
@@ -317,7 +317,7 @@ parse_authorize_response(AuthorizeResponse) ->
 %-spec create_ingress_port_rules(SourceType :: string(),Source :: string(),Protocol :: string(), Ports :: list()) -> list().
 %create_ingress_port_rules(SourceType,Source,Protocol,Ports) ->
 %    PortRule = lists:map(fun(Port) ->
-%                                 logger:debug("Protocol: ~p, Port : ~p",[Protocol,Port]),
+%                                 ?LOG_DEBUG("Protocol: ~p, Port : ~p",[Protocol,Port]),
 %                                 {From,To} = case string:split(Port,":") of
 %                                                 [F,T] ->
 %                                                     {F,T};

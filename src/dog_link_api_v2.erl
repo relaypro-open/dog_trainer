@@ -31,7 +31,7 @@ create(LinkMap@0) ->
                                   reql:table(X, ?TYPE_TABLE),
                                   reql:insert(X, LinkMap@0,#{return_changes => always})
                           end),
-                    logger:debug("create R: ~p~n", [R]),
+                    ?LOG_DEBUG("create R: ~p~n", [R]),
                     create_empty_external(Name),
                     NewVal = maps:get(<<"new_val">>,hd(maps:get(<<"changes">>,R))),
                     {ok, NewVal};
@@ -51,7 +51,7 @@ create_empty_external(EnvName) ->
 delete(Id) ->
   case dog_link:is_enabled(Id) of
         true ->
-            logger:info("link ~p not deleted, is enabled~n",[Id]),
+            ?LOG_INFO("link ~p not deleted, is enabled~n",[Id]),
             {error,#{<<"errors">> => #{<<"unable to delete">> => <<"link enabled">>}}};
         false -> 
             delete_related_external(Id),
@@ -62,7 +62,7 @@ delete(Id) ->
                                               reql:get(X, Id),
                                               reql:delete(X)
                                       end),
-            logger:debug("delete R: ~p~n",[R]),
+            ?LOG_DEBUG("delete R: ~p~n",[R]),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 -> ok;
@@ -72,7 +72,7 @@ delete(Id) ->
 
 -spec delete_related_external(Id :: binary()) -> (ok | error).
 delete_related_external(Id) ->
-    logger:debug("Id: ~p",[Id]),
+    ?LOG_DEBUG("Id: ~p",[Id]),
     {ok, Link} = get_by_id(Id),
     LinkName = maps:get(<<"name">>,Link),
     dog_external:delete(LinkName).
@@ -80,7 +80,7 @@ delete_related_external(Id) ->
 -spec get(Name :: binary()) -> [map()].
 get(Name) ->
    {ok, LinkDefinition} = get_by_name(Name),
-   logger:debug("LinkDefinition: ~p",[LinkDefinition]),
+   ?LOG_DEBUG("LinkDefinition: ~p",[LinkDefinition]),
    Link = maps:get(<<"links">>,LinkDefinition),
    Link.
 
@@ -128,7 +128,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] -> 
-            logger:error("error, link name not found: ~p",[Name]),
+            ?LOG_ERROR("error, link name not found: ~p",[Name]),
             {error, notfound};
         _ -> 
           Link = hd(Result),
@@ -149,7 +149,7 @@ update(Id, UpdateMap) ->
                                   reql:get(X, Id),
                                   reql:update(X,UpdateMap,#{return_changes => always})
                           end),
-                    logger:debug("update R: ~p~n", [R]),
+                    ?LOG_DEBUG("update R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced,Unchanged} of

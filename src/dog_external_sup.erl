@@ -15,7 +15,7 @@ init([]) ->
         lists:flatten(lists:map(fun(Link) ->
                       LinkName = maps:get(<<"name">>,Link),
                       %EnvName = LinkName,
-                      logger:debug("LinkName: ~p",[LinkName]),
+                      ?LOG_DEBUG("LinkName: ~p",[LinkName]),
                       %[
                       % dog_external_agent:inbound_service_spec(LinkName),
                       %dog_external_agent:outbound_publisher_spec(LinkName)

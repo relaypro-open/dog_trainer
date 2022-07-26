@@ -49,7 +49,7 @@ state(Ref) ->
 
 -spec init(_) -> no_return().
 init([]) ->
-    logger:info("init"),
+    ?LOG_INFO("init"),
     % The ConnectOptions are provided to gen_rethink:connect_unlinked
     RethinkdbHost = application:get_env(dog_trainer, rethinkdb_host,"localhost"),
     RethinkdbPort = application:get_env(dog_trainer, rethinkdb_port,28015),
@@ -72,8 +72,8 @@ init([]) ->
 %% the managed connection is newly established
 handle_connection_up(Connection, State) ->
     {ok,RethinkSquashSec} = application:get_env(dog_trainer,rethink_squash_sec),
-    logger:info("handle_connection_up"),
-    logger:info("Connection: ~p", [Connection]),
+    ?LOG_INFO("handle_connection_up"),
+    ?LOG_INFO("Connection: ~p", [Connection]),
     Reql = reql:db(<<"dog">>),
     reql:table(Reql, <<"profile">>),
     reql:changes(Reql, #{<<"include_initial">> => false, <<"squash">> => RethinkSquashSec}),
@@ -84,18 +84,18 @@ handle_connection_up(Connection, State) ->
 %% reconnect state with exponential backoffs. Your module can still process
 %% requests during this time.
 handle_connection_down(State) ->
-    logger:info("handle_connection_down"),
+    ?LOG_INFO("handle_connection_down"),
     {noreply, State}.
 
 handle_query_result(Result, State) ->
-    logger:info("Result: ~p", [Result]),
+    ?LOG_INFO("Result: ~p", [Result]),
     case Result of
         [] ->
             pass;
         _ ->
             imetrics:add_m(watcher,profile_update),
             lists:foreach(fun(Entry) ->
-                logger:info("Entry: ~p", [Entry]),
+                ?LOG_INFO("Entry: ~p", [Entry]),
                 ProfileId = case maps:get(<<"new_val">>,Entry) of
                     null ->
                         maps:get(<<"id">>,maps:get(<<"old_val">>,Entry));
@@ -105,10 +105,10 @@ handle_query_result(Result, State) ->
                 timer:sleep(1000), %TODO Fix race condition
                 GroupIds = dog_group:get_ids_with_profile_id(ProfileId),
                 %{ok,GroupIds} = dog_profile:where_used(ProfileId),
-                logger:info("GroupIds: ~p", [GroupIds]),
+                ?LOG_INFO("GroupIds: ~p", [GroupIds]),
                 lists:foreach(fun(GroupId) ->
                     {ok, GroupName} = dog_group:get_name_by_id(GroupId),
-                    logger:info(GroupName),
+                    ?LOG_INFO(GroupName),
                     GroupType = <<"role">>,
                     dog_iptables:update_group_iptables(GroupName, GroupType)
                 end, GroupIds)
@@ -123,15 +123,15 @@ handle_query_error(Error, State) ->
     {stop, Error, State}.
 
 handle_call(state, _From, State) ->
-    logger:debug("handle_call changefeed: ~p",[State]),
+    ?LOG_DEBUG("handle_call changefeed: ~p",[State]),
     {reply, State, State}.
 
 handle_cast(_Msg, State) ->
-    logger:debug("handle_cast changefeed: ~p",[State]),
+    ?LOG_DEBUG("handle_cast changefeed: ~p",[State]),
     {noreply, State}.
 
 handle_info(_Info, State) ->
-    logger:debug("handle_info changefeed: ~p",[State]),
+    ?LOG_DEBUG("handle_info changefeed: ~p",[State]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
