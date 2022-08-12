@@ -199,3 +199,30 @@ r.db('dog').table('group').withFields(['profile_id']).innerJoin(
   })                        
   .getField('service').distinct().setDifference(r.db('dog').table('service')('id').distinct())
 ```
+
+query by ec2 tags:
+```
+r.db('dog').table('host')
+  .filter(
+      {'ec2_instance_tags': 
+        {
+          'environment':'qa',
+          'cluster':'x'
+        }
+      }
+    )
+  .filter( 
+    r.row("active").eq("active")
+   )
+  .count()
+```
+
+group by ec2 tags:
+```
+r.db('dog').table('host')
+    .filter( 
+    r.row("active").eq("active")
+  )
+  .hasFields({ ec2_instance_tags: 'role' })('ec2_instance_tags')
+  .group('environment','cluster').count()
+```
