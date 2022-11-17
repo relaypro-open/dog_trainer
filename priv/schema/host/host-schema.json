@@ -18,8 +18,8 @@
     },
     "hostkey": {
       "type": "string",
-      "minLength": 1,
-      "pattern": "^((?!localhost).)*$"
+      "minLength": 30,
+      "pattern": "^([a-zA-Z0-9+-]+)$"
     },
     "location": {
       "type": "string",
