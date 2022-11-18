@@ -16,9 +16,12 @@
          create_ipsets/2,
          delete_old/0,
          force_update_ipsets/0,
+	 %generate_ipsets/0,
          get_hashes/0,
+	 get_ipsets/0,
          hash_check/1,
          id_maps/0,
+	 ipsets_map/0,
          latest_hash/0,
          %ipsets_map/4,
          normalize_ipset/1,
@@ -37,7 +40,7 @@
        create_internal_groups/0,
         merge_groups/2,
         create_internal_ipsets/1,
-        create_merged_ipsets/1,
+        create_merged_ipsets_list/1,
         merge_ipsets/2
         ]).
 
@@ -226,16 +229,31 @@ delete_old() ->
 create_hash(Ipset) ->
     base16:encode(crypto:hash(sha256, Ipset)).
 
--spec create_ipsets() -> {MergedIpsets :: list(), InternalIpsets :: map()}.
-create_ipsets() ->
+-spec get_ipsets() -> MergedIpsets :: list().
+get_ipsets() ->
+  {MergedIpsets, _} = generate_ipsets(),
+  MergedIpsets.
+
+-spec ipsets_map() -> IpsetMap :: map().
+ipsets_map() ->
+	element(2,generate_ipsets()).
+
+-spec generate_ipsets() -> {MergedIpsets :: list(), InternalIpsets :: map()}.
+generate_ipsets() ->
   {ExternalUnionGroups, ExternalPrefixGroups} = dog_external:grouped_by_ipset_name(),
   InternalGroups = create_internal_groups(),
   InternalIpsetsMap = create_internal_ipsets(InternalGroups),
   MergedInternalGroups = dog_ipset:merge_ipsets(InternalGroups, ExternalUnionGroups),
   %MergedInternalGroups = InternalGroups,
   MergedGroups = merge_groups(MergedInternalGroups, ExternalPrefixGroups),
-  MergedIpsetsList = create_merged_ipsets(MergedGroups),
+  MergedIpsetsList = create_merged_ipsets_list(MergedGroups),
   {MergedIpsetsList, InternalIpsetsMap}.
+
+-spec create_ipsets() -> {MergedIpsets :: list(), InternalIpsets :: map()}.
+create_ipsets() ->
+  {MergedIpsetsList, InternalIpsetsMap} = generate_ipsets(),
+  MergedIpsetsString = string:join(MergedIpsetsList,"\n"),
+  {MergedIpsetsString, InternalIpsetsMap}.
 
 -spec id_maps() ->
   {Ipv4RoleMap :: map(),Ipv6RoleMap :: map(),Ipv4ZoneMap :: map(),Ipv6ZoneMap :: map(),ZoneIdMap :: map(),
@@ -278,8 +296,8 @@ id_maps() ->
   ServiceIdMap = maps:merge(ServiceAllMap,ServiceAnyMap),
   {Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap}.
 
--spec create_merged_ipsets(MergedGroups :: tuple()) -> iolist().
-create_merged_ipsets(MergedGroups) ->
+-spec create_merged_ipsets_list(MergedGroups :: tuple()) -> iolist().
+create_merged_ipsets_list(MergedGroups) ->
   {GroupIpv4sGrouped,
    GroupIpv6sGrouped,
    ZoneIpv4sGrouped,
@@ -294,9 +312,14 @@ create_merged_ipsets(MergedGroups) ->
   FlushIpsets6 = flush_ipsets(Ipv6s,<<"v6">>),
   DestroyIpsets4 = destroy_ipsets(Ipv4s,<<"v4">>),
   DestroyIpsets6 = destroy_ipsets(Ipv6s,<<"v6">>),
-  Ipsets = string:join([CreateIpsets4,CreateIpsets6,FlushIpsets4,FlushIpsets6,DestroyIpsets4,DestroyIpsets6],"\n"),
-  ?LOG_DEBUG("Ipsets: ~s~n",[Ipsets]),
+  Ipsets = [CreateIpsets4,CreateIpsets6,FlushIpsets4,FlushIpsets6,DestroyIpsets4,DestroyIpsets6],
   Ipsets.
+
+%-spec create_merged_ipsets(MergedGroups :: tuple()) -> iolist().
+%create_merged_ipsets(MergedGroups) ->
+%  Ipsets = string:join(MergedGroups,"\n"),
+%  ?LOG_DEBUG("Ipsets: ~s~n",[Ipsets]),
+%  Ipsets.
 
 -spec merge_groups(InternalGroups :: tuple(), ExternalGroups :: tuple()) -> tuple().
 merge_groups(
