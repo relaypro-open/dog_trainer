@@ -226,3 +226,22 @@ r.db('dog').table('host')
   .hasFields({ ec2_instance_tags: 'role' })('ec2_instance_tags')
   .group('environment','cluster').count()
 ```
+
+hosts without field
+```
+r.db('dog').table('host')
+  .filter(
+    {active:"active"}
+    )
+  .filter( 
+     r.row.hasFields('ec2_instance_tags').not()
+  )('name')
+```
+
+hosts by OS and version
+```
+r.db('dog').table('host')
+  .filter( 
+    r.row("active").eq("active")
+  ).group("os_version","os_distribution").count()
+```
