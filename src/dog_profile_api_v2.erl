@@ -60,6 +60,10 @@ get_all() ->
                    [] -> [];
                    Else -> Else
                end,
+    %TODO: List can have duplicate named Profiles because different versions of each Profile might
+    %be refered to in another Profile.  Problem: V2 API uses name as unique ID for use with Terraform.
+    %Fix?  Remove versioning of Profiles now that we can version
+    %them in terraform config.
     ActiveProfiles = lists:filter(fun(Profile) -> lists:member(maps:get(<<"id">>,Profile),ActiveIds)
                  end, Profiles),
     ProfilesReplaced = lists:map(fun(Profile) ->

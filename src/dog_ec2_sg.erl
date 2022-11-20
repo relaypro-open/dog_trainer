@@ -59,7 +59,7 @@ publish_ec2_sg_by_name(DogGroupName) ->
         {ok,DogGroup} ->
             publish_ec2_sgs(DogGroup);
         _ ->
-            ?LOG_ERROR("Group not found: ~p~n",[DogGroupName]),
+            ?LOG_INFO("Group not found: ~p~n",[DogGroupName]),
             []
     end.
 
