@@ -52,12 +52,13 @@ RUN pwd
 RUN find .
 
 #FROM alpine
-FROM base as deploy
+FROM compile as deploy
 
 #RUN apk add openssl && \
 #    apk add ncurses-libs && \
 #    apk add libstdc++ && \
 #    apk add libgcc 
+RUN apt-get update && apt-get install -y less ack lsb-release vim
 
 RUN mkdir -p /opt/dog_trainer
 RUN mkdir -p /var/log/dog_trainer
