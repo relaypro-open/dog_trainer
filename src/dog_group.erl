@@ -309,14 +309,14 @@ create(Group@0) when is_map(Group@0)->
                     ProfileId = case maps:find(<<"profile_version">>,Group@1) of
                         error ->
                             "";
-                        {ok, <<"latest">>} ->
-                            ProfileName = maps:get(<<"profile_name">>,Group@1),
-                            case dog_profile:get_latest_profile(ProfileName) of
-                                {ok, DogProfile} ->
-                                    maps:get(<<"id">>,DogProfile);
-                                {error, notfound} ->
-                                    #{error => not_found}
-                            end;
+                        %{ok, <<"latest">>} ->
+                        %    ProfileName = maps:get(<<"profile_name">>,Group@1),
+                        %    case dog_profile:get_latest_profile(ProfileName) of
+                        %        {ok, DogProfile} ->
+                        %            maps:get(<<"id">>,DogProfile);
+                        %        {error, notfound} ->
+                        %            #{error => not_found}
+                        %    end;
                         {ok, Id} ->
                             Id
                     end,
@@ -1148,7 +1148,8 @@ get_ids_with_profile_id(Id) ->
         [] -> [];
         Else -> Else
     end,
-    Ids = [maps:get(<<"id">>,X) || X <- Groups, maps:get(<<"profile_id">>,X) == Id andalso maps:get(<<"profile_version">>,X) == <<"latest">>],
+    %Ids = [maps:get(<<"id">>,X) || X <- Groups, maps:get(<<"profile_id">>,X) == Id andalso maps:get(<<"profile_version">>,X) == <<"latest">>],
+    Ids = [maps:get(<<"id">>,X) || X <- Groups, maps:get(<<"profile_id">>,X) == Id],
     Ids.
 
 %-spec where_zone_used(GroupName :: binary()) -> {ok, list()}.

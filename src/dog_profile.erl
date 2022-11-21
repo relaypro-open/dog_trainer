@@ -14,8 +14,7 @@
          get_by_name/1, 
          get_all/0,
          get_schema/0,
-         update/2,
-         update/3
+         update/2
         ]).
 
 -export([
@@ -27,26 +26,15 @@
          create_ruleset/13,
          date_string/0,
          generate_ipv4_ruleset_by_group_id/1,
-         %generate_ipv4_ruleset_by_group_name/1,
          generate_ipv4_ruleset_by_id/1,
-         %generate_ipv4_ruleset_by_name/1,
          generate_ipv6_ruleset_by_group_id/1,
-         %generate_ipv6_ruleset_by_group_name/1,
          generate_ipv6_ruleset_by_id/1,
-         %generate_ipv6_ruleset_by_name/1,
          get_all_inbound_ports_by_protocol/1,
-         %get_id_by_name/1,
-         get_latest_profile/1,
-         %get_name_by_id/1,
          get_ppps_inbound_ec2/2,
          get_ppps_outbound_ec2/2,
          get_role_groups_in_profile/1,
          get_zone_groups_in_profile/1,
-         %in_active_profile/1,
          init/0,
-         %is_active/1,
-         %normalize_ruleset/1,
-         %read_profile_from_file/1
          to_text/1,
          where_used/1
         ]).
@@ -54,19 +42,6 @@
 -spec init() -> any().
 init() ->
   pass.
-
-%-spec generate_ipv4_ruleset_by_name(Name :: binary()) -> {{ok,iolist()}, {ok,iolist()}} | {error, Error :: any()}.
-%generate_ipv4_ruleset_by_name(Name) ->
-%    Result = dog_profile:get_by_name(Name),
-%    case Result of
-%        {error, _Error} ->
-%            ?LOG_INFO("No profile associated with group id: ~p",[Name]),
-%            throw(profile_not_found);
-%        {ok, ProfileJson} ->
-%            IpsetsRuleset = dog_ruleset:generate_ruleset(ProfileJson, ipsets, <<"v4">>),
-%            IptablesRuleset = dog_ruleset:generate_ruleset(ProfileJson, iptables, <<"v4">>),
-%            {IpsetsRuleset, IptablesRuleset}
-%    end.
 
 -spec generate_ipv6_ruleset_by_id(Id :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
 generate_ipv6_ruleset_by_id(Id) ->
@@ -80,29 +55,12 @@ generate_ipv6_ruleset_by_id(Id) ->
              {IpsetsRulesetResult, IptablesRulesetResult}
     end.
 
-%-spec generate_ipv6_ruleset_by_name(Name :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
-%generate_ipv6_ruleset_by_name(Name) ->
-%    case get_by_name(Name) of
-%        {error, _Error} ->
-%            ?LOG_INFO("No profile associated with group id: ~p",[Name]),
-%            throw(profile_not_found);
-%        {ok, ProfileJson} ->
-%            IpsetsRulesetResult = dog_ruleset:generate_ruleset(ProfileJson, ipsets, <<"v6">>),
-%            IptablesRulesetResult = dog_ruleset:generate_ruleset(ProfileJson, iptables, <<"v6">>),
-%            {IpsetsRulesetResult, IptablesRulesetResult}
-%    end.
-
 -spec generate_ipv4_ruleset_by_id(GroupId :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
 generate_ipv4_ruleset_by_id(Id) ->
     {ok, Json} = get_by_id(Id),
     Ipsets = dog_ruleset:generate_ruleset(Json, ipsets, <<"v4">>),
     Iptables = dog_ruleset:generate_ruleset(Json, iptables, <<"v4">>),
     {Ipsets, Iptables}.
-
-%-spec generate_ipv4_ruleset_by_group_name(GroupName :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
-%generate_ipv4_ruleset_by_group_name(GroupName) ->
-%  {Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap} = dog_ipset:id_maps(),
-%    generate_ipv4_ruleset_by_group_name(GroupName,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap).
 
 -spec generate_ipv4_ruleset_by_group_name(GroupName :: binary(), Ipv4RoleMap :: map(), Ipv6RoleMap :: map(), Ipv4ZoneMap :: map(), Ipv6ZoneMap :: map(), ZoneIdMap :: map(), GroupIdMap :: map(), ServiceIdMap :: map() ) -> {{ok,list()}, {ok,iolist()}}.
 generate_ipv4_ruleset_by_group_name(GroupName,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap) ->
@@ -136,11 +94,6 @@ profile_not_found(GroupId) ->
           ?LOG_INFO("No profile associated with group id: ~p",[GroupId]),
           throw(profile_not_found).
 
-%-spec generate_ipv6_ruleset_by_group_name(GroupName :: binary()) -> {{ok,iolist()}, {ok,iolist()}}.
-%generate_ipv6_ruleset_by_group_name(GroupName) ->
-%    {Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap} = dog_ipset:id_maps(),
-%    generate_ipv6_ruleset_by_group_name(GroupName,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap).
-
 -spec generate_ipv6_ruleset_by_group_name(GroupName :: binary(), Ipv4RoleMap :: map(), Ipv6RoleMap :: map(), Ipv4ZoneMap :: map(), Ipv6ZoneMap :: map(), ZoneIdMap :: map(), GroupIdMap :: map(), ServiceIdMap :: map() ) -> {{ok,iolist()}, {ok,iolist()}}.
 generate_ipv6_ruleset_by_group_name(GroupName,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap) ->
     Response = dog_group:get_profile_by_name(GroupName),
@@ -158,14 +111,6 @@ generate_ipv6_ruleset_by_group_name(GroupName,Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMa
             {IpsetsRulesetResult, IptablesRulesetResult}
     end.
 
-%-spec generate_ipv4_ruleset_by_group_id(GroupId :: binary()) -> {iolist(), iolist()}.
-%generate_ipv4_ruleset_by_group_id(GroupId) ->
-%    {ok, ProfileId} = dog_group:get_profile_by_id(GroupId),
-%    {ok, Json} = get_by_id(ProfileId),
-%    {ok, Ipsets} = dog_ruleset:generate_ruleset(Json, ipsets, <<"v4">>),
-%    {ok, Iptables} = dog_ruleset:generate_ruleset(Json, iptables, <<"v4">>),
-%    {Ipsets, Iptables}.
-
 -spec generate_ipv4_ruleset_by_group_id(GroupId :: binary()) -> {iolist(), iolist()}.
 generate_ipv4_ruleset_by_group_id(GroupId) ->
     ProfileId = case dog_group:get_profile_by_id(GroupId) of
@@ -177,18 +122,11 @@ generate_ipv4_ruleset_by_group_id(GroupId) ->
     {ok, Iptables} = dog_ruleset:generate_ruleset(Json, iptables, <<"v4">>),
     {Ipsets, Iptables}.
 
-%-spec read_profile_from_file(GroupName :: binary()) -> Contents :: binary().
-%read_profile_from_file(GroupName) ->
-%    FileName = ?RUNDIR ++ "/profile." ++ binary_to_list(GroupName) ++ ".txt",
-%    {ok, Contents} = file:read_file(FileName),
-%    Contents.
-
 -spec write_profile_to_file(Profile :: map(), GroupName :: binary()) -> ok.
 write_profile_to_file(Profile, GroupName) ->
     FileName = ?RUNDIR ++ "/profile." ++ binary_to_list(GroupName) ++ ".txt",
     ok = file:write_file(FileName, jsx:encode(Profile)),
     ok.
-
 
 remove_comments(Ruleset) ->
   NoCommentRulesList = lists:filter(fun(X) -> case re:run(X,"^#") of nomatch -> true; _ -> false end end, split(Ruleset,"\n", all) ),
@@ -196,15 +134,6 @@ remove_comments(Ruleset) ->
                          NoCommentRulesList)),
   NoCommentRules.
     
-%remove_docker(Ruleset) ->
-%  lists:filter(fun(Line0) ->
-%	       {ok, Re} = re:compile("docker", [caseless, unicode]),
-%	       case re:run(Line0, Re) of
-%                  nomatch -> true;
-%                  _  -> false 
-%              end
-%            end, Ruleset).
-
 remove_docker(Ruleset) ->
     lists:map(fun(Line0) ->
         Line1 = re:replace(Line0, "^-A DOCKER(.*)","",[{return,list}]),
@@ -335,33 +264,34 @@ date_string() ->
     DateString = io_lib:format("~s ~s ~B ~B:~B:~B ~B UTC",[DayName,MonthName,Day,Hour,Minute,Second,Year]),
     DateString.
 
--spec create(Profile :: map()) -> {'ok', iolist() } | {atom(), binary()}.
-create(Profile@0) ->
-    ?LOG_DEBUG("Profile@0: ~p~n",[Profile@0]),
-    Timestamp = dog_time:timestamp(),
-    case dog_json_schema:validate(?VALIDATION_TYPE,Profile@0) of
-        ok ->
-            Profile@1 = maps:put(<<"created">>,Timestamp,Profile@0),
-            %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-            %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-            {ok, R} = dog_rethink:run(
-                                      fun(X) ->
-                                              reql:db(X, dog),
-                                              reql:table(X, ?TYPE_TABLE),
-                                              reql:insert(X, Profile@1)
-                                      end),
-            Key = hd(maps:get(<<"generated_keys">>,R)),
-            {ok, Key};
-        {error, Error} ->
-            ?LOG_ERROR("~p",[Error]),
-            Response = dog_parse:validation_error(Error),
-            {validation_error, Response}
+-spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists }.
+create(ProfileMap@0) ->
+    Name = maps:get(<<"name">>, ProfileMap@0),
+    {ok, ExistingProfiles} = get_all(),
+    ExistingNames = [maps:get(<<"name">>,Profile) || Profile <- ExistingProfiles],
+    case lists:member(Name, ExistingNames) of
+        false -> 
+            case dog_json_schema:validate(?VALIDATION_TYPE,ProfileMap@0) of
+                ok ->
+                    {ok, R} = dog_rethink:run(
+                          fun(X) -> 
+                                  reql:db(X, dog),
+                                  reql:table(X, ?TYPE_TABLE),
+                                  reql:insert(X, ProfileMap@0)
+                          end),
+                    Key = hd(maps:get(<<"generated_keys">>,R)),
+                    ?LOG_DEBUG("create R: ~p~n", [R]),
+                    {ok, Key};
+                {error, Error} ->
+                    Response = dog_parse:validation_error(Error),
+                    {validation_error, Response}
+            end;
+        true ->
+            {error, name_exists}
     end.
 
 -spec get_all() -> {'ok',list()}.
 get_all() ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
                               fun(X) ->
                                       reql:db(X, dog),
@@ -375,29 +305,22 @@ get_all() ->
                end,
     {ok, Profiles}.
 
-%-spec get_id_by_name(ProfileName :: binary()) -> {ok, iolist()} | {error, atom()}.
-%get_id_by_name(ProfileName) ->
-%    Result = get_by_name(ProfileName),
-%    case Result of
-%        {ok, Profile} ->
-%            {ok, maps:get(<<"id">>,Profile)};
-%        {error, Error} ->
-%            ?LOG_ERROR("profile name not found: ~p, ~p",[ProfileName,Error]),
-%            {error, Error}
-%    end.
-
-%-spec get_name_by_id(ProfileId :: binary()) -> {ok, iolist()} | {error, atom()}.
-%get_name_by_id(ProfileId) ->
-%    case get_by_id(ProfileId) of
-%        {ok, Profile} ->
-%            {ok, maps:get(<<"name">>,Profile)};
-%        {error, Error} ->
-%            {error, Error}
-%    end.
-
--spec get_by_name(ProfileName :: binary()) -> {'ok', map() } | {error, atom()} .
-get_by_name(ProfileName) ->
-    get_latest_profile(ProfileName).
+-spec get_by_name(Name :: binary()) -> {ok, map()} | {error, atom()}.
+get_by_name(Name) ->
+    {ok, R} = dog_rethink:run(
+                               fun(X) -> 
+                                       reql:db(X, dog), 
+                                       reql:table(X, ?TYPE_TABLE),
+                                       reql:get_all(X, Name, #{index => <<"name">>})
+                              end),
+    {ok, R3} = rethink_cursor:all(R),
+    Result = lists:flatten(R3),
+    case Result of
+        [] -> 
+            ?LOG_ERROR("error, profile name not found: ~p",[Name]),
+            {error, notfound};
+        _ -> {ok, hd(Result)}
+    end.
 
 -spec all_active() -> {ok, Profiles :: list()}.
 all_active() ->
@@ -407,7 +330,6 @@ all_active() ->
                                      reql:table(X, group),
                                      reql:get_field(X, <<"profile_id">>)
                              end),
-    %{ok, R}.
     {ok, Result} = rethink_cursor:all(R),
     Profiles = case lists:flatten(Result) of
                  [] -> [];
@@ -415,30 +337,8 @@ all_active() ->
              end,
     {ok, Profiles}.
 
-get_latest_profile(Name) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-    R = dog_rethink:run(
-                             fun(X) ->
-                                     reql:db(X, dog),
-                                     reql:table(X, ?TYPE_TABLE),
-                                     reql:filter(X,#{name => Name}),
-                                     reql:order_by(X, reql:desc(<<"created">>) ),
-                                     reql:nth(X,0)
-                             end),
-    case R of
-        {error,{runtime_error,<<"Index out of bounds: 0">>}} ->
-            {error, notfound};
-        {error, Error} ->
-            {error, Error};
-        _ ->
-        R
-    end.
-
 -spec get_by_id(Id :: binary()) -> {ok, map()} | {error, notfound}.
 get_by_id(Id) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     R = dog_rethink:run(
                                    fun(X) ->
                                            reql:db(X, dog),
@@ -454,59 +354,14 @@ get_by_id(Id) ->
     end.
 
 
--spec update(Id :: binary(), UpdateMap :: map()) -> {atom(), Id :: iolist()} | {false, atom()}.
+-spec update(Id :: binary(), UpdateMap :: map()) -> {false, atom()} | {validation_error, iolist()} | {true, binary()}.
 update(Id, UpdateMap) ->
-    update(Id,UpdateMap,false).
-
--spec update(Id :: binary(), UpdateMap :: map(), InPlace :: boolean() ) -> {atom(), Id :: iolist()} | {false, atom()}.
-update(Id, UpdateMap, InPlace) ->
-    ?LOG_DEBUG("Id: ~p~n",[Id]),
-    ?LOG_DEBUG("UpdateMap: ~p~n",[UpdateMap]),
-    case get_by_id(Id) of
-        {ok, Profile@0} ->
-            Profile@1 = maps:merge(Profile@0,UpdateMap),
-            Profile@2 = maps:remove(<<"id">>,Profile@1),
-            case InPlace of
-                false -> 
-                    case create(Profile@2) of
-                        {validation_error, Error} ->
-                            {validation_error, Error};
-                        {ok, Id2} ->
-                            case maps:find(<<"name">>,UpdateMap) of
-                                error ->
-                                    case lists:any(fun(X) -> element(1,X) /= ok end, dog_group:replace_profile_by_profile_id(Id,Id2)) of
-                                        true ->
-                                            {true, Id2};
-                                        false ->
-                                            {false, error_replacing_profile}
-                                    end;
-                                {ok,UpdateName} ->
-                                    ?LOG_DEBUG("UpdateName: ~p",[UpdateName]),
-                                    case dog_group:replace_profile_by_profile_id(Id,Id2,UpdateName) of
-                                        [] -> % This profile not associated with any group
-                                            {true, Id2};
-                                        [{true, _}] ->
-                                            {true, Id2}
-                                    end
-                            end
-                    end;
-                true ->
-                   update_in_place(Id,Profile@2) 
-            end;
-        {error, Error} ->
-            {false, Error}
-    end.
-
--spec update_in_place(Id :: binary(), UpdateMap :: map()) -> {false, atom()} | {validation_error, iolist()} | {true, binary()}.
-update_in_place(Id, UpdateMap) ->
     ?LOG_INFO("update_in_place"),
     case get_by_id(Id) of
         {ok,OldProfile} ->
             NewProfile = maps:merge(OldProfile,UpdateMap),
             case dog_json_schema:validate(?VALIDATION_TYPE,NewProfile) of
                 ok ->
-                    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-                    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
                     {ok, R} = dog_rethink:run(
                           fun(X) ->
                                   reql:db(X, dog),
@@ -529,11 +384,6 @@ update_in_place(Id, UpdateMap) ->
         {error, Error} ->
             {false, Error}
     end.
-
-%-spec is_active(Id :: binary()) -> boolean().
-%is_active(Id) ->
-%    {ok, Active} = dog_profile:all_active(),
-%    lists:member(Id,Active).
 
 -spec delete(GroupId :: binary()) -> (ok | {error, Error :: map()}).
 delete(Id) ->
@@ -696,32 +546,10 @@ where_used(ProfileId) ->
              end,
     {ok, Groups}.
 
-%r.db("dog").table("profile").filter({name: "test2"}).getField("rules").getField("inbound").nth(0).bracket("group")
-
-%get all profiles ids currently in use:
-%r.db("dog").table("group").map(
-%  function(group) {
-%       return r.branch(group('profile_version').eq("latest"),
-%                   r.db("dog").table("profile").filter({name:group("name")}).orderBy(r.desc("created")).nth(0).bracket("id"),
-%                         group("profile_version"))  ;
-%                           }
-%                           )
 
 -spec get_schema() -> binary().
 get_schema() ->
   dog_json_schema:get_file(?VALIDATION_TYPE).
-
-%-spec in_active_profile(Id :: binary()) -> {false, []} | {true, Profiles :: map() }.
-%in_active_profile(Id) ->
-%    {ok, Used} = where_used(Id),
-%    {ok, Active} = dog_profile:all_active(),
-%    Profiles = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(Active))),
-%    case Profiles of
-%        [] -> 
-%            {false,[]};
-%        _ -> 
-%            {true, Profiles}
-%    end.
 
 %TODO: Phase 1 of ec2 sg management: only control ports, allow any source address
 -spec get_all_inbound_ports_by_protocol(ProfileJson :: map()) -> ProtocolPorts :: list().

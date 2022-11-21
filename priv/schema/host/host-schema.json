@@ -18,7 +18,7 @@
     },
     "hostkey": {
       "type": "string",
-      "minLength": 30,
+      "minLength": 10,
       "pattern": "^([a-zA-Z0-9+-]+)$"
     },
     "location": {
