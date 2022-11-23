@@ -31,24 +31,6 @@ dog_trainer is the central server component of [dog](https://github.com/Phoneboo
 ## Build Dependencies
 - erlang 22+
 
-### CA/Certificate Creation
-If you already have a CA and per-server certs, you can reuse them, or buy new ones (costly).
-You can create your own self-signed certs with your own Certificat Authority.
-
-Examples Ansible scripts are provided to get you started.  Examples use Credstash to securely store the CA files (https://github.com/fugue/credstash)
-#### Create CA
-Create the CA and store it in a secure location, 
- use it in a deletable location like a tmpfs or an encrypted filesystem and then delete after use.
-- example:
-
-      scripts/ansible/dog_create_ca_cert.yml
-
-#### Create server cert
-One TLS cert must be created for each dog_trainer and dog_agent server
-- example:
-
-      scripts/ansible/setup_dog_cert.yml
-
 ### RethinkDB setup
 #### Install RethinkDB
       sudo apt install rethinkdb=2.3.6~0xenial

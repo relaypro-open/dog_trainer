@@ -1,5 +1,0 @@
----
-dog_data_dir: /var/dog/data
-dog_config_dir: /etc/dog.d/
-dog_run_dir: /var/run/dog
-dog_ui_dir: var/dog/ui
