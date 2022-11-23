@@ -33,17 +33,15 @@ RUN ./rebar3 compile
 
 FROM base as compile
 WORKDIR /data
-#COPY . .
 COPY --from=base /data/_build .
 COPY src src/
 COPY priv priv/
 COPY config config/
-COPY config/sys.config.local_docker config/sys.config
+RUN mkdir -p /etc/dog_trainer
+COPY config/sys.config.etc config/sys.config
+COPY config/sys.config.local_docker /etc/dog_trainer/dog_trainer.config
 COPY include include/
 COPY scripts scripts/
-#COPY rebar.config .
-#COPY rebar.lock .
-#COPY rebar3 .
 
 #Build the release
 RUN ./rebar3 release
