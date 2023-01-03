@@ -56,7 +56,7 @@ FROM compile as deploy
 #    apk add ncurses-libs && \
 #    apk add libstdc++ && \
 #    apk add libgcc 
-RUN apt-get update && apt-get install -y less ack lsb-release vim jq curl
+RUN apt-get update && apt-get install -y less ack lsb-release vim-tiny jq curl
 
 RUN mkdir -p /opt/dog_trainer
 RUN mkdir -p /var/log/dog_trainer
