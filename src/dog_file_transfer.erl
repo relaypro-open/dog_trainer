@@ -65,7 +65,8 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
                         {error, StdErr};
                       {<<"ok">>,StdOut} ->  
                         ?LOG_DEBUG("StdOut: ~p",[StdOut]),
-                        {ok, StdOut}
+			{ok, string:trim(StdOut, trailing, "\n") }
+                        %{ok, StdOut}
                     end
     end,
     Response.
