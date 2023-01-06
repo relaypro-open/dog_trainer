@@ -71,8 +71,12 @@ handle_command(Hostkey,Message,ApiUserName) ->
   ?LOG_DEBUG("Message: ~p",[Message]),
   Command = maps:get(<<"command">>,Message),
   UseShell = erlang:binary_to_atom(maps:get(<<"use_shell">>,Message,<<"false">>)),
-  User = dog_common:to_list(maps:get(<<"user">>,Message,"dog")),
-  NewOpts = [{use_shell, UseShell},{user, User},{api_user, ApiUserName}],
+  NewOpts = case(maps:is_key(<<"user">>,Message)) of
+  	true ->		
+			User = dog_common:to_list(maps:get(<<"user">>,Message)),
+			[{use_shell, UseShell},{api_user, ApiUserName},{user, User}];
+	false ->	[{use_shell, UseShell},{api_user, ApiUserName}]
+  end,
   ?LOG_DEBUG("NewOpts: ~p",[NewOpts]),
   dog_file_transfer:execute_command(Command,Hostkey,NewOpts).
 
