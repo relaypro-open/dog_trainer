@@ -118,6 +118,18 @@ resource_exists(Req@0, State@0) ->
                             end;
                         _ -> 
                             {false, Req@0, State@0}
+                    end,
+                    case cowboy_req:match_qs([{hostkey, [], plain}], Req@0) of
+                        #{hostkey := Hostkey} ->
+                            case Handler:get_by_hostkey(Hostkey) of
+                                {ok, Object1} ->
+                                    State@2 = maps:put(<<"object">>,Object1,State@0),
+                                    {true, Req@0, State@2};
+                                {error, _Error1} ->
+                                    {false, Req@0, State@0}
+                            end;
+                        _ -> 
+                            {false, Req@0, State@0}
                     end;
                 Id ->
                     Path = cowboy_req:path(Req@0),
