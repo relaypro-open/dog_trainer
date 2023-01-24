@@ -36,7 +36,7 @@ create(Profile) ->
                                               reql:insert(X, Profile@1,#{return_changes => always})
                                       end),
             NewVal = maps:get(<<"new_val">>,hd(maps:get(<<"changes">>,R))),
-            {ok, NewVal};
+	    {ok, ids_to_names(NewVal)};
         {error, Error} ->
             ?LOG_ERROR("~p",[Error]),
             Response = dog_parse:validation_error(Error),
@@ -49,7 +49,7 @@ delete(Id) ->
 
 -spec get_all() -> {'ok',list()}.
 get_all() ->
-    {ok, ActiveIds} = dog_profile:all_active(),
+    %{ok, ActiveIds} = dog_profile:all_active(),
     {ok, R} = dog_rethink:run(
                               fun(X) ->
                                       reql:db(X, dog),
@@ -60,11 +60,11 @@ get_all() ->
                    [] -> [];
                    Else -> Else
                end,
-    ActiveProfiles = lists:filter(fun(Profile) -> lists:member(maps:get(<<"id">>,Profile),ActiveIds)
-                 end, Profiles),
+    %ActiveProfiles = lists:filter(fun(Profile) -> lists:member(maps:get(<<"id">>,Profile),ActiveIds)
+    %             end, Profiles),
     ProfilesReplaced = lists:map(fun(Profile) ->
        ids_to_names(Profile) 
-    end, ActiveProfiles),
+    end, Profiles),
     {ok, ProfilesReplaced}.
 
 -spec get_by_id(Id :: binary()) -> {ok, map()} | {error, notfound}.
@@ -79,11 +79,13 @@ get_by_name(ProfileName) ->
 
 -spec update(Id :: binary(), UpdateMap :: map()) -> {atom(), Id :: iolist()} | {false, atom()}.
 update(Id, UpdateMap) ->
-    update(Id,UpdateMap,true).
+  {Result, Profile} = update(Id,UpdateMap,true),
+  {Result, ids_to_names(Profile)}.
 
 -spec update(Id :: binary(), UpdateMap :: map(), InPlace :: boolean() ) -> {atom(), Id :: iolist()} | {false, atom()}.
 update(Id, UpdateMap, _InPlace) ->
-    update_in_place(Id,UpdateMap).
+    {Result, Profile} = update_in_place(Id,UpdateMap),
+    {Result, ids_to_names(Profile)}.
 
 -spec update_in_place(Id :: binary(), UpdateMap :: map()) -> {false, atom()} | {validation_error, iolist()} | {true, binary()}.
 update_in_place(Id, UpdateMapWithNames) ->
