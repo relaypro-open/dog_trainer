@@ -58,18 +58,20 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
                     {error,Reason};
               {ok, _NTime, _CType, Payload} ->
                     ?LOG_DEBUG("Payload: ~p",[Payload]),
-                    case hd(jsx:decode(Payload)) of
-                    %case Payload of
+                    case decode_payload(Payload) of
                       {<<"error">>,StdErr} ->
                         ?LOG_ERROR("StdErr: ~p",[StdErr]),
                         {error, StdErr};
-                      {<<"ok">>,StdOut} ->  
+                      {<<"ok">>,StdOut} ->
                         ?LOG_DEBUG("StdOut: ~p",[StdOut]),
 			{ok, string:trim(StdOut, trailing, "\n") }
-                        %{ok, StdOut}
                     end
     end,
     Response.
+
+decode_payload(Payload) ->
+	{Response, Message} = hd(jsx:decode(Payload)),
+	{Response, Message}.
 
 delete_file(FilePath,Hostkey,Opts) ->
     publish_file_delete(Hostkey,FilePath,Opts).
