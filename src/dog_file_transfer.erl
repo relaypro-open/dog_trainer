@@ -47,12 +47,15 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
                               {pid, Pid}
                              ] ++ Opts),
     RoutingKey = hostkey_to_routing_key(Hostkey),
+    CommandExecutionTimeout = application:get_env(dog_trainer,command_execution_timeout_ms,10000),
     Response = case turtle:rpc_sync(
            file_transfer_publisher, 
            <<"file_transfer">>, 
            RoutingKey, 
            <<"text/json">>,
-           Message) of
+           Message,
+	   #{ timeout => CommandExecutionTimeout }
+	   ) of
               {error, Reason} -> 
                     ?LOG_ERROR("Reason: ~p",[Reason]),
                     {error,Reason};
@@ -78,6 +81,7 @@ delete_file(FilePath,Hostkey,Opts) ->
 
 -spec publish_file_delete(Hostkey :: string(), Filename :: string(), Opts :: list()) -> any().
 publish_file_delete(Hostkey, Filename, Opts) ->
+    FileDeleteTimeout = application:get_env(dog_trainer,file_delete_timeout_ms,5000),
     Pid = erlang:self(),
     Message = term_to_binary([
                               {command, delete_file},
@@ -91,7 +95,9 @@ publish_file_delete(Hostkey, Filename, Opts) ->
            <<"file_transfer">>, 
            RoutingKey, 
            <<"text/json">>,
-           Message) of
+           Message,
+	   #{ timeout => FileDeleteTimeout }
+	  ) of
               {error, Reason} -> 
                     ?LOG_ERROR("Reason: ~p",[Reason]),
                     Reason;
@@ -185,13 +191,14 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
                               {pid, Pid}
                              ] ++ Opts),
     RoutingKey = hostkey_to_routing_key(Hostkey),
+    FileTransferTimeout = application:get_env(dog_trainer,file_transfer_timeout_ms,20000),
     case turtle:rpc_sync(
            file_transfer_publisher, 
            <<"file_transfer">>, 
            RoutingKey, 
            <<"text/json">>,
            Message,
-           #{timeout => 20000 }) of
+           #{timeout => FileTransferTimeout }) of
               {error, Reason} -> 
                     ?LOG_ERROR("Reason: ~p",[Reason]),
                     {error, Reason};
