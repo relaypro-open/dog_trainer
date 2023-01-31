@@ -63,7 +63,7 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
                     ?LOG_DEBUG(#{ payload => Payload, routing_key => RoutingKey}),
                     case decode_payload(Payload) of
                       {<<"error">>,StdErr} ->
-                        ?LOG_INFO( #{stderr => StdErr, routing_key => RoutingKey}),
+                        ?LOG_ERROR( #{stderr => StdErr, routing_key => RoutingKey}),
                         {error, StdErr};
                       {<<"ok">>,StdOut} ->
                         ?LOG_INFO( #{stdout => StdOut, routing_key => RoutingKey}),
