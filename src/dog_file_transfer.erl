@@ -63,10 +63,10 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
                     ?LOG_DEBUG(#{ payload => Payload, routing_key => RoutingKey}),
                     case decode_payload(Payload) of
                       {<<"error">>,StdErr} ->
-                        ?LOG_ERROR( #{stderr => StdErr, routing_key => RoutingKey}),
+                        ?LOG_INFO( #{stderr => StdErr, routing_key => RoutingKey}),
                         {error, StdErr};
                       {<<"ok">>,StdOut} ->
-                        ?LOG_ERROR( #{stdout => StdOut, routing_key => RoutingKey}),
+                        ?LOG_INFO( #{stdout => StdOut, routing_key => RoutingKey}),
 			{ok, string:trim(StdOut, trailing, "\n") }
                     end
     end,
@@ -217,7 +217,7 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
 				?LOG_ERROR( #{stderr => StdErr, routing_key => RoutingKey}),
                                 {error, StdErr};
                               {<<"ok">>,StdOut} ->  
-				?LOG_ERROR( #{stdout => StdOut, routing_key => RoutingKey}),
+				?LOG_INFO( #{stdout => StdOut, routing_key => RoutingKey}),
                                 {ok, StdOut}
                             end
                     end
