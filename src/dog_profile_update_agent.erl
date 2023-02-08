@@ -10,27 +10,29 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/0,
-         add_to_queue/1,
-         periodic_publish/0,
-         queue_length/0
-        ]).
+-export([
+    start_link/0,
+    add_to_queue/1,
+    periodic_publish/0,
+    queue_length/0
+]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
 %% ------------------------------------------------------------------
 
--export([init/1,
-         handle_call/3,
-         handle_cast/2,
-         handle_info/2,
-         terminate/2,
-         code_change/3]).
+-export([
+    init/1,
+    handle_call/3,
+    handle_cast/2,
+    handle_info/2,
+    terminate/2,
+    code_change/3
+]).
 
 %% ------------------------------------------------------------------
 %% test Function Exports
 %% ------------------------------------------------------------------
-
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -49,7 +51,7 @@ queue_length() ->
     gen_server:call(?MODULE, queue_length, 10000).
 
 periodic_publish() ->
-  gen_server:call(?MODULE, periodic_publish,20000).
+    gen_server:call(?MODULE, periodic_publish, 20000).
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
@@ -64,7 +66,9 @@ periodic_publish() ->
 
 -spec init(_) -> {'ok', []}.
 init(_Args) ->
-    {ok, PeriodicPublishInterval} = application:get_env(dog_trainer,profile_periodic_publish_interval_seconds),
+    {ok, PeriodicPublishInterval} = application:get_env(
+        dog_trainer, profile_periodic_publish_interval_seconds
+    ),
     _PublishTimer = erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     State = ordsets:new(),
     {ok, State}.
@@ -78,10 +82,10 @@ init(_Args) ->
 %%          {stop, Reason, Reply, State} | (terminate/2 is called)
 %%          {stop, Reason, State} (terminate/2 is called)
 %%----------------------------------------------------------------------
--spec handle_call(term(), {pid(), term()}, State::ips_state()) -> {reply, ok, any()}.
+-spec handle_call(term(), {pid(), term()}, State :: ips_state()) -> {reply, ok, any()}.
 handle_call({periodic_publish}, _From, State) ->
-  {ok, NewState} = do_periodic_publish(State),
-  {reply, ok, NewState};
+    {ok, NewState} = do_periodic_publish(State),
+    {reply, ok, NewState};
 handle_call(queue_length, _from, State) ->
     QueueLength = length(State),
     {reply, QueueLength, State};
@@ -94,15 +98,15 @@ handle_call(_Request, _From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State} (terminate/2 is called)
 %%----------------------------------------------------------------------
--spec handle_cast(_,_) -> {'noreply',_}.
+-spec handle_cast(_, _) -> {'noreply', _}.
 handle_cast(stop, State) ->
-  {stop, normal, State};
+    {stop, normal, State};
 handle_cast({add_to_queue, Groups}, State) ->
-  NewState = ordsets:union(ordsets:from_list(Groups), State),  
-  {noreply, NewState};
+    NewState = ordsets:union(ordsets:from_list(Groups), State),
+    {noreply, NewState};
 handle_cast(Msg, State) ->
-  ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p",[Msg, State]),
-  {noreply, State}.
+    ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
+    {noreply, State}.
 
 %%----------------------------------------------------------------------
 %% Func: handle_info/2
@@ -111,15 +115,17 @@ handle_cast(Msg, State) ->
 %%          {stop, Reason, State} (terminate/2 is called)
 %%----------------------------------------------------------------------
 % TODO: be more specific about Info in spec
--spec handle_info(_,_) -> {'noreply',_}.
+-spec handle_info(_, _) -> {'noreply', _}.
 handle_info(periodic_publish, State) ->
     {ok, NewState} = do_periodic_publish(State),
-    {ok, PeriodicPublishInterval} = application:get_env(dog_trainer,profile_periodic_publish_interval_seconds),
+    {ok, PeriodicPublishInterval} = application:get_env(
+        dog_trainer, profile_periodic_publish_interval_seconds
+    ),
     erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     {noreply, NewState};
 handle_info(Info, State) ->
-  ?LOG_ERROR("unknown_message: Info: ~p, State: ~p",[Info, State]),
-  {noreply, State}.
+    ?LOG_ERROR("unknown_message: Info: ~p, State: ~p", [Info, State]),
+    {noreply, State}.
 
 %%----------------------------------------------------------------------
 %% Func: terminate/2
@@ -131,7 +137,7 @@ terminate(Reason, State) ->
     ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
     {close}.
 
--spec code_change(_, State::ips_state(), _) -> {ok, State::ips_state()}.
+-spec code_change(_, State :: ips_state(), _) -> {ok, State :: ips_state()}.
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
@@ -146,19 +152,22 @@ do_periodic_publish([]) ->
 do_periodic_publish(State) ->
     case dog_agent_checker:check() of
         true ->
-            ?LOG_INFO("State: ~p",[State]),
+            ?LOG_INFO("State: ~p", [State]),
             Groups = ordsets:to_list(State),
             imetrics:set_gauge(publish_queue_length, length(Groups)),
-            PeriodicPublishMax = application:get_env(dog_trainer,periodic_publish_max,10),
-            {_ConsumedGroups, LeftoverGroups} = case Groups of
-                [] ->
-                    {[],[]};
-                _ when length(Groups) >= PeriodicPublishMax ->
-                    lists:split(PeriodicPublishMax,Groups); %only consume N per run
-                _ when length(Groups) < PeriodicPublishMax ->
-                    {Groups,[]}
-            end,
-            {Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap} = dog_ipset:id_maps(),
+            PeriodicPublishMax = application:get_env(dog_trainer, periodic_publish_max, 10),
+            {_ConsumedGroups, LeftoverGroups} =
+                case Groups of
+                    [] ->
+                        {[], []};
+                    _ when length(Groups) >= PeriodicPublishMax ->
+                        %only consume N per run
+                        lists:split(PeriodicPublishMax, Groups);
+                    _ when length(Groups) < PeriodicPublishMax ->
+                        {Groups, []}
+                end,
+            {Ipv4RoleMap, Ipv6RoleMap, Ipv4ZoneMap, Ipv6ZoneMap, ZoneIdMap, GroupIdMap,
+                ServiceIdMap} = dog_ipset:id_maps(),
             {MergedIpsets, _InternalIpsets} = dog_ipset:create_ipsets(),
             %Publish ipsets even if the Group doesn't have an associated Profile:
             %NonBlankGroups = lists:filter(fun(Group) -> Group =/= <<>> end, Groups),
@@ -170,30 +179,57 @@ do_periodic_publish(State) ->
             %    dog_ipset:update_ipsets(local_env)
             %end,
             dog_ipset:update_ipsets(all_envs),
-            EmptyIpsets = [], % Deliberately set to empty set, so agent will not update ipsets.
-            GroupsWithoutEmptyProfiles = ordsets:subtract(ordsets:from_list(Groups),[<<>>]),
-            PublishList = lists:map(fun(Group) -> 
-                Environment = <<"*">>,
-                Location = <<"*">>,
-                HostKey = <<"*">>,
-                RoutingKey = binary:list_to_bin([Environment,<<".">>,Location,<<".">>,Group,<<".">>,HostKey]),
-                try 
-                    case dog_profile:create_ruleset(RoutingKey, Group, Ipv4RoleMap,Ipv6RoleMap,Ipv4ZoneMap,
-                                                    Ipv6ZoneMap,ZoneIdMap,GroupIdMap,ServiceIdMap,MergedIpsets) of
-                      {R4IpsetsRuleset, R6IpsetsRuleset, R4IptablesRuleset, R6IptablesRuleset} ->
-                        {Group, dog_iptables:publish_to_queue(RoutingKey, R4IpsetsRuleset, R6IpsetsRuleset, R4IptablesRuleset, R6IptablesRuleset, EmptyIpsets)};
-                      error ->
-                        {Group, error}
+            % Deliberately set to empty set, so agent will not update ipsets.
+            EmptyIpsets = [],
+            GroupsWithoutEmptyProfiles = ordsets:subtract(ordsets:from_list(Groups), [<<>>]),
+            PublishList = lists:map(
+                fun(Group) ->
+                    Environment = <<"*">>,
+                    Location = <<"*">>,
+                    HostKey = <<"*">>,
+                    RoutingKey = binary:list_to_bin([
+                        Environment, <<".">>, Location, <<".">>, Group, <<".">>, HostKey
+                    ]),
+                    try
+                        case
+                            dog_profile:create_ruleset(
+                                RoutingKey,
+                                Group,
+                                Ipv4RoleMap,
+                                Ipv6RoleMap,
+                                Ipv4ZoneMap,
+                                Ipv6ZoneMap,
+                                ZoneIdMap,
+                                GroupIdMap,
+                                ServiceIdMap,
+                                MergedIpsets
+                            )
+                        of
+                            {R4IpsetsRuleset, R6IpsetsRuleset, R4IptablesRuleset,
+                                R6IptablesRuleset} ->
+                                {Group,
+                                    dog_iptables:publish_to_queue(
+                                        RoutingKey,
+                                        R4IpsetsRuleset,
+                                        R6IpsetsRuleset,
+                                        R4IptablesRuleset,
+                                        R6IptablesRuleset,
+                                        EmptyIpsets
+                                    )};
+                            error ->
+                                {Group, error}
+                        end
+                    catch
+                        profile_not_found ->
+                            ?LOG_INFO("profile_not_found in group: ~p", [Group]),
+                            {Group, profile_not_found}
                     end
-                catch 
-                    profile_not_found ->
-                        ?LOG_INFO("profile_not_found in group: ~p",[Group]),
-                        {Group, profile_not_found}
-                end
-                          end, GroupsWithoutEmptyProfiles),
-            ?LOG_INFO("PublishList: ~p",[PublishList]),
-            {ok, ordsets:from_list(LeftoverGroups) };
+                end,
+                GroupsWithoutEmptyProfiles
+            ),
+            ?LOG_INFO("PublishList: ~p", [PublishList]),
+            {ok, ordsets:from_list(LeftoverGroups)};
         false ->
             ?LOG_INFO("Skipping, dog_agent_checker:check() false"),
-            {ok, State }
+            {ok, State}
     end.

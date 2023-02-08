@@ -4,10 +4,10 @@
 
 %API
 -export([
-         get_all/0
-       ]).
+    get_all/0
+]).
 
 -spec get_all() -> {ok, list()}.
 get_all() ->
     Ipsets = dog_ipset:ipsets_map(),
-    {ok, #{<<"ipsets">> => Ipsets} }.
+    {ok, #{<<"ipsets">> => Ipsets}}.

@@ -8,7 +8,7 @@
 -export([to_json/2]).
 
 get_handler_module(Path) ->
-    handler_lookup(api_handler:extract_module_from_path(Path,3,1)).
+    handler_lookup(api_handler:extract_module_from_path(Path, 3, 1)).
 
 handler_lookup(<<"externals">>) -> dog_external;
 handler_lookup(<<"groups">>) -> dog_group;
@@ -16,18 +16,22 @@ handler_lookup(<<"hosts">>) -> dog_host;
 handler_lookup(<<"links">>) -> dog_link;
 handler_lookup(<<"profiles">>) -> dog_profile;
 handler_lookup(<<"services">>) -> dog_service;
-handler_lookup(<<"zones">>) ->  dog_zone.
+handler_lookup(<<"zones">>) -> dog_zone.
 
 init(Req, Opts) ->
-	{cowboy_rest, Req, Opts}.
+    {cowboy_rest, Req, Opts}.
 
 content_types_provided(Req, State) ->
-	{[
-		{<<"application/json">>, to_json}
-	], Req, State}.
+    {
+        [
+            {<<"application/json">>, to_json}
+        ],
+        Req,
+        State
+    }.
 
 allowed_methods(Req, State) ->
-        {[<<"GET">>], Req, State}.
+    {[<<"GET">>], Req, State}.
 
 to_json(Req, State) ->
     case cowboy_req:method(Req) of
@@ -39,12 +43,12 @@ to_json(Req, State) ->
             Sub = cowboy_req:binding(sub, Req),
             case Sub of
                 undefined ->
-                  {Json, Req, State}; 
+                    {Json, Req, State};
                 <<"schema">> ->
-                  Schema = Handler:get_schema(),
-                  {Schema, Req, State};
+                    Schema = Handler:get_schema(),
+                    {Schema, Req, State};
                 <<"ips">> ->
-                  {ok, Ips} = Handler:get_all_ips(),
-                  {jsx:encode(Ips), Req, State}
+                    {ok, Ips} = Handler:get_all_ips(),
+                    {jsx:encode(Ips), Req, State}
             end
     end.

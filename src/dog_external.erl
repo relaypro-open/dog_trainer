@@ -9,97 +9,112 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 -export([
-        add_ipset_prefix/2,
-        create/1,
-        delete/1,
-        do_nothing/2,
-        dump_all/0,
-        dump_all_active/0,
-        empty_external/1,
-        set_active_by_id/1,
-        set_inactive_by_id/1,
-        get_all_ips/0,
-        get_by_id/1,
-        get_by_name/1, 
-        get_all/0,
-        get_all_active/0,
-        get_all_active_union_ec2_sgs/0,
-        get_schema/0,
-        %get_thumper_spec/1,
-        grouped_by_ipset_name/0,
-        grouped_by_ipset_name/4,
-        stop_external_broker_connection/1,
-        start_external_broker_connection/1,
-        to_ipset_names/2,
-        restart_external_broker_connection/1,
-        replace/2
-        ]).
+    add_ipset_prefix/2,
+    create/1,
+    delete/1,
+    do_nothing/2,
+    dump_all/0,
+    dump_all_active/0,
+    empty_external/1,
+    set_active_by_id/1,
+    set_inactive_by_id/1,
+    get_all_ips/0,
+    get_by_id/1,
+    get_by_name/1,
+    get_all/0,
+    get_all_active/0,
+    get_all_active_union_ec2_sgs/0,
+    get_schema/0,
+    %get_thumper_spec/1,
+    grouped_by_ipset_name/0,
+    grouped_by_ipset_name/4,
+    stop_external_broker_connection/1,
+    start_external_broker_connection/1,
+    to_ipset_names/2,
+    restart_external_broker_connection/1,
+    replace/2
+]).
 
 %% ------------------------------------------------------------------
 %% Dev/Test Function Exports
 %% ------------------------------------------------------------------
 -export([
-        turtle_connection_config/1
-        ]).
+    turtle_connection_config/1
+]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
--spec start_external_broker_connection(LinkName :: binary()) -> ok. 
+-spec start_external_broker_connection(LinkName :: binary()) -> ok.
 start_external_broker_connection(EnvName) ->
-  ?LOG_DEBUG("EnvName: ~p",[EnvName]),
-  {ok,Link} = dog_link:get_by_name(EnvName),
-  turtle_conn:new(turtle_connection_config(Link)).
+    ?LOG_DEBUG("EnvName: ~p", [EnvName]),
+    {ok, Link} = dog_link:get_by_name(EnvName),
+    turtle_conn:new(turtle_connection_config(Link)).
 
--spec restart_external_broker_connection(LinkName :: binary()) -> ok. 
+-spec restart_external_broker_connection(LinkName :: binary()) -> ok.
 restart_external_broker_connection(EnvName) ->
-  stop_external_broker_connection(EnvName),
-  start_external_broker_connection(EnvName).
+    stop_external_broker_connection(EnvName),
+    start_external_broker_connection(EnvName).
 
--spec stop_external_broker_connection(LinkName :: binary()) -> ok. 
+-spec stop_external_broker_connection(LinkName :: binary()) -> ok.
 stop_external_broker_connection(EnvName) ->
-  {ok,Link} = dog_link:get_by_name(EnvName),
-  turtle_conn:stop(turtle_connection_config(Link)).
+    {ok, Link} = dog_link:get_by_name(EnvName),
+    turtle_conn:stop(turtle_connection_config(Link)).
 
 turtle_connection_config(Link) ->
-  Connection = maps:get(<<"connection">>,Link),
-   ConnName = erlang:list_to_atom(
-      binary:bin_to_list(
-        maps:get(<<"name">>,Link))), 
+    Connection = maps:get(<<"connection">>, Link),
+    ConnName = erlang:list_to_atom(
+        binary:bin_to_list(
+            maps:get(<<"name">>, Link)
+        )
+    ),
     #{
-            conn_name => ConnName,
+        conn_name => ConnName,
 
-            username => binary:bin_to_list(maps:get(<<"user">>,Connection)),
-            password => binary:bin_to_list(maps:get(<<"password">>,Connection)),
-            virtual_host => binary:bin_to_list(maps:get(<<"virtual_host">>,Connection)),
-            ssl_options => [
-                           {cacertfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"cacertfile">>],Connection))},
-                           {certfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"certfile">>],Connection))},
-                           {keyfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"keyfile">>],Connection))},
-                           {verify, erlang:list_to_atom(
-                                      binary:bin_to_list(
-                                        nested:get([<<"ssl_options">>,<<"verify">>],Connection)))},
+        username => binary:bin_to_list(maps:get(<<"user">>, Connection)),
+        password => binary:bin_to_list(maps:get(<<"password">>, Connection)),
+        virtual_host => binary:bin_to_list(maps:get(<<"virtual_host">>, Connection)),
+        ssl_options => [
+            {cacertfile,
+                binary:bin_to_list(nested:get([<<"ssl_options">>, <<"cacertfile">>], Connection))},
+            {certfile,
+                binary:bin_to_list(nested:get([<<"ssl_options">>, <<"certfile">>], Connection))},
+            {keyfile,
+                binary:bin_to_list(nested:get([<<"ssl_options">>, <<"keyfile">>], Connection))},
+            {verify,
+                erlang:list_to_atom(
+                    binary:bin_to_list(
+                        nested:get([<<"ssl_options">>, <<"verify">>], Connection)
+                    )
+                )},
 
-                           {server_name_indication, erlang:list_to_atom(
-                                                      binary:bin_to_list(
-                                                        nested:get([<<"ssl_options">>,<<"server_name_indication">>],Connection)))},
-                           {fail_if_no_peer_cert, nested:get([<<"ssl_options">>,<<"fail_if_no_peer_cert">>],Connection)}
-                          ],
-            deadline => 300000,
-            connections => [
-                {main, [
-                  {binary:bin_to_list(maps:get(<<"host">>,Connection)), maps:get(<<"port">>,Connection) } 
-                ]}
-            ]
-}.
+            {server_name_indication,
+                erlang:list_to_atom(
+                    binary:bin_to_list(
+                        nested:get([<<"ssl_options">>, <<"server_name_indication">>], Connection)
+                    )
+                )},
+            {fail_if_no_peer_cert,
+                nested:get([<<"ssl_options">>, <<"fail_if_no_peer_cert">>], Connection)}
+        ],
+        deadline => 300000,
+        connections => [
+            {main, [
+                {
+                    binary:bin_to_list(maps:get(<<"host">>, Connection)),
+                    maps:get(<<"port">>, Connection)
+                }
+            ]}
+        ]
+    }.
 
 %get_thumper_spec(Link) ->
 %  Connection = maps:get(<<"connection">>,Link),
-%  ThumperSpec = 
+%  ThumperSpec =
 %  [
 %   {erlang:list_to_atom(
 %      binary:bin_to_list(
-%        maps:get(<<"name">>,Link))), 
+%        maps:get(<<"name">>,Link))),
 %    [
 %     {rabbitmq_config,
 %      [
@@ -130,211 +145,260 @@ turtle_connection_config(Link) ->
 -spec get_by_name(Name :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_name(Name) ->
     {ok, R} = dog_rethink:run(
-                               fun(X) -> 
-                                       reql:db(X, dog), 
-                                       reql:table(X, ?TYPE_TABLE),
-                                       reql:get_all(X, Name, #{index => <<"name">>})
-                              end),
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get_all(X, Name, #{index => <<"name">>})
+        end
+    ),
     {ok, R3} = rethink_cursor:all(R),
     Result = lists:flatten(R3),
     case Result of
-        [] -> 
+        [] ->
             {error, notfound};
-        _ -> {ok, hd(Result)}
+        _ ->
+            {ok, hd(Result)}
     end.
 
 -spec get_by_id(Id :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_id(Id) ->
-  {ok, R} = dog_rethink:run(
-  fun(X) -> 
-      reql:db(X, dog), 
-      reql:table(X, ?TYPE_TABLE),
-      reql:get(X, Id)
-  end),
-  case R of
-     null -> 
-          {error, notfound};
-     _ -> 
-      {ok, R}
-  end.
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get(X, Id)
+        end
+    ),
+    case R of
+        null ->
+            {error, notfound};
+        _ ->
+            {ok, R}
+    end.
 
 -spec get_all() -> {ok, list()}.
 get_all() ->
     {ok, R} = dog_rethink:run(
-                              fun(X) -> 
-                                      reql:db(X, dog), 
-                                      reql:table(X, ?TYPE_TABLE),
-                                      reql:pluck(X, [<<"name">>,<<"id">>])
-                              end),
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:pluck(X, [<<"name">>, <<"id">>])
+        end
+    ),
     {ok, Result} = rethink_cursor:all(R),
-    Externals = case lists:flatten(Result) of
-                [] -> [];
-                Else -> Else
-            end,
+    Externals =
+        case lists:flatten(Result) of
+            [] -> [];
+            Else -> Else
+        end,
     {ok, Externals}.
 
 -spec get_all_active() -> {ok, []} | {ok, map()}.
 get_all_active() ->
     {ok, R} = dog_rethink:run(
-                              fun(X) -> 
-                                      reql:db(X, dog), 
-                                      reql:table(X, ?TYPE_TABLE),
-                                      reql:filter(X,#{<<"state">> => <<"active">>}),
-                                      reql:pluck(X, [<<"name">>,<<"id">>])
-                              end),
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:filter(X, #{<<"state">> => <<"active">>}),
+            reql:pluck(X, [<<"name">>, <<"id">>])
+        end
+    ),
     {ok, Result} = rethink_cursor:all(R),
-    Externals = case lists:flatten(Result) of
-                [] -> [];
-                Else -> Else
-            end,
+    Externals =
+        case lists:flatten(Result) of
+            [] -> [];
+            Else -> Else
+        end,
     {ok, Externals}.
 
 -spec empty_external(EnvName :: binary()) -> map().
 empty_external(EnvName) ->
-  #{
-   <<"name">> => EnvName,
-   <<"state">> => <<"inactive">>,
-   <<"ec2">> => #{}, 
-   <<"v4">> => #{ <<"groups">> => #{}, <<"zones">> => #{} },
-   <<"v6">> => #{ <<"groups">> => #{}, <<"zones">> => #{} },
-   <<"address_handling">> => <<"union">>
-  }.
+    #{
+        <<"name">> => EnvName,
+        <<"state">> => <<"inactive">>,
+        <<"ec2">> => #{},
+        <<"v4">> => #{<<"groups">> => #{}, <<"zones">> => #{}},
+        <<"v6">> => #{<<"groups">> => #{}, <<"zones">> => #{}},
+        <<"address_handling">> => <<"union">>
+    }.
 
 -spec dump_all_active() -> {ok, list(), list()}.
 dump_all_active() ->
     {ok, R} = dog_rethink:run(
-                              fun(X) -> 
-                                      reql:db(X, dog), 
-                                      reql:table(X, external),
-                                      reql:filter(X,#{<<"state">> => <<"active">>})
-                              end),
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, external),
+            reql:filter(X, #{<<"state">> => <<"active">>})
+        end
+    ),
     {ok, Result} = rethink_cursor:all(R),
-    Externals = case lists:flatten(Result) of
-                [] -> [];
-                Else -> 
-                    %Else
-                    lists:map(fun(E) ->
-                      ExternalName = maps:get(<<"name">>,E),
-                      ?LOG_DEBUG("ExternalName: ~p",[ExternalName]),
-                      case dog_link:get_by_name(ExternalName) of
-                               {ok, Map} -> 
-                                  ?LOG_DEBUG("Map: ~p",[Map]),
-                                    LinkAddressHandling = maps:get(<<"address_handling">>,Map),
-                                    maps:put(<<"address_handling">>,LinkAddressHandling,E);
-                               _ ->
-                                 ?LOG_DEBUG("E: ~p",[E]),
-                                 E
-                             end
-                    end, Else)
-            end,
-    {ExternalUnionEnvs, ExternalPrefixEnvs} = lists:splitwith(fun(E) -> maps:get(<<"address_handling">>,E) == <<"union">> end, Externals),
+    Externals =
+        case lists:flatten(Result) of
+            [] ->
+                [];
+            Else ->
+                %Else
+                lists:map(
+                    fun(E) ->
+                        ExternalName = maps:get(<<"name">>, E),
+                        ?LOG_DEBUG("ExternalName: ~p", [ExternalName]),
+                        case dog_link:get_by_name(ExternalName) of
+                            {ok, Map} ->
+                                ?LOG_DEBUG("Map: ~p", [Map]),
+                                LinkAddressHandling = maps:get(<<"address_handling">>, Map),
+                                maps:put(<<"address_handling">>, LinkAddressHandling, E);
+                            _ ->
+                                ?LOG_DEBUG("E: ~p", [E]),
+                                E
+                        end
+                    end,
+                    Else
+                )
+        end,
+    {ExternalUnionEnvs, ExternalPrefixEnvs} = lists:splitwith(
+        fun(E) -> maps:get(<<"address_handling">>, E) == <<"union">> end, Externals
+    ),
     {ok, ExternalUnionEnvs, ExternalPrefixEnvs}.
 
 -spec dump_all() -> {ok, list(), list()}.
 dump_all() ->
     {ok, R} = dog_rethink:run(
-                              fun(X) -> 
-                                      reql:db(X, dog), 
-                                      reql:table(X, external)
-                              end),
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, external)
+        end
+    ),
     {ok, Result} = rethink_cursor:all(R),
-    Externals = case lists:flatten(Result) of
-                [] -> [];
-                Else -> 
-                    %Else
-                    lists:map(fun(E) ->
-                      ExternalName = maps:get(<<"name">>,E),
-                      ?LOG_DEBUG("ExternalName: ~p",[ExternalName]),
-                      case dog_link:get_by_name(ExternalName) of
-                               {ok, Map} -> 
-                                  ?LOG_DEBUG("Map: ~p",[Map]),
-                                    LinkAddressHandling = maps:get(<<"address_handling">>,Map),
-                                    maps:put(<<"address_handling">>,LinkAddressHandling,E);
-                               _ ->
-                                 ?LOG_DEBUG("E: ~p",[E]),
-                                 E
-                             end
-                    end, Else)
-            end,
-    {ExternalUnionEnvs, ExternalPrefixEnvs} = lists:splitwith(fun(E) -> maps:get(<<"address_handling">>,E) == <<"union">> end, Externals),
+    Externals =
+        case lists:flatten(Result) of
+            [] ->
+                [];
+            Else ->
+                %Else
+                lists:map(
+                    fun(E) ->
+                        ExternalName = maps:get(<<"name">>, E),
+                        ?LOG_DEBUG("ExternalName: ~p", [ExternalName]),
+                        case dog_link:get_by_name(ExternalName) of
+                            {ok, Map} ->
+                                ?LOG_DEBUG("Map: ~p", [Map]),
+                                LinkAddressHandling = maps:get(<<"address_handling">>, Map),
+                                maps:put(<<"address_handling">>, LinkAddressHandling, E);
+                            _ ->
+                                ?LOG_DEBUG("E: ~p", [E]),
+                                E
+                        end
+                    end,
+                    Else
+                )
+        end,
+    {ExternalUnionEnvs, ExternalPrefixEnvs} = lists:splitwith(
+        fun(E) -> maps:get(<<"address_handling">>, E) == <<"union">> end, Externals
+    ),
     {ok, ExternalUnionEnvs, ExternalPrefixEnvs}.
 
--spec grouped_by_ipset_name() -> { 
-                                               {ExternalUnionGroupIpv4sGrouped :: map(), ExternalUnionGroupIpv6sGrouped :: map(), 
-                                               ExternalUnionZoneIpv4sGrouped :: map(), ExternalUnionZoneIpv6sGrouped :: map()},
-                                               {ExternalPrefixGroupIpv4sGrouped :: map(), ExternalPrefixGroupIpv6sGrouped :: map(), 
-                                               ExternalPrefixZoneIpv4sGrouped :: map(), ExternalPrefixZoneIpv6sGrouped :: map()}
-                                               }.
+-spec grouped_by_ipset_name() ->
+    {
+        {
+            ExternalUnionGroupIpv4sGrouped :: map(),
+            ExternalUnionGroupIpv6sGrouped :: map(),
+            ExternalUnionZoneIpv4sGrouped :: map(),
+            ExternalUnionZoneIpv6sGrouped :: map()
+        },
+        {
+            ExternalPrefixGroupIpv4sGrouped :: map(),
+            ExternalPrefixGroupIpv6sGrouped :: map(),
+            ExternalPrefixZoneIpv4sGrouped :: map(),
+            ExternalPrefixZoneIpv6sGrouped :: map()
+        }
+    }.
 grouped_by_ipset_name() ->
-  {ok, ExternalUnionEnvs, ExternalPrefixEnvs} = dump_all_active(),
-  ExternalUnionIpsets = grouped_by_ipset_name(ExternalUnionEnvs,fun do_nothing/2),
-  ExternalPrefixIpsets = grouped_by_ipset_name(ExternalPrefixEnvs,fun add_ipset_prefix/2),
-  {ExternalUnionIpsets, ExternalPrefixIpsets}.
+    {ok, ExternalUnionEnvs, ExternalPrefixEnvs} = dump_all_active(),
+    ExternalUnionIpsets = grouped_by_ipset_name(ExternalUnionEnvs, fun do_nothing/2),
+    ExternalPrefixIpsets = grouped_by_ipset_name(ExternalPrefixEnvs, fun add_ipset_prefix/2),
+    {ExternalUnionIpsets, ExternalPrefixIpsets}.
 
--spec grouped_by_ipset_name(Envs :: list(), AddressHandlingFun :: fun()) -> 
-  {ExternalGroupIpv4sGrouped :: map(), ExternalGroupIpv6sGrouped :: map(), 
-   ExternalZoneIpv4sGrouped :: map(), ExternalZoneIpv6sGrouped :: map()}.
+-spec grouped_by_ipset_name(Envs :: list(), AddressHandlingFun :: fun()) ->
+    {
+        ExternalGroupIpv4sGrouped :: map(),
+        ExternalGroupIpv6sGrouped :: map(),
+        ExternalZoneIpv4sGrouped :: map(),
+        ExternalZoneIpv6sGrouped :: map()
+    }.
 grouped_by_ipset_name(Envs, AddressHandlingFun) ->
-  %TODO: union/prefix externals breaks down internal/external ipsets categories. must handle per-link/env.
-  ExternalGroupIpv4sGrouped = grouped_by_ipset_name(Envs,<<"groups">>,<<"v4">>,AddressHandlingFun),
-  ExternalGroupIpv6sGrouped = grouped_by_ipset_name(Envs,<<"groups">>,<<"v6">>,AddressHandlingFun),
-  ExternalZoneIpv4sGrouped =  grouped_by_ipset_name(Envs,<<"zones">>,<<"v4">>,AddressHandlingFun),
-  ExternalZoneIpv6sGrouped =  grouped_by_ipset_name(Envs,<<"zones">>,<<"v6">>,AddressHandlingFun),
-  {ExternalGroupIpv4sGrouped, ExternalGroupIpv6sGrouped, ExternalZoneIpv4sGrouped, ExternalZoneIpv6sGrouped}.
+    %TODO: union/prefix externals breaks down internal/external ipsets categories. must handle per-link/env.
+    ExternalGroupIpv4sGrouped = grouped_by_ipset_name(
+        Envs, <<"groups">>, <<"v4">>, AddressHandlingFun
+    ),
+    ExternalGroupIpv6sGrouped = grouped_by_ipset_name(
+        Envs, <<"groups">>, <<"v6">>, AddressHandlingFun
+    ),
+    ExternalZoneIpv4sGrouped = grouped_by_ipset_name(
+        Envs, <<"zones">>, <<"v4">>, AddressHandlingFun
+    ),
+    ExternalZoneIpv6sGrouped = grouped_by_ipset_name(
+        Envs, <<"zones">>, <<"v6">>, AddressHandlingFun
+    ),
+    {ExternalGroupIpv4sGrouped, ExternalGroupIpv6sGrouped, ExternalZoneIpv4sGrouped,
+        ExternalZoneIpv6sGrouped}.
 
--spec create(External :: map()) -> {ok | error, Key :: iolist() | name_exists }.
+-spec create(External :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(ExternalMap@0) ->
-  Name = maps:get(<<"name">>, ExternalMap@0),
-  {ok, ExistingExternals} = get_all(),
-  ExistingNames = case ExistingExternals of
-                    [] ->
-                      [];
-                    EE ->
-                      [maps:get(<<"name">>,External) || External <- EE]
-                  end,
-  DefaultValuesExternalMap = #{
-                               <<"state">> => <<"active">>
-                              },
-  MergedExternalMap = maps:merge(DefaultValuesExternalMap, ExternalMap@0),
-  MergedExternalMap2  = dog_time:merge_timestamp(MergedExternalMap),
-  case lists:member(Name, ExistingNames) of
-    false ->
-      {ok, R} = dog_rethink:run(
-                  fun(X) -> 
-                      reql:db(X, dog),
-                      reql:table(X, ?TYPE_TABLE),
-                      reql:insert(X, MergedExternalMap2)
-                  end),
-      Key = hd(maps:get(<<"generated_keys">>,R)),
-      {ok, Key};
-    true ->
-      {error, name_exists}
-  end.
+    Name = maps:get(<<"name">>, ExternalMap@0),
+    {ok, ExistingExternals} = get_all(),
+    ExistingNames =
+        case ExistingExternals of
+            [] ->
+                [];
+            EE ->
+                [maps:get(<<"name">>, External) || External <- EE]
+        end,
+    DefaultValuesExternalMap = #{
+        <<"state">> => <<"active">>
+    },
+    MergedExternalMap = maps:merge(DefaultValuesExternalMap, ExternalMap@0),
+    MergedExternalMap2 = dog_time:merge_timestamp(MergedExternalMap),
+    case lists:member(Name, ExistingNames) of
+        false ->
+            {ok, R} = dog_rethink:run(
+                fun(X) ->
+                    reql:db(X, dog),
+                    reql:table(X, ?TYPE_TABLE),
+                    reql:insert(X, MergedExternalMap2)
+                end
+            ),
+            Key = hd(maps:get(<<"generated_keys">>, R)),
+            {ok, Key};
+        true ->
+            {error, name_exists}
+    end.
 
--spec replace(Id :: binary(), UpdateMap :: map()) -> {true, iolist()} | {false, iolist()} | {false, no_replaced} | {validation_error, iolist()} .
+-spec replace(Id :: binary(), UpdateMap :: map()) ->
+    {true, iolist()} | {false, iolist()} | {false, no_replaced} | {validation_error, iolist()}.
 replace(Id, UpdateMap) ->
     case get_by_id(Id) of
         {ok, OldExternal} ->
-            NewExternal = maps:merge(OldExternal,UpdateMap),
-            NewExternal2  = dog_time:merge_timestamp(NewExternal),
+            NewExternal = maps:merge(OldExternal, UpdateMap),
+            NewExternal2 = dog_time:merge_timestamp(NewExternal),
             NewExternal3 = maps:put(<<"id">>, Id, NewExternal2),
-            case dog_json_schema:validate(?VALIDATION_TYPE,NewExternal3) of
+            case dog_json_schema:validate(?VALIDATION_TYPE, NewExternal3) of
                 ok ->
                     %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
                     %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
                     {ok, R} = dog_rethink:run(
-                          fun(X) -> 
-                                  reql:db(X, dog),
-                                  reql:table(X, ?TYPE_TABLE),
-                                  reql:get(X, Id),
-                                  reql:replace(X,NewExternal3)
-                              end),
+                        fun(X) ->
+                            reql:db(X, dog),
+                            reql:table(X, ?TYPE_TABLE),
+                            reql:get(X, Id),
+                            reql:replace(X, NewExternal3)
+                        end
+                    ),
                     ?LOG_DEBUG("replaced R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
-                    case {Replaced,Unchanged} of
-                        {1,0} -> {true,Id};
-                        {0,1} -> {false,Id};
+                    case {Replaced, Unchanged} of
+                        {1, 0} -> {true, Id};
+                        {0, 1} -> {false, Id};
                         _ -> {false, no_replaced}
                     end;
                 {error, Error} ->
@@ -347,68 +411,80 @@ replace(Id, UpdateMap) ->
 
 -spec delete(EnvName :: binary()) -> ok | error.
 delete(EnvName) ->
-  {ok, R} = dog_rethink:run(
-                           fun(X) ->
-                               reql:db(X, dog),
-                               reql:table(X, ?TYPE_TABLE),
-                               reql:get_all(X, EnvName, #{index => <<"name">>}),
-                               reql:delete(X)
-                           end),
-  Deleted = maps:get(<<"deleted">>, R),
-  Unchanged = maps:get(<<"unchanged">>, R),
-  case {Deleted,Unchanged} of
-      {1,0} -> ok;
-      {0,1} -> ok;
-      _ -> error
-  end.
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get_all(X, EnvName, #{index => <<"name">>}),
+            reql:delete(X)
+        end
+    ),
+    Deleted = maps:get(<<"deleted">>, R),
+    Unchanged = maps:get(<<"unchanged">>, R),
+    case {Deleted, Unchanged} of
+        {1, 0} -> ok;
+        {0, 1} -> ok;
+        _ -> error
+    end.
 
--spec grouped_by_ipset_name(Envs :: list(), Type :: binary(), Version :: binary(), AddressHandlingFun :: fun() ) -> map().
-grouped_by_ipset_name(Envs,Type,Version,AddressHandlingFun) ->
-  AllEnvs = lists:map(fun(Env) ->
-    EnvName = maps:get(<<"name">>,Env),
-    State = maps:get(<<"state">>,Env),
-    lists:map(fun({Name,Addresses}) -> 
-                  case State of
-                    <<"active">> ->
-                                 {AddressHandlingFun(EnvName,Name),Addresses};
-                    _ ->
-                                 {AddressHandlingFun(EnvName,Name),[]}
-                  end
-              end, maps:to_list(nested:get([Version,Type],Env)))
-  end, Envs),
-  maps:from_list(lists:flatten(AllEnvs)).
+-spec grouped_by_ipset_name(
+    Envs :: list(), Type :: binary(), Version :: binary(), AddressHandlingFun :: fun()
+) -> map().
+grouped_by_ipset_name(Envs, Type, Version, AddressHandlingFun) ->
+    AllEnvs = lists:map(
+        fun(Env) ->
+            EnvName = maps:get(<<"name">>, Env),
+            State = maps:get(<<"state">>, Env),
+            lists:map(
+                fun({Name, Addresses}) ->
+                    case State of
+                        <<"active">> ->
+                            {AddressHandlingFun(EnvName, Name), Addresses};
+                        _ ->
+                            {AddressHandlingFun(EnvName, Name), []}
+                    end
+                end,
+                maps:to_list(nested:get([Version, Type], Env))
+            )
+        end,
+        Envs
+    ),
+    maps:from_list(lists:flatten(AllEnvs)).
 
-add_ipset_prefix(EnvName,LocalIpsetName) ->
-  Separator = <<"#">>,
-  <<EnvName/bitstring,Separator/bitstring,LocalIpsetName/bitstring>>.
+add_ipset_prefix(EnvName, LocalIpsetName) ->
+    Separator = <<"#">>,
+    <<EnvName/bitstring, Separator/bitstring, LocalIpsetName/bitstring>>.
 
-do_nothing(_EnvName,LocalIpsetName) ->
-  LocalIpsetName.
+do_nothing(_EnvName, LocalIpsetName) ->
+    LocalIpsetName.
 
-to_ipset_names(EnvName,Groups) ->
-  maps:fold(
-    fun(K, V, ok) ->
-        NewKey = add_ipset_prefix(EnvName,K),
-        #{NewKey => V}
-    end, ok, Groups).
+to_ipset_names(EnvName, Groups) ->
+    maps:fold(
+        fun(K, V, ok) ->
+            NewKey = add_ipset_prefix(EnvName, K),
+            #{NewKey => V}
+        end,
+        ok,
+        Groups
+    ).
 
 -spec set_active_by_id(ExtId :: binary() | none) -> ok.
-set_active_by_id(ExtId ) when ExtId == none ->
-  ok;
-set_active_by_id(ExtId ) when is_binary(ExtId) ->
-  {ok, Ext} = get_by_id(ExtId),
-  NewExt = maps:merge(Ext,#{<<"state">> => <<"active">>}),
-  replace(ExtId, NewExt),
-  ok.
+set_active_by_id(ExtId) when ExtId == none ->
+    ok;
+set_active_by_id(ExtId) when is_binary(ExtId) ->
+    {ok, Ext} = get_by_id(ExtId),
+    NewExt = maps:merge(Ext, #{<<"state">> => <<"active">>}),
+    replace(ExtId, NewExt),
+    ok.
 
 -spec set_inactive_by_id(ExtId :: binary() | none) -> ok.
-set_inactive_by_id(ExtId ) when ExtId == none ->
-  ok;
+set_inactive_by_id(ExtId) when ExtId == none ->
+    ok;
 set_inactive_by_id(ExtId) when is_binary(ExtId) ->
-  {ok, Ext} = get_by_id(ExtId),
-  NewExt = maps:merge(Ext,#{<<"state">> => <<"inactive">>}),
-  replace(ExtId, NewExt),
-  ok.
+    {ok, Ext} = get_by_id(ExtId),
+    NewExt = maps:merge(Ext, #{<<"state">> => <<"inactive">>}),
+    replace(ExtId, NewExt),
+    ok.
 
 %set_inactive_by_id/1,
 
@@ -428,9 +504,9 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
 %    Count = 1,
 %    Pid = erlang:self(),
 %    Message = term_to_binary([
-%                              {count, Count}, 
-%                              {local_time, calendar:local_time()}, 
-%                              {pid, Pid}, 
+%                              {count, Count},
+%                              {local_time, calendar:local_time()},
+%                              {pid, Pid},
 %                              {user_data, UserData}
 %                             ]),
 %    RoutingKey = ExternalEnvName,
@@ -441,9 +517,9 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
 %d2_ipsets() ->
 %  #{
 %  <<"name">> => <<"d2">>,
-%  <<"v4">> => 
-%  #{ 
-%      <<"groups">> => 
+%  <<"v4">> =>
+%  #{
+%      <<"groups">> =>
 %      #{
 %          <<"test_group">> => [<<"1.1.1.1">>]
 %         },
@@ -453,8 +529,8 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
 %         }
 %     },
 %  <<"v6">> =>
-%  #{ 
-%      <<"groups">> => 
+%  #{
+%      <<"groups">> =>
 %      #{
 %          <<"test_group">> => [<<"fd42:aeb8:a6c5:b75d:216:3eff:fe5c:e3eb/64">>]
 %         },
@@ -468,9 +544,9 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
 %d2_ipsets2() ->
 %  #{
 %  <<"name">> => <<"d2">>,
-%  <<"v4">> => 
-%  #{ 
-%      <<"groups">> => 
+%  <<"v4">> =>
+%  #{
+%      <<"groups">> =>
 %      #{
 %          <<"test_group">> => [<<"10.1.1.1">>]
 %         },
@@ -480,8 +556,8 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
 %         }
 %     },
 %  <<"v6">> =>
-%  #{ 
-%      <<"groups">> => 
+%  #{
+%      <<"groups">> =>
 %      #{
 %          <<"test_group">> => [<<"bd42:aeb8:a6c5:b75d:216:3eff:fe5c:e3eb/64">>]
 %         },
@@ -495,9 +571,9 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
 %d3_ipsets() ->
 %  #{
 %  <<"name">> => <<"d3">>,
-%  <<"v4">> => 
-%  #{ 
-%      <<"groups">> => 
+%  <<"v4">> =>
+%  #{
+%      <<"groups">> =>
 %      #{
 %          <<"test_group">> => [<<"3.1.1.1">>]
 %         },
@@ -507,8 +583,8 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
 %         }
 %     },
 %  <<"v6">> =>
-%  #{ 
-%      <<"groups">> => 
+%  #{
+%      <<"groups">> =>
 %      #{
 %          <<"test_group">> => [<<"3d42:aeb8:a6c5:b75d:216:3eff:fe5c:e3eb/64">>]
 %         },
@@ -522,9 +598,9 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
 %d3_ipsets2() ->
 %  #{
 %  <<"name">> => <<"d3">>,
-%  <<"v4">> => 
-%  #{ 
-%      <<"groups">> => 
+%  <<"v4">> =>
+%  #{
+%      <<"groups">> =>
 %      #{
 %          <<"test_group">> => [<<"4.1.1.1">>]
 %         },
@@ -534,8 +610,8 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
 %         }
 %     },
 %  <<"v6">> =>
-%  #{ 
-%      <<"groups">> => 
+%  #{
+%      <<"groups">> =>
 %      #{
 %          <<"test_group">> => [<<"5d42:aeb8:a6c5:b75d:216:3eff:fe5c:e3eb/64">>]
 %         },
@@ -547,42 +623,50 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
 % }.
 %
 %test_create_env() ->
-%	publish_to_inbound_queue(d2_ipsets()). 
+%	publish_to_inbound_queue(d2_ipsets()).
 %
 %test_create_env2() ->
-%	publish_to_inbound_queue(d2_ipsets2()). 
+%	publish_to_inbound_queue(d2_ipsets2()).
 
 -spec get_schema() -> binary().
 get_schema() ->
-  dog_json_schema:get_file(?VALIDATION_TYPE).
+    dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec get_all_ips() -> {ok, list()}. 
+-spec get_all_ips() -> {ok, list()}.
 get_all_ips() ->
     {ok, R} = dog_rethink:run(
-                              fun(X) -> 
-                                      reql:db(X, dog), 
-                                      reql:table(X, ?TYPE_TABLE),
-                                      reql:filter(X,#{<<"state">> => <<"active">>}),
-                                      reql:pluck(X, [<<"v4">>, <<"v6">>])
-                              end),
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:filter(X, #{<<"state">> => <<"active">>}),
+            reql:pluck(X, [<<"v4">>, <<"v6">>])
+        end
+    ),
     {ok, Result} = rethink_cursor:all(R),
-    Externals = case lists:flatten(Result) of
-                [] -> [];
-                Else -> Else
-            end,
-    E1 = lists:map(fun(External) ->
-        V4_Groups = maps:values(nested:get([<<"v4">>,<<"groups">>],External)),
-        V4_Zones = maps:values(nested:get([<<"v4">>,<<"zones">>],External)),
-        V6_Groups = maps:values(nested:get([<<"v6">>,<<"groups">>],External)),
-        V6_Zones = maps:values(nested:get([<<"v6">>,<<"zones">>],External)),
-        lists:flatten([V4_Groups,V4_Zones,V6_Groups,V6_Zones])
-                   end, Externals),
+    Externals =
+        case lists:flatten(Result) of
+            [] -> [];
+            Else -> Else
+        end,
+    E1 = lists:map(
+        fun(External) ->
+            V4_Groups = maps:values(nested:get([<<"v4">>, <<"groups">>], External)),
+            V4_Zones = maps:values(nested:get([<<"v4">>, <<"zones">>], External)),
+            V6_Groups = maps:values(nested:get([<<"v6">>, <<"groups">>], External)),
+            V6_Zones = maps:values(nested:get([<<"v6">>, <<"zones">>], External)),
+            lists:flatten([V4_Groups, V4_Zones, V6_Groups, V6_Zones])
+        end,
+        Externals
+    ),
     {ok, lists:flatten(E1)}.
 
 -spec get_all_active_union_ec2_sgs() -> map().
 get_all_active_union_ec2_sgs() ->
-    {ok, ExternalUnionEnvs, _ExternalPrefixEnvs} = dump_all_active(), 
-    AllGroups = lists:map(fun(Env) ->
-                      maps:get(<<"ec2">>,Env,[])
-                      end, ExternalUnionEnvs),
+    {ok, ExternalUnionEnvs, _ExternalPrefixEnvs} = dump_all_active(),
+    AllGroups = lists:map(
+        fun(Env) ->
+            maps:get(<<"ec2">>, Env, [])
+        end,
+        ExternalUnionEnvs
+    ),
     dog_common:merge_maps_of_lists(lists:flatten(AllGroups)).

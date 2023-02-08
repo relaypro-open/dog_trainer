@@ -98,6 +98,8 @@
 
 %{project_plugins, [rebar3_hank]}.
 
+{erlfmt, [write]}.
+
 {plugins, [
     %rebar3_hex,
     %rebar_mix,
@@ -106,6 +108,7 @@
     {rebar3_run,"v0.3.0"},
     {rebar3_hex,"v6.11.5"},                                                                             
     {rebar_mix,"v0.4.0"}                                                                             
+    erlfmt
 ]}.
 
 {provider_hooks, [

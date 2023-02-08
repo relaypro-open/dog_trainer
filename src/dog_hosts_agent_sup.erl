@@ -7,13 +7,12 @@
 
 -behaviour(supervisor).
 
--include("dog_trainer.hrl"). 
-
+-include("dog_trainer.hrl").
 
 %% API
 -export([
-        start_link/0
-        ]).
+    start_link/0
+]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -31,15 +30,12 @@ start_link() ->
 
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
-    {ok, {{one_for_one, 5, 60},
-       [
-        {keepalive_agent,
-            {dog_keepalive_agent, start_link, []},
-            permanent,
-            5000,
-            worker,
-            [dog_keepalive_agent]}
-       ]}}.
+    {ok,
+        {{one_for_one, 5, 60}, [
+            {keepalive_agent, {dog_keepalive_agent, start_link, []}, permanent, 5000, worker, [
+                dog_keepalive_agent
+            ]}
+        ]}}.
 
 %%====================================================================
 %% Internal functions
