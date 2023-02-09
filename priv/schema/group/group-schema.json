@@ -28,10 +28,6 @@
             "type": "string",
             "minLength": 1
         },
-        "profile_version": {
-            "type": "string",
-            "minLength": 1
-        },
         "ec2_security_group_ids": {
             "type": "array",
             "items": {

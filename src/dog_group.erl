@@ -240,7 +240,8 @@ create(Group@0) when is_map(Group@0) ->
         <<"hash6_iptables">> => <<"">>,
         <<"ipset_hash">> => <<"">>,
         <<"external_ipv4_addresses">> => [],
-        <<"external_ipv6_addresses">> => []
+        <<"external_ipv6_addresses">> => [],
+        <<"profile_version">> => <<"latest">>
     },
     case GroupResult of
         {error, notfound} ->
@@ -252,17 +253,21 @@ create(Group@0) when is_map(Group@0) ->
                         NewMap = maps:merge(DefaultMap, Group@1),
                         ?LOG_INFO("NewMap: ~p", [NewMap]),
                         NewMap;
-                    {ok, _ProfileName} ->
+                    {ok, ProfileName} ->
                         ProfileId =
-                            case maps:find(<<"profile_version">>, Group@1) of
-                                error ->
-                                    "";
-                                {ok, Id} ->
-                                    Id
+                            case dog_profile:get_by_name(ProfileName) of
+                                {error, notfound} ->
+                                    <<"">>;
+                                {ok, Profile} ->
+                                    case maps:find(<<"id">>, Profile) of
+                                        error ->
+                                            <<"">>;
+                                        {ok, Id} ->
+                                            Id
+                                    end
                             end,
-
                         NewMap = maps:merge(DefaultMap, Group@1),
-                        ?LOG_INFO("NewMap: ~p", [NewMap]),
+                        ?LOG_DEBUG("NewMap: ~p", [NewMap]),
                         maps:merge(NewMap, #{<<"profile_id">> => ProfileId})
                 end,
             case dog_json_schema:validate(?VALIDATION_TYPE, Group@2) of

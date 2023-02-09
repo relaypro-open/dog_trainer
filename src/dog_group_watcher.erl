@@ -85,7 +85,6 @@ handle_connection_up(Connection, State) ->
         <<"name">>,
         <<"profile_id">>,
         <<"profile_name">>,
-        <<"profile_version">>,
         <<"external_ipv4_addresses">>,
         <<"external_ipv6_addresses">>,
         <<"ec2_security_group_ids">>
