@@ -47,6 +47,7 @@
     get_profile_by_id/1,
     get_profile_by_name/1,
     in_active_profile/1,
+    in_profile/1,
     init/0,
     merge/1,
     replace_profile_by_profile_id/2,
@@ -322,6 +323,18 @@ in_active_profile(Id) ->
             {true, Profiles}
     end.
 
+-spec in_profile(Id :: binary()) -> {false, []} | {true, Profiles :: list()}.
+in_profile(Id) ->
+    {ok, Used} = dog_zone:where_used(Id),
+    {ok, All} = dog_profile:all(),
+    Profiles = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(All))),
+    case Profiles of
+        [] ->
+            {false, []};
+        _ ->
+            {true, Profiles}
+    end.
+
 all_active() ->
     ExternalIpv4s = all_external_ipv4s(),
     ExternalIpv6s = all_external_ipv6s(),
@@ -578,7 +591,7 @@ update(Id, UpdateMap) ->
 
 -spec delete(GroupId :: binary()) -> (ok | {error, Error :: iolist()}).
 delete(Id) ->
-    case in_active_profile(Id) of
+    case in_profile(Id) of
         {false, []} ->
             {ok, R} = dog_rethink:run(
                 fun(X) ->

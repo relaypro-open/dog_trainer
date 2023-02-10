@@ -24,6 +24,7 @@
     get_id_by_name/1,
     get_name_by_id/1,
     in_active_profile/1,
+    in_profile/1,
     init/0,
     where_used/1,
     any_service/0
@@ -146,7 +147,7 @@ parse_ports(Ports) ->
 
 -spec delete(ZoneId :: binary()) -> ok | {error, Error :: map()}.
 delete(Id) ->
-    case in_active_profile(Id) of
+    case in_profile(Id) of
         {false, []} ->
             {ok, R} = dog_rethink:run(
                 fun(X) ->
@@ -346,6 +347,18 @@ in_active_profile(Id) ->
     {ok, Used} = where_used(Id),
     {ok, Active} = dog_profile:all_active(),
     Profiles = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(Active))),
+    case Profiles of
+        [] ->
+            {false, []};
+        _ ->
+            {true, Profiles}
+    end.
+
+-spec in_profile(Id :: binary()) -> {false, []} | {true, Profiles :: list()}.
+in_profile(Id) ->
+    {ok, Used} = where_used(Id),
+    {ok, All} = dog_profile:all(),
+    Profiles = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(All))),
     case Profiles of
         [] ->
             {false, []};

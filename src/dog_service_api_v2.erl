@@ -49,7 +49,7 @@ create(ServiceMap@0) ->
 
 -spec delete(ZoneId :: binary()) -> ok | {error, Error :: map()}.
 delete(Id) ->
-    case dog_service:in_active_profile(Id) of
+    case dog_service:in_profile(Id) of
         {false, []} ->
             {ok, R} = dog_rethink:run(
                 fun(X) ->

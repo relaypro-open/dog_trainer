@@ -18,6 +18,7 @@
 ]).
 
 -export([
+    all/0,
     all_active/0,
     create_hash/1,
     create_ruleset/10,
@@ -638,6 +639,23 @@ all_active() ->
             reql:db(X, dog),
             reql:table(X, group),
             reql:get_field(X, <<"profile_id">>)
+        end
+    ),
+    {ok, Result} = rethink_cursor:all(R),
+    Profiles =
+        case lists:flatten(Result) of
+            [] -> [];
+            Else -> Else
+        end,
+    {ok, Profiles}.
+
+-spec all() -> {ok, Profiles :: list()}.
+all() ->
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get_field(X, <<"id">>)
         end
     ),
     {ok, Result} = rethink_cursor:all(R),

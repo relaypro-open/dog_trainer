@@ -148,26 +148,28 @@ update_iptables4(TempFile) ->
 
 -spec valid_iptables() -> binary().
 valid_iptables() ->
-    <<"# Generated iptables by devops\n"
-    "*filter\n"
-    ":INPUT ACCEPT [0:0]\n"
-    ":FORWARD ACCEPT [0:0]\n"
-    ":OUTPUT ACCEPT [33:2995]\n"
-    ":FIREWALL-INPUT - [0:0]\n"
-    ":PROXY - [0:0]\n"
-    ":SSH - [0:0]\n"
-    "-A INPUT -i lo -j ACCEPT\n"
-    "-A INPUT -j FIREWALL-INPUT\n"
-    "-A INPUT -j REJECT --reject-with icmp-port-unreachable\n"
-    "-A FIREWALL-INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT\n"
-    "-A FIREWALL-INPUT -p tcp -m tcp --dport 22 -j SSH\n"
-    "-A FIREWALL-INPUT -j LOG --log-prefix \"Dropped@FIREWALL-INPUT - \" --log-level 7 --log-ip-options\n"
-    "-A FIREWALL-INPUT -j REJECT --reject-with icmp-port-unreachable\n"
-    "-A PROXY -p tcp -m tcp --dport 8005 -j ACCEPT\n"
-    "-A PROXY -j LOG --log-prefix \"Dropped@PROXY - \" --log-level 7 --log-ip-options\n"
-    "-A PROXY -j REJECT --reject-with icmp-port-unreachable\n"
-    "COMMIT\n"
-    "# Generated iptables by devops">>.
+    <<
+        "# Generated iptables by devops\n"
+        "*filter\n"
+        ":INPUT ACCEPT [0:0]\n"
+        ":FORWARD ACCEPT [0:0]\n"
+        ":OUTPUT ACCEPT [33:2995]\n"
+        ":FIREWALL-INPUT - [0:0]\n"
+        ":PROXY - [0:0]\n"
+        ":SSH - [0:0]\n"
+        "-A INPUT -i lo -j ACCEPT\n"
+        "-A INPUT -j FIREWALL-INPUT\n"
+        "-A INPUT -j REJECT --reject-with icmp-port-unreachable\n"
+        "-A FIREWALL-INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT\n"
+        "-A FIREWALL-INPUT -p tcp -m tcp --dport 22 -j SSH\n"
+        "-A FIREWALL-INPUT -j LOG --log-prefix \"Dropped@FIREWALL-INPUT - \" --log-level 7 --log-ip-options\n"
+        "-A FIREWALL-INPUT -j REJECT --reject-with icmp-port-unreachable\n"
+        "-A PROXY -p tcp -m tcp --dport 8005 -j ACCEPT\n"
+        "-A PROXY -j LOG --log-prefix \"Dropped@PROXY - \" --log-level 7 --log-ip-options\n"
+        "-A PROXY -j REJECT --reject-with icmp-port-unreachable\n"
+        "COMMIT\n"
+        "# Generated iptables by devops"
+    >>.
 
 -spec publish_to_queue(
     RoutingKey :: binary(),

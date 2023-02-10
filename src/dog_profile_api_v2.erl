@@ -11,6 +11,8 @@
     create/1,
     delete/1,
     get_all/0,
+    get_all_active/0,
+    get_all_any/0,
     get_by_id/1,
     get_by_name/1,
     update/2,
@@ -50,7 +52,10 @@ delete(Id) ->
 
 -spec get_all() -> {'ok', list()}.
 get_all() ->
-    %{ok, ActiveIds} = dog_profile:all_active(),
+    get_all_active().
+
+-spec get_all_any() -> {'ok', list()}.
+get_all_any() ->
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -63,13 +68,37 @@ get_all() ->
             [] -> [];
             Else -> Else
         end,
-    %ActiveProfiles = lists:filter(fun(Profile) -> lists:member(maps:get(<<"id">>,Profile),ActiveIds)
-    %             end, Profiles),
     ProfilesReplaced = lists:map(
         fun(Profile) ->
             ids_to_names(Profile)
         end,
         Profiles
+    ),
+    {ok, ProfilesReplaced}.
+
+-spec get_all_active() -> {'ok', list()}.
+get_all_active() ->
+    {ok, ActiveIds} = dog_profile:all_active(),
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE)
+        end
+    ),
+    {ok, Result} = rethink_cursor:all(R),
+    Profiles =
+        case lists:flatten(Result) of
+            [] -> [];
+            Else -> Else
+        end,
+    ActiveProfiles = lists:filter(
+        fun(Profile) -> lists:member(maps:get(<<"id">>, Profile), ActiveIds) end, Profiles
+    ),
+    ProfilesReplaced = lists:map(
+        fun(Profile) ->
+            ids_to_names(Profile)
+        end,
+        ActiveProfiles
     ),
     {ok, ProfilesReplaced}.
 
