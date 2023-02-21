@@ -306,8 +306,12 @@ get_profile_by_id(GroupId) ->
         {ok, Id} -> {ok, Id};
         {badkey, _} -> {error, notfound}
     catch
-        Exception:Reason:Stacktrace ->
-            ?LOG_INFO("~p, ~p, ~p", [Exception, Reason, Stacktrace]),
+        Exception:ExceptionReason:Stacktrace ->
+            ?LOG_INFO(#{
+                exception => Exception,
+                exceptionreason => ExceptionReason,
+                stacktrace => Stacktrace
+            }),
             {error, notfound}
     end.
 

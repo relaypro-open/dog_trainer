@@ -86,13 +86,15 @@ generate_ruleset(
                     ),
                     Rules
                 catch
-                    Exception:Reason:Stacktrace ->
+                    Exception:ExceptionReason:Stacktrace ->
                         ?LOG_ERROR("Error in profile ~p (~p) rule number: ~p", [
                             ProfileName, ProfileId, Index
                         ]),
-                        ?LOG_ERROR("Exception: ~p, Reason: ~p, Stacktrace: ~p", [
-                            Exception, Reason, Stacktrace
-                        ]),
+                        ?LOG_ERROR(#{
+                            exception => Exception,
+                            exceptionreason => ExceptionReason,
+                            stacktrace => Stacktrace
+                        }),
                         throw(Exception)
                 end
             end,
@@ -131,13 +133,15 @@ generate_ruleset(
                             ),
                             Rules
                         catch
-                            Exception:Reason:Stacktrace ->
+                            Exception:ExceptionReason:Stacktrace ->
                                 ?LOG_ERROR("Error in profile ~p (~p) rule number: ~p", [
                                     ProfileName, ProfileId, Index
                                 ]),
-                                ?LOG_ERROR("Exception: ~p, Reason: ~p, Stacktrace: ~p", [
-                                    Exception, Reason, Stacktrace
-                                ]),
+                                ?LOG_ERROR(#{
+                                    exception => Exception,
+                                    exceptionreason => ExceptionReason,
+                                    stacktrace => Stacktrace
+                                }),
                                 throw(Exception)
                         end
                 end
@@ -165,13 +169,15 @@ generate_ruleset(
                     ),
                     Rules
                 catch
-                    Exception:Reason:Stacktrace ->
+                    Exception:ExceptionReason:Stacktrace ->
                         ?LOG_ERROR("Error in profile ~p (~p) rule number: ~p", [
                             ProfileName, ProfileId, Index
                         ]),
-                        ?LOG_ERROR("Exception: ~p, Reason: ~p, Stacktrace: ~p", [
-                            Exception, Reason, Stacktrace
-                        ]),
+                        ?LOG_ERROR(#{
+                            exception => Exception,
+                            exceptionreason => ExceptionReason,
+                            stacktrace => Stacktrace
+                        }),
                         throw(Exception)
                 end
             end,
@@ -232,10 +238,14 @@ generate_ruleset(
         imetrics:add_m(generate_ruleset, "ok"),
         {ok, Ruleset}
     catch
-        Exception:Reason:Stacktrace ->
+        Exception:ExceptionReason:Stacktrace ->
             imetrics:add_m(generate_ruleset, "error"),
-            ?LOG_ERROR("Exception: ~p, Reason: ~p, Stacktrace: ~p", [Exception, Reason, Stacktrace]),
-            throw(Reason)
+            ?LOG_ERROR(#{
+                exception => Exception,
+                exceptionreason => ExceptionReason,
+                stacktrace => Stacktrace
+            }),
+            throw(ExceptionReason)
     after
         {ok, []}
     end.

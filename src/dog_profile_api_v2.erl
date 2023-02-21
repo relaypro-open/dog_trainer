@@ -52,7 +52,7 @@ delete(Id) ->
 
 -spec get_all() -> {'ok', list()}.
 get_all() ->
-    get_all_active().
+    get_all_any().
 
 -spec get_all_any() -> {'ok', list()}.
 get_all_any() ->

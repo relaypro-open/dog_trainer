@@ -38,10 +38,13 @@ validate(Type, Document) ->
         end,
         Validation
     catch
-        Exception:Reason:StackTrace ->
-            ?LOG_ERROR("SchemaType: ~p,  Exception: ~p,  Reason: ~p,  StackTrace: ~p", [
-                Type, Exception, Reason, StackTrace
-            ]),
+        Exception:ExceptionReason:Stacktrace ->
+            ?LOG_ERROR(#{
+                schematype => Type,
+                exception => Exception,
+                exceptionreason => ExceptionReason,
+                stacktrace => Stacktrace
+            }),
             throw(error)
     end.
 

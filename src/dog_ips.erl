@@ -60,17 +60,17 @@ loop(_RoutingKey, _CType, Payload, State) ->
     try
         Proplist = binary_to_term(Payload),
         UserData = proplists:get_value(user_data, Proplist),
-        ?LOG_INFO("UserData: ~p", [UserData]),
+        ?LOG_INFO(#{userdata => UserData}),
         Config = maps:get(config, UserData),
-        ?LOG_INFO("Config: ~p", [Config]),
+        ?LOG_INFO(#{config => Config}),
         ?LOG_INFO("dog_state:from_map(Config) : ~p", [dog_state:from_map(Config)]),
         GroupName = maps:get(<<"group">>, Config),
         UpdateType = maps:get(<<"updatetype">>, Config),
         imetrics:add_m(ips_update, erlang:atom_to_list(UpdateType)),
-        ?LOG_INFO("UpdateType: ~p", [UpdateType]),
+        ?LOG_INFO(#{updatetype => UpdateType}),
         Hostname = maps:get(<<"name">>, Config),
         Hostkey = maps:get(<<"hostkey">>, Config),
-        ?LOG_INFO("Hostname: ~p, Hostkey: ~p", [Hostname, Hostkey]),
+        ?LOG_INFO(#{hostname => Hostname, hostkey => Hostkey}),
         dog_config:update_host_keepalive(Hostkey),
         case dog_host:get_by_hostkey(Hostkey) of
             {ok, HostExists} ->
@@ -111,9 +111,11 @@ loop(_RoutingKey, _CType, Payload, State) ->
     catch
         Exception:ExceptionReason:Stacktrace ->
             imetrics:add_m(ips_update, "exception"),
-            ?LOG_ERROR("Exception: ~p, ExceptionReason: ~p, Stacktrace: ~p", [
-                Exception, ExceptionReason, Stacktrace
-            ])
+            ?LOG_ERROR(#{
+                exception => Exception,
+                exceptionreason => ExceptionReason,
+                stacktrace => Stacktrace
+            })
     end,
     {ack, State}.
 
@@ -123,17 +125,17 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
     try
         Proplist = binary_to_term(Payload),
         UserData = proplists:get_value(user_data, Proplist),
-        ?LOG_INFO("UserData: ~p", [UserData]),
+        ?LOG_INFO(#{userdata => UserData}),
         Config = maps:get(config, UserData),
-        ?LOG_INFO("Config: ~p", [Config]),
+        ?LOG_INFO(#{config => Config}),
         ?LOG_INFO("dog_state:from_map(Config) : ~p", [dog_state:from_map(Config)]),
         GroupName = maps:get(<<"group">>, Config),
         UpdateType = maps:get(<<"updatetype">>, Config),
         imetrics:add_m(ips_update, erlang:atom_to_list(UpdateType)),
-        ?LOG_INFO("UpdateType: ~p", [UpdateType]),
+        ?LOG_INFO(#{updatetype => UpdateType}),
         Hostname = maps:get(<<"name">>, Config),
         Hostkey = maps:get(<<"hostkey">>, Config),
-        ?LOG_INFO("Hostname: ~p, Hostkey: ~p", [Hostname, Hostkey]),
+        ?LOG_INFO(#{hostname => Hostname, hostkey => Hostkey}),
         dog_config:update_host_keepalive(Hostkey),
         case dog_host:get_by_hostkey(Hostkey) of
             {ok, HostExists} ->
@@ -174,9 +176,11 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
     catch
         Exception:ExceptionReason:Stacktrace ->
             imetrics:add_m(ips_update, "exception"),
-            ?LOG_ERROR("Exception: ~p, ExceptionReason: ~p, Stacktrace: ~p", [
-                Exception, ExceptionReason, Stacktrace
-            ])
+            ?LOG_ERROR(#{
+                exception => Exception,
+                exceptionreason => ExceptionReason,
+                stacktrace => Stacktrace
+            })
     end,
     ack.
 
