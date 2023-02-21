@@ -5,6 +5,8 @@ FROM erlang:23 as base
 ENV ELIXIR_VERSION="v1.9.4" \
 	LANG=C.UTF-8
 
+RUN apt-get update && apt-get install -y less ack lsb-release vim-tiny jq curl
+
 RUN set -xe \
 	&& ELIXIR_DOWNLOAD_URL="https://github.com/elixir-lang/elixir/archive/${ELIXIR_VERSION}.tar.gz" \
 	&& ELIXIR_DOWNLOAD_SHA256="f3465d8a8e386f3e74831bf9594ee39e6dfde6aa430fe9260844cfe46aa10139" \
@@ -56,7 +58,6 @@ FROM compile as deploy
 #    apk add ncurses-libs && \
 #    apk add libstdc++ && \
 #    apk add libgcc 
-RUN apt-get update && apt-get install -y less ack lsb-release vim-tiny jq curl
 
 RUN mkdir -p /opt/dog_trainer
 RUN mkdir -p /var/log/dog_trainer
