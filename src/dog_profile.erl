@@ -571,18 +571,22 @@ date_string() ->
 
 -spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(ProfileMap@0) ->
+    ?LOG_DEBUG(#{profilemap@0 => ProfileMap@0}),
     Name = maps:get(<<"name">>, ProfileMap@0),
+    {RulesMap@0, ProfileMap@1} = maps:take(<<"rules">>, ProfileMap@0),
     {ok, ExistingProfiles} = get_all(),
     ExistingNames = [maps:get(<<"name">>, Profile) || Profile <- ExistingProfiles],
+    {ok, RulesId} = dog_rules:create(#{<<"name">> => Name, <<"rules">> => RulesMap@0}),
+    ProfileMap@2 = maps:merge(ProfileMap@1, #{<<"rules_id">> => RulesId}),
     case lists:member(Name, ExistingNames) of
         false ->
-            case dog_json_schema:validate(?VALIDATION_TYPE, ProfileMap@0) of
+            case dog_json_schema:validate(?VALIDATION_TYPE, ProfileMap@2) of
                 ok ->
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
                             reql:table(X, ?TYPE_TABLE),
-                            reql:insert(X, ProfileMap@0)
+                            reql:insert(X, ProfileMap@2)
                         end
                     ),
                     Key = hd(maps:get(<<"generated_keys">>, R)),
@@ -629,7 +633,8 @@ get_by_name(Name) ->
             ?LOG_ERROR("error, profile name not found: ~p", [Name]),
             {error, notfound};
         _ ->
-            {ok, hd(Result)}
+            Profile = hd(Result),
+            add_rules(Profile)
     end.
 
 -spec all_active() -> {ok, Profiles :: list()}.
@@ -679,8 +684,24 @@ get_by_id(Id) ->
         {ok, null} ->
             ?LOG_DEBUG("profile id null return value: ~p", [Id]),
             {error, notfound};
-        {ok, Result} ->
-            {ok, Result}
+        {ok, Profile} ->
+            add_rules(Profile)
+    end.
+
+add_rules(Profile) ->
+    RulesId = maps:get(<<"rules_id">>, Profile),
+    R2 = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, <<"rules">>),
+            reql:get(X, RulesId)
+        end
+    ),
+    case R2 of
+        {ok, null} ->
+            {ok, maps:update(<<"rules">>, {}, Profile)};
+        {ok, Result2} ->
+            {ok, maps:put(<<"rules">>, maps:get(<<"rules">>, Result2), Profile)}
     end.
 
 -spec update(Id :: binary(), UpdateMap :: map()) ->
@@ -689,7 +710,13 @@ update(Id, UpdateMap) ->
     ?LOG_INFO("update_in_place"),
     case get_by_id(Id) of
         {ok, OldProfile} ->
-            NewProfile = maps:merge(OldProfile, UpdateMap),
+            RulesId = maps:get(<<"rules_id">>, OldProfile),
+            ProfileName = maps:get(<<"name">>, OldProfile),
+            {Rules, UpdateMap@0} = maps:take(<<"rules">>, UpdateMap),
+            RulesMap@0 = #{<<"name">> => ProfileName, <<"rules">> => Rules},
+            {true, _NewRulesId} = dog_rules:update(RulesId, RulesMap@0),
+            UpdateMap@1 = maps:merge(UpdateMap@0, #{<<"rules_id">> => RulesId}),
+            NewProfile = maps:merge(OldProfile, UpdateMap@1),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
                 ok ->
                     {ok, R} = dog_rethink:run(
@@ -697,7 +724,7 @@ update(Id, UpdateMap) ->
                             reql:db(X, dog),
                             reql:table(X, ?TYPE_TABLE),
                             reql:get(X, Id),
-                            reql:update(X, UpdateMap)
+                            reql:update(X, UpdateMap@1)
                         end
                     ),
                     ?LOG_DEBUG("update R: ~p~n", [R]),
@@ -720,6 +747,8 @@ update(Id, UpdateMap) ->
 delete(Id) ->
     case where_used(Id) of
         {ok, []} ->
+            {ok, Profile} = get_by_id(Id),
+            RulesId = maps:get(<<"rules_id">>, Profile),
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
@@ -731,8 +760,11 @@ delete(Id) ->
             ?LOG_DEBUG("delete R: ~p~n", [R]),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
-                1 -> ok;
-                _ -> {error, #{<<"error">> => <<"error">>}}
+                1 ->
+                    dog_rules:delete(RulesId),
+                    ok;
+                _ ->
+                    {error, #{<<"error">> => <<"error">>}}
             end;
         {ok, Groups} ->
             ?LOG_INFO("profile ~p not deleted, associated with group: ~p~n", [Id, Groups]),
