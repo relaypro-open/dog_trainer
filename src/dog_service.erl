@@ -1,6 +1,7 @@
 -module(dog_service).
 
 -include("dog_trainer.hrl").
+-include_lib("kernel/include/logger.hrl").
 
 -define(VALIDATION_TYPE, <<"service">>).
 -define(TYPE_TABLE, service).
@@ -20,7 +21,7 @@
     get/1,
     get_all_grouped_by_id/0,
     get_all_grouped_by_name/0,
-    get_all_in_profile/1,
+    get_all_in_rule/1,
     get_id_by_name/1,
     get_name_by_id/1,
     in_active_profile/1,
@@ -287,7 +288,8 @@ where_used(ServiceId) ->
     ProfileServices = lists:map(
         fun(Profile) ->
             ProfileId = maps:get(<<"id">>, Profile),
-            Services = get_all_in_profile(ProfileId),
+            RuleId = maps:get(<<"rules_id">>, Profile),
+            Services = get_all_in_rule(RuleId),
             ?LOG_DEBUG("Services: ~p", [Services]),
             {ProfileId, Services}
         end,
@@ -301,14 +303,14 @@ where_used(ServiceId) ->
     ),
     {ok, [erlang:element(1, P) || P <- FilteredProfiles]}.
 
-get_all_in_profile(ProfileId) ->
+get_all_in_rule(RuleId) ->
     %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
     %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     R = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
-            reql:table(X, profile),
-            reql:get(X, ProfileId),
+            reql:table(X, rules),
+            reql:get(X, RuleId),
             reql:pluck(X, [
                 #{<<"rules">> => #{<<"inbound">> => <<"service">>, <<"outbound">> => <<"service">>}}
             ])

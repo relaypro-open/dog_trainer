@@ -606,7 +606,7 @@ get_all() ->
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, ?TYPE_TABLE),
-            reql:pluck(X, [<<"name">>, <<"id">>, <<"created">>])
+            reql:pluck(X, [<<"name">>, <<"id">>, <<"created">>, <<"rules_id">>])
         end
     ),
     {ok, Result} = rethink_cursor:all(R),

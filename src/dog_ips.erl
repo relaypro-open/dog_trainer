@@ -60,17 +60,17 @@ loop(_RoutingKey, _CType, Payload, State) ->
     try
         Proplist = binary_to_term(Payload),
         UserData = proplists:get_value(user_data, Proplist),
-        ?LOG_INFO(#{userdata => UserData}),
+        ?LOG_DEBUG(#{userdata => UserData}),
         Config = maps:get(config, UserData),
-        ?LOG_INFO(#{config => Config}),
-        ?LOG_INFO("dog_state:from_map(Config) : ~p", [dog_state:from_map(Config)]),
+        ?LOG_DEBUG(#{config => Config}),
+        ?LOG_DEBUG("dog_state:from_map(Config) : ~p", [dog_state:from_map(Config)]),
         GroupName = maps:get(<<"group">>, Config),
         UpdateType = maps:get(<<"updatetype">>, Config),
         imetrics:add_m(ips_update, erlang:atom_to_list(UpdateType)),
-        ?LOG_INFO(#{updatetype => UpdateType}),
+        ?LOG_DEBUG(#{updatetype => UpdateType}),
         Hostname = maps:get(<<"name">>, Config),
         Hostkey = maps:get(<<"hostkey">>, Config),
-        ?LOG_INFO(#{hostname => Hostname, hostkey => Hostkey}),
+        ?LOG_DEBUG(#{hostname => Hostname, hostkey => Hostkey}),
         dog_config:update_host_keepalive(Hostkey),
         case dog_host:get_by_hostkey(Hostkey) of
             {ok, HostExists} ->
@@ -104,7 +104,7 @@ loop(_RoutingKey, _CType, Payload, State) ->
                         ?LOG_INFO("New host reporting: ~p", [Hostkey]),
                         dog_host:create(Config);
                     _ ->
-                        ?LOG_INFO("Host update for unknown host: ~p, Reason: ~p", [Hostkey, Reason])
+                        ?LOG_ERROR("Host update for unknown host: ~p, Reason: ~p", [Hostkey, Reason])
                 end
         end,
         dog_agent_checker:go()

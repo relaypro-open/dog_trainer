@@ -1,6 +1,7 @@
 -module(dog_zone).
 
 -include("dog_trainer.hrl").
+-include_lib("kernel/include/logger.hrl").
 
 -define(VALIDATION_TYPE, <<"zone">>).
 -define(TYPE_TABLE, zone).
@@ -353,48 +354,51 @@ where_used_inbound(ZoneId) ->
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
-            reql:table(X, profile),
-            reql:filter(X, fun(Profile) ->
-                reql:get_field(Profile, <<"rules">>),
-                reql:get_field(Profile, <<"inbound">>),
-                reql:get_field(Profile, <<"group">>),
-                reql:contains(Profile, ZoneId)
+            reql:table(X, rules),
+            reql:filter(X, fun(Rule) ->
+                reql:get_field(Rule, <<"rules">>),
+                reql:get_field(Rule, <<"inbound">>),
+                reql:get_field(Rule, <<"group">>),
+                reql:contains(Rule, ZoneId)
             end),
             reql:get_field(X, <<"id">>)
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
-    ProfileIds =
+    RuleIds =
         case lists:flatten(Result) of
             [] -> [];
             Else -> Else
         end,
+    ProfileIds = [element(2, dog_rules:where_used(RulesId)) || RulesId <- RuleIds],
     ?LOG_INFO("ProfileIds: ~p~n", [R]),
+
     {ok, ProfileIds}.
 
 %TODO: differentiate between ROLE(Group) and ZONE(Zone) groups.
--spec where_used_outbound(ZoneId :: binary()) -> {ok, ProfileIds :: list()}.
+-spec where_used_outbound(ZoneId :: binary()) -> {ok, RuleIds :: list()}.
 where_used_outbound(ZoneId) ->
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
-            reql:table(X, profile),
-            reql:filter(X, fun(Profile) ->
-                reql:get_field(Profile, <<"rules">>),
-                reql:get_field(Profile, <<"outbound">>),
-                reql:get_field(Profile, <<"group">>),
-                reql:contains(Profile, ZoneId)
+            reql:table(X, rules),
+            reql:filter(X, fun(Rule) ->
+                reql:get_field(Rule, <<"rules">>),
+                reql:get_field(Rule, <<"outbound">>),
+                reql:get_field(Rule, <<"group">>),
+                reql:contains(Rule, ZoneId)
             end),
             reql:get_field(X, <<"id">>)
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
-    ProfileIds =
+    RuleIds =
         case lists:flatten(Result) of
             [] -> [];
             Else -> Else
         end,
     ?LOG_INFO("ProfileIds: ~p~n", [R]),
+    ProfileIds = [element(2, dog_rules:where_used(RulesId)) || RulesId <- RuleIds],
     {ok, ProfileIds}.
 
 -spec where_used(ZoneId :: binary()) -> {ok, ProfileIds :: list()}.

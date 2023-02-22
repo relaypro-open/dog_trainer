@@ -1,6 +1,6 @@
 -module(dog_group).
 
--include("dog_trainer.hrl").
+-include_lib("kernel/include/logger.hrl").
 
 -define(VALIDATION_TYPE, <<"group">>).
 -define(TYPE_TABLE, group).
@@ -315,28 +315,28 @@ get_profile_by_id(GroupId) ->
             {error, notfound}
     end.
 
--spec in_active_profile(Id :: binary()) -> {false, []} | {true, Profiles :: list()}.
-in_active_profile(Id) ->
-    {ok, Used} = dog_zone:where_used(Id),
+-spec in_active_profile(GroupId :: binary()) -> {false, []} | {true, Rules :: list()}.
+in_active_profile(GroupId) ->
+    {ok, Used} = dog_zone:where_used(GroupId),
     {ok, Active} = dog_profile:all_active(),
-    Profiles = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(Active))),
-    case Profiles of
+    Rules = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(Active))),
+    case Rules of
         [] ->
             {false, []};
         _ ->
-            {true, Profiles}
+            {true, Rules}
     end.
 
--spec in_profile(Id :: binary()) -> {false, []} | {true, Profiles :: list()}.
-in_profile(Id) ->
-    {ok, Used} = dog_zone:where_used(Id),
+-spec in_profile(GroupId :: binary()) -> {false, []} | {true, Rules :: list()}.
+in_profile(GroupId) ->
+    {ok, Used} = dog_zone:where_used(GroupId),
     {ok, All} = dog_profile:all(),
-    Profiles = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(All))),
-    case Profiles of
+    Rules = sets:to_list(sets:intersection(sets:from_list(Used), sets:from_list(All))),
+    case Rules of
         [] ->
             {false, []};
         _ ->
-            {true, Profiles}
+            {true, Rules}
     end.
 
 all_active() ->
@@ -1205,9 +1205,9 @@ set_ec2_group_mappings_from_members() ->
         Ec2SgMappings
     ).
 
-set_ec2_group_mappings_from_members(GroupName) ->
-    SgList = dog_group:get_ec2_security_group_ids_from_members(GroupName),
-    set_ec2_group_mappings_from_members(GroupName, SgList).
+%set_ec2_group_mappings_from_members(GroupName) ->
+%    SgList = dog_group:get_ec2_security_group_ids_from_members(GroupName),
+%    set_ec2_group_mappings_from_members(GroupName, SgList).
 
 set_ec2_group_mappings_from_members(GroupName, SgList) ->
     {ok, GroupId} = dog_group:get_id_by_name(GroupName),
