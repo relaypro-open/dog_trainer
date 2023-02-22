@@ -577,7 +577,7 @@ create(ProfileMap@0) ->
     {ok, ExistingProfiles} = get_all(),
     ExistingNames = [maps:get(<<"name">>, Profile) || Profile <- ExistingProfiles],
     {ok, RulesId} = dog_rule:create(#{<<"name">> => Name, <<"rules">> => RulesMap@0}),
-    ProfileMap@2 = maps:merge(ProfileMap@1, #{<<"rules_id">> => RulesId}),
+    ProfileMap@2 = maps:merge(ProfileMap@1, #{<<"rule_id">> => RulesId}),
     case lists:member(Name, ExistingNames) of
         false ->
             case dog_json_schema:validate(?VALIDATION_TYPE, ProfileMap@2) of
@@ -606,7 +606,7 @@ get_all() ->
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, ?TYPE_TABLE),
-            reql:pluck(X, [<<"name">>, <<"id">>, <<"created">>, <<"rules_id">>])
+            reql:pluck(X, [<<"name">>, <<"id">>, <<"created">>, <<"rule_id">>])
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
@@ -689,7 +689,7 @@ get_by_id(Id) ->
     end.
 
 add_rules(Profile) ->
-    RulesId = maps:get(<<"rules_id">>, Profile),
+    RulesId = maps:get(<<"rule_id">>, Profile),
     R2 = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -710,12 +710,12 @@ update(Id, UpdateMap) ->
     ?LOG_INFO("update_in_place"),
     case get_by_id(Id) of
         {ok, OldProfile} ->
-            RulesId = maps:get(<<"rules_id">>, OldProfile),
+            RulesId = maps:get(<<"rule_id">>, OldProfile),
             ProfileName = maps:get(<<"name">>, OldProfile),
             {Rules, UpdateMap@0} = maps:take(<<"rules">>, UpdateMap),
             RulesMap@0 = #{<<"name">> => ProfileName, <<"rules">> => Rules},
             {true, _NewRulesId} = dog_rule:update(RulesId, RulesMap@0),
-            UpdateMap@1 = maps:merge(UpdateMap@0, #{<<"rules_id">> => RulesId}),
+            UpdateMap@1 = maps:merge(UpdateMap@0, #{<<"rule_id">> => RulesId}),
             NewProfile = maps:merge(OldProfile, UpdateMap@1),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
                 ok ->
@@ -748,7 +748,7 @@ delete(Id) ->
     case where_used(Id) of
         {ok, []} ->
             {ok, Profile} = get_by_id(Id),
-            RulesId = maps:get(<<"rules_id">>, Profile),
+            RulesId = maps:get(<<"rule_id">>, Profile),
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),

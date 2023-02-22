@@ -288,7 +288,7 @@ where_used(ServiceId) ->
     ProfileServices = lists:map(
         fun(Profile) ->
             ProfileId = maps:get(<<"id">>, Profile),
-            RuleId = maps:get(<<"rules_id">>, Profile),
+            RuleId = maps:get(<<"rule_id">>, Profile),
             Services = get_all_in_rule(RuleId),
             ?LOG_DEBUG("Services: ~p", [Services]),
             {ProfileId, Services}

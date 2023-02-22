@@ -98,7 +98,7 @@ all_active() ->
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, group),
-            reql:get_field(X, <<"rules_id">>)
+            reql:get_field(X, <<"rule_id">>)
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
@@ -276,9 +276,9 @@ where_used(RulesId) ->
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, profile),
-            reql:has_fields(X, [<<"rules_id">>]),
+            reql:has_fields(X, [<<"rule_id">>]),
             reql:filter(X, fun(Y) ->
-                reql:bracket(Y, <<"rules_id">>),
+                reql:bracket(Y, <<"rule_id">>),
                 reql:eq(Y, RulesId)
             end),
             reql:get_field(X, <<"id">>)
