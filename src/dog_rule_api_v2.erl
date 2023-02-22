@@ -2,8 +2,8 @@
 
 -include_lib("kernel/include/logger.hrl").
 
--define(VALIDATION_TYPE, <<"rules">>).
--define(TYPE_TABLE, rules).
+-define(VALIDATION_TYPE, <<"rule">>).
+-define(TYPE_TABLE, rule).
 
 %API
 -export([
