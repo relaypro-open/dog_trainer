@@ -1,6 +1,7 @@
 -module(api_handler_v2).
 
 -include("dog_trainer.hrl").
+-include_lib("kernel/include/logger.hrl").
 
 -export([init/2]).
 -export([content_types_provided/2]).
@@ -39,7 +40,8 @@ handler_lookup(<<"host">>) -> dog_host_api_v2;
 handler_lookup(<<"link">>) -> dog_link_api_v2;
 handler_lookup(<<"profile">>) -> dog_profile_api_v2;
 handler_lookup(<<"service">>) -> dog_service_api_v2;
-handler_lookup(<<"zone">>) -> dog_zone_api_v2.
+handler_lookup(<<"zone">>) -> dog_zone_api_v2;
+handler_lookup(<<"rule">>) -> dog_rule_api_v2.
 
 content_types_provided(Req, State) ->
     {

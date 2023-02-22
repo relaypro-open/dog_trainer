@@ -1,6 +1,5 @@
 -module(dog_zone).
 
--include("dog_trainer.hrl").
 -include_lib("kernel/include/logger.hrl").
 
 -define(VALIDATION_TYPE, <<"zone">>).
@@ -354,7 +353,7 @@ where_used_inbound(ZoneId) ->
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
-            reql:table(X, rules),
+            reql:table(X, rule),
             reql:filter(X, fun(Rule) ->
                 reql:get_field(Rule, <<"rules">>),
                 reql:get_field(Rule, <<"inbound">>),
@@ -370,7 +369,7 @@ where_used_inbound(ZoneId) ->
             [] -> [];
             Else -> Else
         end,
-    ProfileIds = [element(2, dog_rules:where_used(RulesId)) || RulesId <- RuleIds],
+    ProfileIds = [element(2, dog_rule:where_used(RulesId)) || RulesId <- RuleIds],
     ?LOG_INFO("ProfileIds: ~p~n", [R]),
 
     {ok, ProfileIds}.
@@ -381,7 +380,7 @@ where_used_outbound(ZoneId) ->
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
-            reql:table(X, rules),
+            reql:table(X, rule),
             reql:filter(X, fun(Rule) ->
                 reql:get_field(Rule, <<"rules">>),
                 reql:get_field(Rule, <<"outbound">>),
@@ -398,7 +397,7 @@ where_used_outbound(ZoneId) ->
             Else -> Else
         end,
     ?LOG_INFO("ProfileIds: ~p~n", [R]),
-    ProfileIds = [element(2, dog_rules:where_used(RulesId)) || RulesId <- RuleIds],
+    ProfileIds = [element(2, dog_rule:where_used(RulesId)) || RulesId <- RuleIds],
     {ok, ProfileIds}.
 
 -spec where_used(ZoneId :: binary()) -> {ok, ProfileIds :: list()}.

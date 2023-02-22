@@ -21,7 +21,7 @@ table_schema() ->
         <<"ipset">> => [<<"name">>, <<"timestamp">>],
         <<"link">> => [<<"name">>],
         <<"profile">> => [<<"docker">>, <<"name">>],
-        <<"rules">> => [<<"name">>],
+        <<"rule">> => [<<"name">>],
         <<"service">> => [<<"name">>],
         <<"zone">> => [<<"name">>]
     }.

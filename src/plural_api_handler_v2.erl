@@ -1,6 +1,6 @@
 -module(plural_api_handler_v2).
 
--include("dog_trainer.hrl").
+-include_lib("kernel/include/logger.hrl").
 
 -export([init/2]).
 -export([content_types_provided/2]).
@@ -17,7 +17,8 @@ handler_lookup(<<"links">>) -> dog_link_api_v2;
 handler_lookup(<<"profiles">>) -> dog_profile_api_v2;
 handler_lookup(<<"services">>) -> dog_service_api_v2;
 handler_lookup(<<"zones">>) -> dog_zone_api_v2;
-handler_lookup(<<"ipsets">>) -> dog_ipset_api_v2.
+handler_lookup(<<"ipsets">>) -> dog_ipset_api_v2;
+handler_lookup(<<"rules">>) -> dog_rule_api_v2.
 
 init(Req, Opts) ->
     {cowboy_rest, Req, Opts}.

@@ -1,6 +1,6 @@
 -module(dog_zone_api_v2).
 
--include("dog_trainer.hrl").
+-include_lib("kernel/include/logger.hrl").
 
 -define(VALIDATION_TYPE, <<"zone">>).
 -define(TYPE_TABLE, zone).
@@ -12,10 +12,11 @@
     get_all/0,
     get_by_id/1,
     get_by_name/1,
+    get_schema/0,
     update/2
 ]).
 
--spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists}.
+-spec create(Zone :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(ZoneMap@0) ->
     {ok, ZoneMap@1} = dog_zone:cleanup(ZoneMap@0),
     Name = maps:get(<<"name">>, ZoneMap@1),
@@ -120,3 +121,7 @@ update(Id, UpdateMap@0) ->
         {error, Error} ->
             {false, Error}
     end.
+
+-spec get_schema() -> binary().
+get_schema() ->
+    dog_json_schema:get_file(?VALIDATION_TYPE).

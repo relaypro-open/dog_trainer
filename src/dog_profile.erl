@@ -576,7 +576,7 @@ create(ProfileMap@0) ->
     {RulesMap@0, ProfileMap@1} = maps:take(<<"rules">>, ProfileMap@0),
     {ok, ExistingProfiles} = get_all(),
     ExistingNames = [maps:get(<<"name">>, Profile) || Profile <- ExistingProfiles],
-    {ok, RulesId} = dog_rules:create(#{<<"name">> => Name, <<"rules">> => RulesMap@0}),
+    {ok, RulesId} = dog_rule:create(#{<<"name">> => Name, <<"rules">> => RulesMap@0}),
     ProfileMap@2 = maps:merge(ProfileMap@1, #{<<"rules_id">> => RulesId}),
     case lists:member(Name, ExistingNames) of
         false ->
@@ -693,7 +693,7 @@ add_rules(Profile) ->
     R2 = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
-            reql:table(X, <<"rules">>),
+            reql:table(X, <<"rule">>),
             reql:get(X, RulesId)
         end
     ),
@@ -714,7 +714,7 @@ update(Id, UpdateMap) ->
             ProfileName = maps:get(<<"name">>, OldProfile),
             {Rules, UpdateMap@0} = maps:take(<<"rules">>, UpdateMap),
             RulesMap@0 = #{<<"name">> => ProfileName, <<"rules">> => Rules},
-            {true, _NewRulesId} = dog_rules:update(RulesId, RulesMap@0),
+            {true, _NewRulesId} = dog_rule:update(RulesId, RulesMap@0),
             UpdateMap@1 = maps:merge(UpdateMap@0, #{<<"rules_id">> => RulesId}),
             NewProfile = maps:merge(OldProfile, UpdateMap@1),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
@@ -761,7 +761,7 @@ delete(Id) ->
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 ->
-                    dog_rules:delete(RulesId),
+                    dog_rule:delete(RulesId),
                     ok;
                 _ ->
                     {error, #{<<"error">> => <<"error">>}}
