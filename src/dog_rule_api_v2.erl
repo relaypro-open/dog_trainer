@@ -29,26 +29,25 @@ init() ->
     pass.
 
 -spec create(Rule :: map()) -> {ok | error, Key :: iolist() | name_exists}.
-create(RulesMap@0) ->
-    ?LOG_DEBUG(#{rulesmap@0 => RulesMap@0}),
-    Name = maps:get(<<"name">>, RulesMap@0),
-    {ok, ExistingRuless} = get_all(),
-    ExistingNames = [maps:get(<<"name">>, Rules) || Rules <- ExistingRuless],
+create(RuleMap@0) ->
+    Name = maps:get(<<"name">>, RuleMap@0),
+    {ok, ExistingRules} = get_all(),
+    ExistingNames = [maps:get(<<"name">>, Rule) || Rule <- ExistingRules],
     case lists:member(Name, ExistingNames) of
         false ->
-            case dog_json_schema:validate(?VALIDATION_TYPE, RulesMap@0) of
+            case dog_json_schema:validate(?VALIDATION_TYPE, RuleMap@0) of
                 ok ->
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
                             reql:table(X, ?TYPE_TABLE),
-                            reql:insert(X, RulesMap@0)
+                            reql:insert(X, RuleMap@0, #{return_changes => always})
                         end
                     ),
-                    Key = hd(maps:get(<<"generated_keys">>, R)),
-                    ?LOG_DEBUG("create R: ~p~n", [R]),
-                    {ok, Key};
+                    NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                    {ok, NewVal};
                 {error, Error} ->
+                    ?LOG_ERROR("~p", [Error]),
                     Response = dog_parse:validation_error(Error),
                     {validation_error, Response}
             end;
@@ -143,32 +142,34 @@ get_by_id(Id) ->
             {ok, Rules}
     end.
 
--spec update(Id :: binary(), UpdateMap :: map()) ->
-    {false, atom()} | {validation_error, iolist()} | {true, binary()}.
-update(Id, UpdateMapWithNames) ->
-    ?LOG_DEBUG(#{updatemapwithnames => UpdateMapWithNames}),
-    ?LOG_INFO("update_in_place"),
-    UpdateMap = dog_rule:names_to_ids(UpdateMapWithNames),
+-spec update(RuleId :: binary(), UpdateMap :: map()) -> {atom(), any()}.
+update(Id, UpdateMap@0) ->
+    ?LOG_DEBUG("UpdateMap: ~p~n", [UpdateMap@0]),
     case get_by_id(Id) of
-        {ok, OldRules} ->
-            NewRules = maps:merge(OldRules, UpdateMap),
-            case dog_json_schema:validate(?VALIDATION_TYPE, NewRules) of
+        {ok, OldService} ->
+            NewService = maps:merge(OldService, UpdateMap@0),
+            case dog_json_schema:validate(?VALIDATION_TYPE, NewService) of
                 ok ->
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
                             reql:table(X, ?TYPE_TABLE),
                             reql:get(X, Id),
-                            reql:update(X, UpdateMap)
+                            reql:update(X, UpdateMap@0, #{return_changes => always})
                         end
                     ),
                     ?LOG_DEBUG("update R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of
-                        {1, 0} -> {true, Id};
-                        {0, 1} -> {false, Id};
-                        _ -> {false, no_updated}
+                        {1, 0} ->
+                            NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                            {true, NewVal};
+                        {0, 1} ->
+                            OldVal = maps:get(<<"old_val">>, hd(maps:get(<<"changes">>, R))),
+                            {false, OldVal};
+                        _ ->
+                            {false, no_updated}
                     end;
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
