@@ -120,18 +120,18 @@ handle_query_result(Result, State) ->
                     ?LOG_INFO("calling update_group_iptables: ~p", [GroupName]),
                     dog_iptables:update_group_iptables(GroupName, GroupType),
                     dog_iptables:update_group_ec2_sgs(GroupName),
-                    {ok, R4IpsetsRuleset} = dog_ruleset:read_ruleset_set_v4_from_file(GroupName),
-                    {ok, R6IpsetsRuleset} = dog_ruleset:read_ruleset_set_v6_from_file(GroupName),
-                    {ok, R4IptablesRuleset} = dog_ruleset:read_ruleset_unset_v4_from_file(
+                    {ok, R4IpsetsIptablesRuleset} = dog_iptables_ruleset:read_iptables_ruleset_set_v4_from_file(GroupName),
+                    {ok, R6IpsetsIptablesRuleset} = dog_iptables_ruleset:read_iptables_ruleset_set_v6_from_file(GroupName),
+                    {ok, R4IptablesIptablesRuleset} = dog_iptables_ruleset:read_iptables_ruleset_unset_v4_from_file(
                         GroupName
                     ),
-                    {ok, R6IptablesRuleset} = dog_ruleset:read_ruleset_unset_v6_from_file(
+                    {ok, R6IptablesIptablesRuleset} = dog_iptables_ruleset:read_iptables_ruleset_unset_v6_from_file(
                         GroupName
                     ),
-                    Hash4Ipsets = dog_profile:create_hash(R4IpsetsRuleset),
-                    Hash6Ipsets = dog_profile:create_hash(R6IpsetsRuleset),
-                    Hash4Iptables = dog_profile:create_hash(R4IptablesRuleset),
-                    Hash6Iptables = dog_profile:create_hash(R6IptablesRuleset),
+                    Hash4Ipsets = dog_profile:create_hash(R4IpsetsIptablesRuleset),
+                    Hash6Ipsets = dog_profile:create_hash(R6IpsetsIptablesRuleset),
+                    Hash4Iptables = dog_profile:create_hash(R4IptablesIptablesRuleset),
+                    Hash6Iptables = dog_profile:create_hash(R6IptablesIptablesRuleset),
                     {ok, _} = dog_group:set_hash4_ipsets(GroupName, Hash4Ipsets),
                     {ok, _} = dog_group:set_hash6_ipsets(GroupName, Hash6Ipsets),
                     {ok, _} = dog_group:set_hash4_iptables(GroupName, Hash4Iptables),

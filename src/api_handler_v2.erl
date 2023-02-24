@@ -41,7 +41,7 @@ handler_lookup(<<"link">>) -> dog_link_api_v2;
 handler_lookup(<<"profile">>) -> dog_profile_api_v2;
 handler_lookup(<<"service">>) -> dog_service_api_v2;
 handler_lookup(<<"zone">>) -> dog_zone_api_v2;
-handler_lookup(<<"rule">>) -> dog_rule_api_v2.
+handler_lookup(<<"ruleset">>) -> dog_ruleset_api_v2.
 
 content_types_provided(Req, State) ->
     {
@@ -356,37 +356,37 @@ to_json(Req, State) ->
                             #{git_changes := DiffId} ->
                                 case Sub of
                                     <<"iptablesv4">> ->
-                                        {_, {ok, Iptables1}} = dog_profile:generate_ipv4_ruleset_by_id(
+                                        {_, {ok, Iptables1}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
                                             Id
                                         ),
-                                        {_, {ok, Iptables2}} = dog_profile:generate_ipv4_ruleset_by_id(
+                                        {_, {ok, Iptables2}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
                                             DiffId
                                         ),
                                         {ok, Diff} = diff:diff_changes(Iptables1, Iptables2),
                                         jsx:encode(Diff);
                                     <<"iptablesv6">> ->
-                                        {_, {ok, Iptables1}} = dog_profile:generate_ipv6_ruleset_by_id(
+                                        {_, {ok, Iptables1}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
                                             Id
                                         ),
-                                        {_, {ok, Iptables2}} = dog_profile:generate_ipv6_ruleset_by_id(
+                                        {_, {ok, Iptables2}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
                                             DiffId
                                         ),
                                         {ok, Diff} = diff:diff_changes(Iptables1, Iptables2),
                                         jsx:encode(Diff);
                                     <<"ipsetsv4">> ->
-                                        {{ok, Ipsets1}, _} = dog_profile:generate_ipv4_ruleset_by_id(
+                                        {{ok, Ipsets1}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
                                             Id
                                         ),
-                                        {{ok, Ipsets2}, _} = dog_profile:generate_ipv4_ruleset_by_id(
+                                        {{ok, Ipsets2}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
                                             Id
                                         ),
                                         {ok, Diff} = diff:diff_changes(Ipsets1, Ipsets2),
                                         jsx:encode(Diff);
                                     <<"ipsetsv6">> ->
-                                        {{ok, Ipsets1}, _} = dog_profile:generate_ipv6_ruleset_by_id(
+                                        {{ok, Ipsets1}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
                                             Id
                                         ),
-                                        {{ok, Ipsets2}, _} = dog_profile:generate_ipv6_ruleset_by_id(
+                                        {{ok, Ipsets2}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
                                             Id
                                         ),
                                         {ok, Diff} = diff:diff_changes(Ipsets1, Ipsets2),
@@ -473,22 +473,22 @@ to_text(Req, State) ->
                                     #{git_diff := plain} ->
                                         case Sub of
                                             <<"iptablesv4">> ->
-                                                {_, {ok, Iptables}} = dog_profile:generate_ipv4_ruleset_by_id(
+                                                {_, {ok, Iptables}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
                                                     Id
                                                 ),
                                                 Iptables;
                                             <<"iptablesv6">> ->
-                                                {_, {ok, Iptables}} = dog_profile:generate_ipv6_ruleset_by_id(
+                                                {_, {ok, Iptables}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
                                                     Id
                                                 ),
                                                 Iptables;
                                             <<"ipsetsv4">> ->
-                                                {{ok, Ipsets}, _} = dog_profile:generate_ipv4_ruleset_by_id(
+                                                {{ok, Ipsets}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
                                                     Id
                                                 ),
                                                 Ipsets;
                                             <<"ipsetsv6">> ->
-                                                {{ok, Ipsets}, _} = dog_profile:generate_ipv6_ruleset_by_id(
+                                                {{ok, Ipsets}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
                                                     Id
                                                 ),
                                                 Ipsets
@@ -496,37 +496,37 @@ to_text(Req, State) ->
                                     #{git_diff := DiffId} ->
                                         case Sub of
                                             <<"iptablesv4">> ->
-                                                {_, {ok, Iptables1}} = dog_profile:generate_ipv4_ruleset_by_id(
+                                                {_, {ok, Iptables1}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
                                                     Id
                                                 ),
-                                                {_, {ok, Iptables2}} = dog_profile:generate_ipv4_ruleset_by_id(
+                                                {_, {ok, Iptables2}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
                                                     DiffId
                                                 ),
                                                 {ok, Diff} = diff:diff_git(Iptables1, Iptables2),
                                                 Diff;
                                             <<"iptablesv6">> ->
-                                                {_, {ok, Iptables1}} = dog_profile:generate_ipv6_ruleset_by_id(
+                                                {_, {ok, Iptables1}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
                                                     Id
                                                 ),
-                                                {_, {ok, Iptables2}} = dog_profile:generate_ipv6_ruleset_by_id(
+                                                {_, {ok, Iptables2}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
                                                     DiffId
                                                 ),
                                                 {ok, Diff} = diff:diff_git(Iptables1, Iptables2),
                                                 Diff;
                                             <<"ipsetsv4">> ->
-                                                {{ok, Ipsets1}, _} = dog_profile:generate_ipv4_ruleset_by_id(
+                                                {{ok, Ipsets1}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
                                                     Id
                                                 ),
-                                                {{ok, Ipsets2}, _} = dog_profile:generate_ipv4_ruleset_by_id(
+                                                {{ok, Ipsets2}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
                                                     Id
                                                 ),
                                                 {ok, Diff} = diff:diff_git(Ipsets1, Ipsets2),
                                                 Diff;
                                             <<"ipsetsv6">> ->
-                                                {{ok, Ipsets1}, _} = dog_profile:generate_ipv6_ruleset_by_id(
+                                                {{ok, Ipsets1}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
                                                     Id
                                                 ),
-                                                {{ok, Ipsets2}, _} = dog_profile:generate_ipv6_ruleset_by_id(
+                                                {{ok, Ipsets2}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
                                                     Id
                                                 ),
                                                 {_, Diff} = diff:diff_git(Ipsets1, Ipsets2),
@@ -543,22 +543,22 @@ to_text(Req, State) ->
                                     #{git_diff := plain} ->
                                         case Sub of
                                             <<"iptablesv4">> ->
-                                                {_, Iptables} = dog_profile:generate_ipv4_ruleset_by_group_id(
+                                                {_, Iptables} = dog_profile:generate_ipv4_iptables_ruleset_by_group_id(
                                                     Id
                                                 ),
                                                 Iptables;
                                             <<"iptablesv6">> ->
-                                                {_, Iptables} = dog_profile:generate_ipv4_ruleset_by_group_id(
+                                                {_, Iptables} = dog_profile:generate_ipv4_iptables_ruleset_by_group_id(
                                                     Id
                                                 ),
                                                 Iptables;
                                             <<"ipsetsv4">> ->
-                                                {Ipsets, _} = dog_profile:generate_ipv4_ruleset_by_group_id(
+                                                {Ipsets, _} = dog_profile:generate_ipv4_iptables_ruleset_by_group_id(
                                                     Id
                                                 ),
                                                 Ipsets;
                                             <<"ipsetsv6">> ->
-                                                {Ipsets, _} = dog_profile:generate_ipv6_ruleset_by_group_id(
+                                                {Ipsets, _} = dog_profile:generate_ipv6_iptables_ruleset_by_group_id(
                                                     Id
                                                 ),
                                                 Ipsets

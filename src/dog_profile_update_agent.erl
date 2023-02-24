@@ -192,7 +192,7 @@ do_periodic_publish(State) ->
                     ]),
                     try
                         case
-                            dog_profile:create_ruleset(
+                            dog_profile:create_iptables_ruleset(
                                 RoutingKey,
                                 Group,
                                 Ipv4RoleMap,
@@ -205,15 +205,15 @@ do_periodic_publish(State) ->
                                 MergedIpsets
                             )
                         of
-                            {R4IpsetsRuleset, R6IpsetsRuleset, R4IptablesRuleset,
-                                R6IptablesRuleset} ->
+                            {R4IpsetsIptablesRuleset, R6IpsetsIptablesRuleset, R4IptablesIptablesRuleset,
+                                R6IptablesIptablesRuleset} ->
                                 {Group,
                                     dog_iptables:publish_to_queue(
                                         RoutingKey,
-                                        R4IpsetsRuleset,
-                                        R6IpsetsRuleset,
-                                        R4IptablesRuleset,
-                                        R6IptablesRuleset,
+                                        R4IpsetsIptablesRuleset,
+                                        R6IpsetsIptablesRuleset,
+                                        R4IptablesIptablesRuleset,
+                                        R6IptablesIptablesRuleset,
                                         EmptyIpsets
                                     )};
                             error ->

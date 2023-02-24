@@ -28,7 +28,7 @@ to_json(Req, State) ->
             #{group := GroupName} ->
                 ?LOG_INFO("add_to_queue: ~p", [GroupName]),
                 dog_profile_update_agent:add_to_queue([GroupName]),
-                %ok = dog_profile:publish_ruleset(GroupName),
+                %ok = dog_profile:publish_iptables_ruleset(GroupName),
                 jsx:encode(ok);
             _ ->
                 jsx:encode(error)

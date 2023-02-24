@@ -9,8 +9,8 @@
 read_file(FileName) ->
     try
         case file:read_file(FileName) of
-            {ok, Ruleset} ->
-                {ok, Ruleset};
+            {ok, IptablesRuleset} ->
+                {ok, IptablesRuleset};
             {error, Reason} ->
                 ?LOG_ERROR("file error: ~p, ~p", [Reason, FileName]),
                 {error, Reason}

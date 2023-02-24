@@ -21,15 +21,15 @@
     all/0,
     all_active/0,
     create_hash/1,
-    create_ruleset/10,
-    create_ruleset/11,
-    create_ruleset/12,
-    create_ruleset/13,
+    create_iptables_ruleset/10,
+    create_iptables_ruleset/11,
+    create_iptables_ruleset/12,
+    create_iptables_ruleset/13,
     date_string/0,
-    generate_ipv4_ruleset_by_group_id/1,
-    generate_ipv4_ruleset_by_id/1,
-    generate_ipv6_ruleset_by_group_id/1,
-    generate_ipv6_ruleset_by_id/1,
+    generate_ipv4_iptables_ruleset_by_group_id/1,
+    generate_ipv4_iptables_ruleset_by_id/1,
+    generate_ipv6_iptables_ruleset_by_group_id/1,
+    generate_ipv6_iptables_ruleset_by_id/1,
     get_all_inbound_ports_by_protocol/1,
     get_ppps_inbound_ec2/2,
     get_ppps_outbound_ec2/2,
@@ -44,26 +44,30 @@
 init() ->
     pass.
 
--spec generate_ipv6_ruleset_by_id(Id :: binary()) -> {{ok, iolist()}, {ok, iolist()}}.
-generate_ipv6_ruleset_by_id(Id) ->
+-spec generate_ipv6_iptables_ruleset_by_id(Id :: binary()) -> {{ok, iolist()}, {ok, iolist()}}.
+generate_ipv6_iptables_ruleset_by_id(Id) ->
     case get_by_id(Id) of
         {error, _Error} ->
             ?LOG_INFO("No profile associated with group id: ~p", [Id]),
             throw(profile_not_found);
         {ok, ProfileJson} ->
-            IpsetsRulesetResult = dog_ruleset:generate_ruleset(ProfileJson, ipsets, <<"v6">>),
-            IptablesRulesetResult = dog_ruleset:generate_ruleset(ProfileJson, iptables, <<"v6">>),
-            {IpsetsRulesetResult, IptablesRulesetResult}
+            IpsetsIptablesRulesetResult = dog_iptables_ruleset:generate_iptables_ruleset(
+                ProfileJson, ipsets, <<"v6">>
+            ),
+            IptablesIptablesRulesetResult = dog_iptables_ruleset:generate_iptables_ruleset(
+                ProfileJson, iptables, <<"v6">>
+            ),
+            {IpsetsIptablesRulesetResult, IptablesIptablesRulesetResult}
     end.
 
--spec generate_ipv4_ruleset_by_id(GroupId :: binary()) -> {{ok, iolist()}, {ok, iolist()}}.
-generate_ipv4_ruleset_by_id(Id) ->
+-spec generate_ipv4_iptables_ruleset_by_id(GroupId :: binary()) -> {{ok, iolist()}, {ok, iolist()}}.
+generate_ipv4_iptables_ruleset_by_id(Id) ->
     {ok, Json} = get_by_id(Id),
-    Ipsets = dog_ruleset:generate_ruleset(Json, ipsets, <<"v4">>),
-    Iptables = dog_ruleset:generate_ruleset(Json, iptables, <<"v4">>),
+    Ipsets = dog_iptables_ruleset:generate_iptables_ruleset(Json, ipsets, <<"v4">>),
+    Iptables = dog_iptables_ruleset:generate_iptables_ruleset(Json, iptables, <<"v4">>),
     {Ipsets, Iptables}.
 
--spec generate_ipv4_ruleset_by_group_name(
+-spec generate_ipv4_iptables_ruleset_by_group_name(
     GroupName :: binary(),
     Ipv4RoleMap :: map(),
     Ipv6RoleMap :: map(),
@@ -73,7 +77,7 @@ generate_ipv4_ruleset_by_id(Id) ->
     GroupIdMap :: map(),
     ServiceIdMap :: map()
 ) -> {{ok, list()}, {ok, iolist()}}.
-generate_ipv4_ruleset_by_group_name(
+generate_ipv4_iptables_ruleset_by_group_name(
     GroupName,
     Ipv4RoleMap,
     Ipv6RoleMap,
@@ -89,7 +93,7 @@ generate_ipv4_ruleset_by_group_name(
             throw(profile_not_found);
         {ok, ProfileJson} ->
             write_profile_to_file(ProfileJson, GroupName),
-            IpsetsRulesetResult = dog_ruleset:generate_ruleset(
+            IpsetsIptablesRulesetResult = dog_iptables_ruleset:generate_iptables_ruleset(
                 ProfileJson,
                 ipsets,
                 <<"v4">>,
@@ -101,10 +105,10 @@ generate_ipv4_ruleset_by_group_name(
                 GroupIdMap,
                 ServiceIdMap
             ),
-            IptablesRulesetResult =
+            IptablesIptablesRulesetResult =
                 case application:get_env(dog_trainer, generate_unset_tables, true) of
                     true ->
-                        dog_ruleset:generate_ruleset(
+                        dog_iptables_ruleset:generate_iptables_ruleset(
                             ProfileJson,
                             iptables,
                             <<"v4">>,
@@ -119,19 +123,19 @@ generate_ipv4_ruleset_by_group_name(
                     false ->
                         {ok, []}
                 end,
-            {IpsetsRulesetResult, IptablesRulesetResult}
+            {IpsetsIptablesRulesetResult, IptablesIptablesRulesetResult}
     end.
 
--spec generate_ipv6_ruleset_by_group_id(GroupId :: binary()) -> {iolist(), iolist()}.
-generate_ipv6_ruleset_by_group_id(GroupId) ->
+-spec generate_ipv6_iptables_ruleset_by_group_id(GroupId :: binary()) -> {iolist(), iolist()}.
+generate_ipv6_iptables_ruleset_by_group_id(GroupId) ->
     ProfileId =
         case dog_group:get_profile_by_id(GroupId) of
             {'error', 'notfound'} -> profile_not_found(GroupId);
             {ok, Id} -> Id
         end,
     {ok, Json} = get_by_id(ProfileId),
-    {ok, Ipsets} = dog_ruleset:generate_ruleset(Json, ipsets, <<"v4">>),
-    {ok, Iptables} = dog_ruleset:generate_ruleset(Json, iptables, <<"v4">>),
+    {ok, Ipsets} = dog_iptables_ruleset:generate_iptables_ruleset(Json, ipsets, <<"v4">>),
+    {ok, Iptables} = dog_iptables_ruleset:generate_iptables_ruleset(Json, iptables, <<"v4">>),
     {Ipsets, Iptables}.
 
 -spec profile_not_found(GroupId :: binary()) -> no_return().
@@ -139,7 +143,7 @@ profile_not_found(GroupId) ->
     ?LOG_INFO("No profile associated with group id: ~p", [GroupId]),
     throw(profile_not_found).
 
--spec generate_ipv6_ruleset_by_group_name(
+-spec generate_ipv6_iptables_ruleset_by_group_name(
     GroupName :: binary(),
     Ipv4RoleMap :: map(),
     Ipv6RoleMap :: map(),
@@ -149,7 +153,7 @@ profile_not_found(GroupId) ->
     GroupIdMap :: map(),
     ServiceIdMap :: map()
 ) -> {{ok, iolist()}, {ok, iolist()}}.
-generate_ipv6_ruleset_by_group_name(
+generate_ipv6_iptables_ruleset_by_group_name(
     GroupName,
     Ipv4RoleMap,
     Ipv6RoleMap,
@@ -166,7 +170,7 @@ generate_ipv6_ruleset_by_group_name(
             throw(profile_not_found);
         {ok, ProfileJson} ->
             write_profile_to_file(ProfileJson, GroupName),
-            IpsetsRulesetResult = dog_ruleset:generate_ruleset(
+            IpsetsIptablesRulesetResult = dog_iptables_ruleset:generate_iptables_ruleset(
                 ProfileJson,
                 ipsets,
                 <<"v6">>,
@@ -178,10 +182,10 @@ generate_ipv6_ruleset_by_group_name(
                 GroupIdMap,
                 ServiceIdMap
             ),
-            IptablesRulesetResult =
+            IptablesIptablesRulesetResult =
                 case application:get_env(dog_trainer, generate_unset_tables, true) of
                     true ->
-                        dog_ruleset:generate_ruleset(
+                        dog_iptables_ruleset:generate_iptables_ruleset(
                             ProfileJson,
                             iptables,
                             <<"v6">>,
@@ -196,19 +200,19 @@ generate_ipv6_ruleset_by_group_name(
                     false ->
                         {ok, []}
                 end,
-            {IpsetsRulesetResult, IptablesRulesetResult}
+            {IpsetsIptablesRulesetResult, IptablesIptablesRulesetResult}
     end.
 
--spec generate_ipv4_ruleset_by_group_id(GroupId :: binary()) -> {iolist(), iolist()}.
-generate_ipv4_ruleset_by_group_id(GroupId) ->
+-spec generate_ipv4_iptables_ruleset_by_group_id(GroupId :: binary()) -> {iolist(), iolist()}.
+generate_ipv4_iptables_ruleset_by_group_id(GroupId) ->
     ProfileId =
         case dog_group:get_profile_by_id(GroupId) of
             {'error', 'notfound'} -> profile_not_found(GroupId);
             {ok, Id} -> Id
         end,
     {ok, Json} = get_by_id(ProfileId),
-    {ok, Ipsets} = dog_ruleset:generate_ruleset(Json, ipsets, <<"v4">>),
-    {ok, Iptables} = dog_ruleset:generate_ruleset(Json, iptables, <<"v4">>),
+    {ok, Ipsets} = dog_iptables_ruleset:generate_iptables_ruleset(Json, ipsets, <<"v4">>),
+    {ok, Iptables} = dog_iptables_ruleset:generate_iptables_ruleset(Json, iptables, <<"v4">>),
     {Ipsets, Iptables}.
 
 -spec write_profile_to_file(Profile :: map(), GroupName :: binary()) -> ok.
@@ -217,7 +221,7 @@ write_profile_to_file(Profile, GroupName) ->
     ok = file:write_file(FileName, jsx:encode(Profile)),
     ok.
 
-remove_comments(Ruleset) ->
+remove_comments(IptablesRuleset) ->
     NoCommentRulesList = lists:filter(
         fun(X) ->
             case re:run(X, "^#") of
@@ -225,7 +229,7 @@ remove_comments(Ruleset) ->
                 _ -> false
             end
         end,
-        split(Ruleset, "\n", all)
+        split(IptablesRuleset, "\n", all)
     ),
     NoCommentRules = lists:flatten(
         lists:join(
@@ -235,7 +239,7 @@ remove_comments(Ruleset) ->
     ),
     NoCommentRules.
 
-remove_docker(Ruleset) ->
+remove_docker(IptablesRuleset) ->
     lists:map(
         fun(Line0) ->
             Line1 = re:replace(Line0, "^-A DOCKER(.*)", "", [{return, list}]),
@@ -249,7 +253,7 @@ remove_docker(Ruleset) ->
                 end,
             Line3
         end,
-        Ruleset
+        IptablesRuleset
     ).
 
 remove_empty_lists(List) ->
@@ -260,35 +264,35 @@ remove_quotes(Line0) ->
     Line2 = re:replace(Line1, "\'", "", [{return, list}, global]),
     Line2.
 
--spec zero_counters(Ruleset :: iolist()) -> iolist().
-zero_counters(Ruleset) ->
+-spec zero_counters(IptablesRuleset :: iolist()) -> iolist().
+zero_counters(IptablesRuleset) ->
     re:replace(
-        Ruleset,
+        IptablesRuleset,
         "(:.*) \\[.*\\]",
         "\\1 [0:0]",
         [{return, list}, global]
     ).
 
-normalize_ruleset(Ruleset) ->
-    RulesetNoComments = remove_comments(Ruleset),
-    RulesetZeroed = zero_counters(RulesetNoComments),
-    RulesetSplit = string:split(RulesetZeroed, "\n", all),
-    RulesetNoQuotes = [remove_quotes(Line) || Line <- RulesetSplit],
-    RulesetTrimmed = [string:trim(Line, trailing, " ") || Line <- RulesetNoQuotes],
-    RulesetNoDocker = remove_docker(RulesetTrimmed),
-    RulesetNoBlankLines = remove_empty_lists(RulesetNoDocker),
-    RulesetNormalized = lists:flatten(lists:join("\n", RulesetNoBlankLines)),
-    RulesetNormalized.
+normalize_iptables_ruleset(IptablesRuleset) ->
+    IptablesRulesetNoComments = remove_comments(IptablesRuleset),
+    IptablesRulesetZeroed = zero_counters(IptablesRulesetNoComments),
+    IptablesRulesetSplit = string:split(IptablesRulesetZeroed, "\n", all),
+    IptablesRulesetNoQuotes = [remove_quotes(Line) || Line <- IptablesRulesetSplit],
+    IptablesRulesetTrimmed = [string:trim(Line, trailing, " ") || Line <- IptablesRulesetNoQuotes],
+    IptablesRulesetNoDocker = remove_docker(IptablesRulesetTrimmed),
+    IptablesRulesetNoBlankLines = remove_empty_lists(IptablesRulesetNoDocker),
+    IptablesRulesetNormalized = lists:flatten(lists:join("\n", IptablesRulesetNoBlankLines)),
+    IptablesRulesetNormalized.
 
--spec create_hash(Ruleset :: iodata()) -> binary().
-create_hash(Ruleset) ->
-    RulesetTrimmed = normalize_ruleset(Ruleset),
-    ?LOG_INFO("RulesetTrimmed: ~p", [RulesetTrimmed]),
-    BitString = base16:encode(crypto:hash(sha256, RulesetTrimmed)),
+-spec create_hash(IptablesRuleset :: iodata()) -> binary().
+create_hash(IptablesRuleset) ->
+    IptablesRulesetTrimmed = normalize_iptables_ruleset(IptablesRuleset),
+    ?LOG_INFO("IptablesRulesetTrimmed: ~p", [IptablesRulesetTrimmed]),
+    BitString = base16:encode(crypto:hash(sha256, IptablesRulesetTrimmed)),
     Binary = binary:list_to_bin(erlang:bitstring_to_list(BitString)),
     Binary.
 
--spec create_ruleset(
+-spec create_iptables_ruleset(
     RoutingKey :: binary(),
     Group :: binary(),
     Ipv4RoleMap :: map(),
@@ -302,12 +306,12 @@ create_hash(Ruleset) ->
 ) ->
     error
     | {
-        R4IpsetsRuleset :: iolist(),
-        R6IpsetsRuleset :: iolist(),
-        R4IptablesRuleset :: iolist(),
-        R6IptablesRuleset :: iolist()
+        R4IpsetsIptablesRuleset :: iolist(),
+        R6IpsetsIptablesRuleset :: iolist(),
+        R4IptablesIptablesRuleset :: iolist(),
+        R6IptablesIptablesRuleset :: iolist()
     }.
-create_ruleset(
+create_iptables_ruleset(
     RoutingKey,
     Group,
     Ipv4RoleMap,
@@ -319,7 +323,7 @@ create_ruleset(
     ServiceIdMap,
     Ipsets
 ) ->
-    create_ruleset(
+    create_iptables_ruleset(
         RoutingKey,
         Group,
         <<"*">>,
@@ -335,7 +339,7 @@ create_ruleset(
         Ipsets
     ).
 
--spec create_ruleset(
+-spec create_iptables_ruleset(
     RoutingKey :: binary(),
     Group :: binary(),
     Environment :: binary(),
@@ -350,12 +354,12 @@ create_ruleset(
 ) ->
     error
     | {
-        R4IpsetsRuleset :: iolist(),
-        R6IpsetsRuleset :: iolist(),
-        R4IptablesRuleset :: iolist(),
-        R6IptablesRuleset :: iolist()
+        R4IpsetsIptablesRuleset :: iolist(),
+        R6IpsetsIptablesRuleset :: iolist(),
+        R4IptablesIptablesRuleset :: iolist(),
+        R6IptablesIptablesRuleset :: iolist()
     }.
-create_ruleset(
+create_iptables_ruleset(
     RoutingKey,
     Group,
     Environment,
@@ -368,7 +372,7 @@ create_ruleset(
     ServiceIdMap,
     Ipsets
 ) ->
-    create_ruleset(
+    create_iptables_ruleset(
         RoutingKey,
         Group,
         Environment,
@@ -384,7 +388,7 @@ create_ruleset(
         Ipsets
     ).
 
--spec create_ruleset(
+-spec create_iptables_ruleset(
     RoutingKey :: binary(),
     Group :: binary(),
     Environment :: binary(),
@@ -400,12 +404,12 @@ create_ruleset(
 ) ->
     error
     | {
-        R4IpsetsRuleset :: iolist(),
-        R6IpsetsRuleset :: iolist(),
-        R4IptablesRuleset :: iolist(),
-        R6IptablesRuleset :: iolist()
+        R4IpsetsIptablesRuleset :: iolist(),
+        R6IpsetsIptablesRuleset :: iolist(),
+        R4IptablesIptablesRuleset :: iolist(),
+        R6IptablesIptablesRuleset :: iolist()
     }.
-create_ruleset(
+create_iptables_ruleset(
     RoutingKey,
     Group,
     Environment,
@@ -419,7 +423,7 @@ create_ruleset(
     ServiceIdMap,
     Ipsets
 ) ->
-    create_ruleset(
+    create_iptables_ruleset(
         RoutingKey,
         Group,
         Environment,
@@ -435,7 +439,7 @@ create_ruleset(
         Ipsets
     ).
 
--spec create_ruleset(
+-spec create_iptables_ruleset(
     RoutingKey :: binary(),
     Group :: binary(),
     Environment :: binary(),
@@ -452,12 +456,12 @@ create_ruleset(
 ) ->
     error
     | {
-        R4IpsetsRuleset :: iolist(),
-        R6IpsetsRuleset :: iolist(),
-        R4IptablesRuleset :: iolist(),
-        R6IptablesRuleset :: iolist()
+        R4IpsetsIptablesRuleset :: iolist(),
+        R6IpsetsIptablesRuleset :: iolist(),
+        R4IptablesIptablesRuleset :: iolist(),
+        R6IptablesIptablesRuleset :: iolist()
     }.
-create_ruleset(
+create_iptables_ruleset(
     RoutingKey,
     Group,
     _Environment,
@@ -472,8 +476,8 @@ create_ruleset(
     ServiceIdMap,
     _Ipsets
 ) ->
-    ?LOG_INFO("creating Ipv4,Ipv6 rulesets, ipsets: ~p", [RoutingKey]),
-    {R4IpsetsResult, R4IptablesResult} = generate_ipv4_ruleset_by_group_name(
+    ?LOG_INFO("creating Ipv4,Ipv6 iptables_rulesets, ipsets: ~p", [RoutingKey]),
+    {R4IpsetsResult, R4IptablesResult} = generate_ipv4_iptables_ruleset_by_group_name(
         Group,
         Ipv4RoleMap,
         Ipv6RoleMap,
@@ -483,7 +487,7 @@ create_ruleset(
         GroupIdMap,
         ServiceIdMap
     ),
-    {R6IpsetsResult, R6IptablesResult} = generate_ipv6_ruleset_by_group_name(
+    {R6IpsetsResult, R6IptablesResult} = generate_ipv6_iptables_ruleset_by_group_name(
         Group,
         Ipv4RoleMap,
         Ipv6RoleMap,
@@ -502,7 +506,8 @@ create_ruleset(
     case AnyError of
         true ->
             ?LOG_INFO(
-                "Error generating at least one Ipv4,Ipv6 ruleset or ipsets, not publishing: ~p", [
+                "Error generating at least one Ipv4,Ipv6 iptables_ruleset or ipsets, not publishing: ~p",
+                [
                     RoutingKey
                 ]
             ),
@@ -510,26 +515,37 @@ create_ruleset(
         false ->
             case AnyNull of
                 true ->
-                    ?LOG_INFO("Found null Ipset or IpRuleset, not publishing: ~p", [RoutingKey]),
+                    ?LOG_INFO("Found null Ipset or IpIptablesRuleset, not publishing: ~p", [
+                        RoutingKey
+                    ]),
                     {false, false, false, false};
                 false ->
-                    {ok, R4IpsetsRuleset} = R4IpsetsResult,
-                    {ok, R6IpsetsRuleset} = R6IpsetsResult,
-                    {ok, R4IptablesRuleset} = R4IptablesResult,
-                    {ok, R6IptablesRuleset} = R6IptablesResult,
-                    Hash4Ipsets = create_hash(R4IpsetsRuleset),
-                    Hash6Ipsets = create_hash(R6IpsetsRuleset),
-                    Hash4Iptables = create_hash(R4IptablesRuleset),
-                    Hash6Iptables = create_hash(R6IptablesRuleset),
+                    {ok, R4IpsetsIptablesRuleset} = R4IpsetsResult,
+                    {ok, R6IpsetsIptablesRuleset} = R6IpsetsResult,
+                    {ok, R4IptablesIptablesRuleset} = R4IptablesResult,
+                    {ok, R6IptablesIptablesRuleset} = R6IptablesResult,
+                    Hash4Ipsets = create_hash(R4IpsetsIptablesRuleset),
+                    Hash6Ipsets = create_hash(R6IpsetsIptablesRuleset),
+                    Hash4Iptables = create_hash(R4IptablesIptablesRuleset),
+                    Hash6Iptables = create_hash(R6IptablesIptablesRuleset),
                     {ok, _} = dog_group:set_hash4_ipsets(Group, Hash4Ipsets),
                     {ok, _} = dog_group:set_hash6_ipsets(Group, Hash6Ipsets),
                     {ok, _} = dog_group:set_hash4_iptables(Group, Hash4Iptables),
                     {ok, _} = dog_group:set_hash6_iptables(Group, Hash6Iptables),
-                    dog_ruleset:write_ruleset_set_v4_to_file(R4IpsetsRuleset, Group),
-                    dog_ruleset:write_ruleset_set_v6_to_file(R6IpsetsRuleset, Group),
-                    dog_ruleset:write_ruleset_unset_v4_to_file(R4IptablesRuleset, Group),
-                    dog_ruleset:write_ruleset_unset_v6_to_file(R6IptablesRuleset, Group),
-                    {R4IpsetsRuleset, R6IpsetsRuleset, R4IptablesRuleset, R6IptablesRuleset}
+                    dog_iptables_ruleset:write_iptables_ruleset_set_v4_to_file(
+                        R4IpsetsIptablesRuleset, Group
+                    ),
+                    dog_iptables_ruleset:write_iptables_ruleset_set_v6_to_file(
+                        R6IpsetsIptablesRuleset, Group
+                    ),
+                    dog_iptables_ruleset:write_iptables_ruleset_unset_v4_to_file(
+                        R4IptablesIptablesRuleset, Group
+                    ),
+                    dog_iptables_ruleset:write_iptables_ruleset_unset_v6_to_file(
+                        R6IptablesIptablesRuleset, Group
+                    ),
+                    {R4IpsetsIptablesRuleset, R6IpsetsIptablesRuleset, R4IptablesIptablesRuleset,
+                        R6IptablesIptablesRuleset}
             end
     end.
 
@@ -576,8 +592,8 @@ create(ProfileMap@0) ->
     {RulesMap@0, ProfileMap@1} = maps:take(<<"rules">>, ProfileMap@0),
     {ok, ExistingProfiles} = get_all(),
     ExistingNames = [maps:get(<<"name">>, Profile) || Profile <- ExistingProfiles],
-    {ok, RulesId} = dog_rule:create(#{<<"name">> => Name, <<"rules">> => RulesMap@0}),
-    ProfileMap@2 = maps:merge(ProfileMap@1, #{<<"rule_id">> => RulesId}),
+    {ok, RulesetId} = dog_ruleset:create(#{<<"name">> => Name, <<"rules">> => RulesMap@0}),
+    ProfileMap@2 = maps:merge(ProfileMap@1, #{<<"ruleset_id">> => RulesetId}),
     case lists:member(Name, ExistingNames) of
         false ->
             case dog_json_schema:validate(?VALIDATION_TYPE, ProfileMap@2) of
@@ -606,7 +622,7 @@ get_all() ->
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, ?TYPE_TABLE),
-            reql:pluck(X, [<<"name">>, <<"id">>, <<"created">>, <<"rule_id">>])
+            reql:pluck(X, [<<"name">>, <<"id">>, <<"created">>, <<"ruleset_id">>])
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
@@ -689,12 +705,12 @@ get_by_id(Id) ->
     end.
 
 add_rules(Profile) ->
-    RulesId = maps:get(<<"rule_id">>, Profile),
+    RulesetId = maps:get(<<"ruleset_id">>, Profile),
     R2 = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
-            reql:table(X, <<"rule">>),
-            reql:get(X, RulesId)
+            reql:table(X, <<"ruleset">>),
+            reql:get(X, RulesetId)
         end
     ),
     case R2 of
@@ -710,12 +726,12 @@ update(Id, UpdateMap) ->
     ?LOG_INFO("update_in_place"),
     case get_by_id(Id) of
         {ok, OldProfile} ->
-            RulesId = maps:get(<<"rule_id">>, OldProfile),
+            RulesetId = maps:get(<<"ruleset_id">>, OldProfile),
             ProfileName = maps:get(<<"name">>, OldProfile),
             {Rules, UpdateMap@0} = maps:take(<<"rules">>, UpdateMap),
             RulesMap@0 = #{<<"name">> => ProfileName, <<"rules">> => Rules},
-            {true, _NewRulesId} = dog_rule:update(RulesId, RulesMap@0),
-            UpdateMap@1 = maps:merge(UpdateMap@0, #{<<"rule_id">> => RulesId}),
+            {true, _NewRulesetId} = dog_ruleset:update(RulesetId, RulesMap@0),
+            UpdateMap@1 = maps:merge(UpdateMap@0, #{<<"ruleset_id">> => RulesetId}),
             NewProfile = maps:merge(OldProfile, UpdateMap@1),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
                 ok ->
@@ -748,7 +764,7 @@ delete(Id) ->
     case where_used(Id) of
         {ok, []} ->
             {ok, Profile} = get_by_id(Id),
-            RulesId = maps:get(<<"rule_id">>, Profile),
+            RulesetId = maps:get(<<"ruleset_id">>, Profile),
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
@@ -761,7 +777,7 @@ delete(Id) ->
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 ->
-                    dog_rule:delete(RulesId),
+                    dog_ruleset:delete(RulesetId),
                     ok;
                 _ ->
                     {error, #{<<"error">> => <<"error">>}}

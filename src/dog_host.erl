@@ -520,7 +520,7 @@ keepalive_age_check(TimeCutoff) ->
 %                HashCheck6Ipsets = maps:get(<<"hash6_ipsets">>,Host),
 %                HashCheck4Iptables = maps:get(<<"hash4_iptables">>,Host),
 %                HashCheck6Iptables = maps:get(<<"hash6_iptables">>,Host),
-%                %TODO: enable when ipv6 ruleset generation fixed
+%                %TODO: enable when ipv6 iptables_ruleset generation fixed
 %                iptables_hash_logic(HashCheck4Ipsets,HashCheck6Ipsets,HashCheck4Iptables,HashCheck6Iptables) end, HostChecks).
 
 -spec iptables_hash_logic(

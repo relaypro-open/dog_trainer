@@ -1,9 +1,9 @@
--module(dog_rule_api_v2).
+-module(dog_ruleset_api_v2).
 
 -include_lib("kernel/include/logger.hrl").
 
--define(VALIDATION_TYPE, <<"rule">>).
--define(TYPE_TABLE, rule).
+-define(VALIDATION_TYPE, <<"ruleset">>).
+-define(TYPE_TABLE, ruleset).
 
 %API
 -export([
@@ -97,7 +97,7 @@ all_active() ->
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, group),
-            reql:get_field(X, <<"rule_id">>)
+            reql:get_field(X, <<"ruleset_id">>)
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
@@ -277,9 +277,9 @@ where_used(RulesId) ->
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, profile),
-            reql:has_fields(X, [<<"rule_id">>]),
+            reql:has_fields(X, [<<"ruleset_id">>]),
             reql:filter(X, fun(Y) ->
-                reql:bracket(Y, <<"rule_id">>),
+                reql:bracket(Y, <<"ruleset_id">>),
                 reql:eq(Y, RulesId)
             end),
             reql:get_field(X, <<"id">>)

@@ -89,13 +89,13 @@ chunk_list(List, Len) ->
     {Head, Tail} = lists:split(Len, List),
     [Head | chunk_list(Tail, Len)].
 
--spec write_temp_iptables(Ruleset :: iolist()) -> 'ok' | 'validation_error'.
-write_temp_iptables(Ruleset) ->
-    {ok, TempFile} = write_to_temp_file4(Ruleset),
+-spec write_temp_iptables(IptablesRuleset :: iolist()) -> 'ok' | 'validation_error'.
+write_temp_iptables(IptablesRuleset) ->
+    {ok, TempFile} = write_to_temp_file4(IptablesRuleset),
     update_iptables4(TempFile),
     ok.
 %TODO: temporarily disabled validation because ipsets don't exist on dog_trainer
-%case validate_ruleset4(TempFile) of
+%case validate_iptables_ruleset4(TempFile) of
 %    ok ->
 %        update_iptables4(TempFile);
 %    _ -> validation_error
@@ -106,16 +106,16 @@ delete_iptables_tempfile(TempFile) ->
     ok = file:delete(TempFile),
     ok.
 
--spec write_to_temp_file4(Ruleset :: iolist()) -> {'ok', [any(), ...]}.
-write_to_temp_file4(Ruleset) ->
+-spec write_to_temp_file4(IptablesRuleset :: iolist()) -> {'ok', [any(), ...]}.
+write_to_temp_file4(IptablesRuleset) ->
     RandString = binary_to_list(base16:encode(crypto:strong_rand_bytes(6))),
     TempFile = ?RUNDIR ++ "/iptables4." ++ RandString ++ ".txt",
-    ok = file:write_file(TempFile, Ruleset),
+    ok = file:write_file(TempFile, IptablesRuleset),
     {ok, TempFile}.
 
 %TODO: temporarily disabled validation because ipsets don't exist on dog_trainer
-%-spec validate_ruleset4([any(),...]) -> 'error' | 'ok'.
-%validate_ruleset4(TempFile) ->
+%-spec validate_iptables_ruleset4([any(),...]) -> 'error' | 'ok'.
+%validate_iptables_ruleset4(TempFile) ->
 %    Cmd = "sudo /sbin/iptables-restore --test " ++ TempFile,
 %    Result = os:cmd(Cmd),
 %    case Result of
@@ -126,8 +126,8 @@ write_to_temp_file4(Ruleset) ->
 %            error
 %    end.
 
--spec backup_ruleset4() -> 'error' | 'ok'.
-backup_ruleset4() ->
+-spec backup_iptables_ruleset4() -> 'error' | 'ok'.
+backup_iptables_ruleset4() ->
     Cmd = "sudo " ++ "/sbin/iptables-save" ++ " > " ++ ?RUNDIR ++ "/iptables.back",
     Result = os:cmd(Cmd),
     case Result of
@@ -140,7 +140,7 @@ backup_ruleset4() ->
 
 -spec update_iptables4([any(), ...]) -> 'ok'.
 update_iptables4(TempFile) ->
-    ok = backup_ruleset4(),
+    ok = backup_iptables_ruleset4(),
     ok = delete_iptables_tempfile(TempFile),
     %TODO
     ?LOG_INFO("Iptables updated."),
@@ -173,21 +173,21 @@ valid_iptables() ->
 
 -spec publish_to_queue(
     RoutingKey :: binary(),
-    R4IpsetsRuleset :: list() | boolean(),
-    R6IpsetsRuleset :: list() | boolean(),
-    R4IptablesRuleset :: list() | boolean(),
-    R6IptablesRuleset :: list() | boolean(),
+    R4IpsetsIptablesRuleset :: list() | boolean(),
+    R6IpsetsIptablesRuleset :: list() | boolean(),
+    R4IptablesIptablesRuleset :: list() | boolean(),
+    R6IptablesIptablesRuleset :: list() | boolean(),
     Ipsets :: list()
 ) -> any().
 publish_to_queue(
-    RoutingKey, R4IpsetsRuleset, R6IpsetsRuleset, R4IptablesRuleset, R6IptablesRuleset, Ipsets
+    RoutingKey, R4IpsetsIptablesRuleset, R6IpsetsIptablesRuleset, R4IptablesIptablesRuleset, R6IptablesIptablesRuleset, Ipsets
 ) ->
     ?LOG_INFO("RoutingKey: ~p", [RoutingKey]),
     UserData = #{
-        ruleset4_ipset => R4IpsetsRuleset,
-        ruleset6_ipset => R6IpsetsRuleset,
-        ruleset4_iptables => R4IptablesRuleset,
-        ruleset6_iptables => R6IptablesRuleset,
+        iptables_ruleset4_ipset => R4IpsetsIptablesRuleset,
+        iptables_ruleset6_ipset => R6IpsetsIptablesRuleset,
+        iptables_ruleset4_iptables => R4IptablesIptablesRuleset,
+        iptables_ruleset6_iptables => R6IptablesIptablesRuleset,
         ipsets => Ipsets
     },
     Count = 1,
