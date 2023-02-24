@@ -1,6 +1,6 @@
 {
   "created": 1525360293813651,
   "name": "drewtest2",
-  "ruleset_id": "cdee01e3-e4b2-4d20-8265-a85f6527016a",
+  "ruleset_id": "${RULESET_ID}",
   "version": "1.1"
 }

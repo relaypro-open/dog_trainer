@@ -1,3 +1,6 @@
 {
 "name":"app",
+"profile_name":"app",
+"profile_version":"latest",
+"profile_id":"app"
 }

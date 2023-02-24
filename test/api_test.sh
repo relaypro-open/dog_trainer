@@ -7,6 +7,7 @@ PASS=0
 FAIL=0
 source test_lib.sh
 TESTDIR=/opt/dog_trainer/test
+BASEURL=http://localhost:7070/api
 
 echo "dog_trainer basic API test"
 

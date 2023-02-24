@@ -1,3 +1,1 @@
-{
-"name":"drewtest2"
-}
+{"environment":"*","group":"test","hostkey":"drewtest2-phoneboothdev-info","name":"drewtest2.phoneboothdev.info","interfaces":"{\"lo\":[\"127.0.0.1\",\"::1\"],\"eth0\":[\"1.6.5.3\",\"fd42:aeb8:a6c5:b75d:216:3eff:fea4:8bd\",\"fe80::216:3eff:fea4:8bd\"]}","location":"*","version":"0.1.0"}
