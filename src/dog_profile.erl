@@ -1,7 +1,6 @@
 -module(dog_profile).
 
 -include("dog_trainer.hrl").
--include_lib("erlcloud/include/erlcloud_ec2.hrl").
 
 -define(VALIDATION_TYPE, <<"profile">>).
 -define(TYPE_TABLE, profile).

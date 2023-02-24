@@ -353,7 +353,7 @@ where_used_inbound(ZoneId) ->
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
-            reql:table(X, rule),
+            reql:table(X, ruleset),
             reql:filter(X, fun(Rule) ->
                 reql:get_field(Rule, <<"rules">>),
                 reql:get_field(Rule, <<"inbound">>),
@@ -380,7 +380,7 @@ where_used_outbound(ZoneId) ->
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
-            reql:table(X, rule),
+            reql:table(X, ruleset),
             reql:filter(X, fun(Rule) ->
                 reql:get_field(Rule, <<"rules">>),
                 reql:get_field(Rule, <<"outbound">>),

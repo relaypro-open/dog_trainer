@@ -12,7 +12,6 @@
     get_all/0,
     get_by_id/1,
     get_by_name/1,
-    in_rule/1,
     replace/2,
     replace_profile_by_profile_id/2,
     replace_profile_by_profile_id/3,
@@ -27,12 +26,6 @@ get_by_name(Name) ->
 
 all_active() ->
     dog_group:all_active().
-
-in_active_rule(Id) ->
-    dog_group:in_active_rule(Id).
-
-in_rule(Id) ->
-    dog_group:in_rule(Id).
 
 -spec create(Group :: map()) -> {ok, Key :: iolist()}.
 create(Group@0) when is_map(Group@0) ->
@@ -96,7 +89,7 @@ create(Group@0) when is_map(Group@0) ->
 
 -spec delete(GroupId :: binary()) -> (ok | {error, Error :: iolist()}).
 delete(Id) ->
-    case in_rule(Id) of
+    case dog_group:in_profile(Id) of
         {false, []} ->
             {ok, R} = dog_rethink:run(
                 fun(X) ->

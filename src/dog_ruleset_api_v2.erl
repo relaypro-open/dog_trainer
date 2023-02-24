@@ -197,9 +197,9 @@ delete(Id) ->
                 1 -> ok;
                 _ -> {error, #{<<"error">> => <<"error">>}}
             end;
-        {ok, Groups} ->
-            ?LOG_INFO("rules ~p not deleted, associated with group: ~p~n", [Id, Groups]),
-            {error, #{<<"errors">> => #{<<"associated with group">> => Groups}}}
+        {ok, Profiles} ->
+            ?LOG_INFO("ruleset ~p not deleted, associated with profile: ~p~n", [Id, Profiles]),
+            {error, #{<<"errors">> => #{<<"associated with profile">> => Profiles}}}
     end.
 
 -spec rule_to_text(Rule :: map(), Keys :: list()) -> iolist().

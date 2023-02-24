@@ -309,7 +309,7 @@ get_all_in_rule(RuleId) ->
     R = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
-            reql:table(X, rule),
+            reql:table(X, ruleset),
             reql:get(X, RuleId),
             reql:pluck(X, [
                 #{<<"rules">> => #{<<"inbound">> => <<"service">>, <<"outbound">> => <<"service">>}}

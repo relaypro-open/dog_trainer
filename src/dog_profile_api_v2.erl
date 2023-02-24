@@ -15,7 +15,8 @@
     get_by_id/1,
     get_by_name/1,
     update/2,
-    update/3
+    update/3,
+    where_used/1
 ]).
 
 -export([]).
@@ -44,7 +45,50 @@ create(Profile) ->
 
 -spec delete(GroupId :: binary()) -> (ok | {error, Error :: map()}).
 delete(Id) ->
-    dog_profile:delete(Id).
+    case where_used(Id) of
+        {ok, []} ->
+            {ok, R} = dog_rethink:run(
+                fun(X) ->
+                    reql:db(X, dog),
+                    reql:table(X, ?TYPE_TABLE),
+                    reql:get(X, Id),
+                    reql:delete(X)
+                end
+            ),
+            ?LOG_DEBUG("delete R: ~p~n", [R]),
+            Deleted = maps:get(<<"deleted">>, R),
+            case Deleted of
+                1 ->
+                    ok;
+                _ ->
+                    {error, #{<<"error">> => <<"error">>}}
+            end;
+        {ok, Groups} ->
+            ?LOG_INFO("profile ~p not deleted, associated with group: ~p~n", [Id, Groups]),
+            {error, #{<<"errors">> => #{<<"associated with group">> => Groups}}}
+    end.
+
+-spec where_used(ProfileId :: binary()) -> {ok, list()}.
+where_used(ProfileId) ->
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, group),
+            reql:has_fields(X, [<<"profile_id">>]),
+            reql:filter(X, fun(Y) ->
+                reql:bracket(Y, <<"profile_id">>),
+                reql:eq(Y, ProfileId)
+            end),
+            reql:get_field(X, <<"id">>)
+        end
+    ),
+    {ok, Result} = rethink_cursor:all(R),
+    Groups =
+        case lists:flatten(Result) of
+            [] -> [];
+            Else -> Else
+        end,
+    {ok, Groups}.
 
 -spec get_all() -> {'ok', list()}.
 get_all() ->

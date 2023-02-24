@@ -23,8 +23,21 @@ get_by_hostkey(HostKey) ->
 get_by_id(Id) ->
     dog_host:get_by_id(Id).
 
+-spec get_by_name(binary()) -> {ok, map()} | {error, notfound}.
 get_by_name(Name) ->
-    dog_host:get_by_name(Name).
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get_all(X, Name, #{index => <<"name">>})
+        end
+    ),
+    {ok, R3} = rethink_cursor:all(R),
+    Result = lists:flatten(R3),
+    case Result of
+        [] -> {error, notfound};
+        _ -> {ok, hd(Result)}
+    end.
 
 -spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(HostMap@0) ->
