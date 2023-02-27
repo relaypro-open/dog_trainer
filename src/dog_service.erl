@@ -147,14 +147,15 @@ parse_ports(Ports) ->
     M.
 
 -spec delete(ZoneId :: binary()) -> ok | {error, Error :: map()}.
-delete(Id) ->
-    case in_profile(Id) of
+delete(ZoneId) ->
+    ?LOG_DEBUG(#{zone_id => ZoneId}),
+    case in_profile(ZoneId) of
         {false, []} ->
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
                     reql:table(X, ?TYPE_TABLE),
-                    reql:get(X, Id),
+                    reql:get(X, ZoneId),
                     reql:delete(X)
                 end
             ),
@@ -165,7 +166,7 @@ delete(Id) ->
                 _ -> {error, #{<<"error">> => <<"error">>}}
             end;
         {true, Profiles} ->
-            ?LOG_INFO("service ~p not deleted, in profiles: ~p~n", [Id, Profiles]),
+            ?LOG_INFO("service ~p not deleted, in profiles: ~p~n", [ZoneId, Profiles]),
             {error, #{<<"errors">> => #{<<"in active profile">> => Profiles}}}
     end.
 
@@ -282,26 +283,83 @@ get_all_grouped_by_name() ->
         end,
     maps:from_list([{maps:get(<<"name">>, Service), Service} || Service <- Services]).
 
--spec where_used(ServiceId :: binary()) -> {ok, list()}.
+-spec where_used_inbound(ServiceId :: binary()) -> {ok, ProfileIds :: list()}.
+where_used_inbound(ServiceId) ->
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ruleset),
+            reql:filter(X, fun(Rule) ->
+                reql:get_field(Rule, <<"rules">>),
+                reql:get_field(Rule, <<"inbound">>),
+                reql:get_field(Rule, <<"group">>),
+                reql:contains(Rule, ServiceId)
+            end),
+            reql:get_field(X, <<"id">>)
+        end
+    ),
+    {ok, Result} = rethink_cursor:all(R),
+    RuleIds =
+        case lists:flatten(Result) of
+            [] -> [];
+            Else -> Else
+        end,
+    ProfileIds = [element(2, dog_ruleset:where_used(RulesId)) || RulesId <- RuleIds],
+    ?LOG_INFO("ProfileIds: ~p~n", [R]),
+
+    {ok, ProfileIds}.
+
+%TODO: differentiate between ROLE(Group) and SERVICE(Service) groups.
+-spec where_used_outbound(ServiceId :: binary()) -> {ok, RuleIds :: list()}.
+where_used_outbound(ServiceId) ->
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ruleset),
+            reql:filter(X, fun(Rule) ->
+                reql:get_field(Rule, <<"rules">>),
+                reql:get_field(Rule, <<"outbound">>),
+                reql:get_field(Rule, <<"group">>),
+                reql:contains(Rule, ServiceId)
+            end),
+            reql:get_field(X, <<"id">>)
+        end
+    ),
+    {ok, Result} = rethink_cursor:all(R),
+    RuleIds =
+        case lists:flatten(Result) of
+            [] -> [];
+            Else -> Else
+        end,
+    ?LOG_INFO("ProfileIds: ~p~n", [R]),
+    ProfileIds = [element(2, dog_ruleset:where_used(RulesId)) || RulesId <- RuleIds],
+    {ok, ProfileIds}.
+
 where_used(ServiceId) ->
-    {ok, Profiles} = dog_profile:get_all(),
-    ProfileServices = lists:map(
-        fun(Profile) ->
-            ProfileId = maps:get(<<"id">>, Profile),
-            RuleId = maps:get(<<"ruleset_id">>, Profile),
-            Services = get_all_in_rule(RuleId),
-            ?LOG_DEBUG("Services: ~p", [Services]),
-            {ProfileId, Services}
-        end,
-        Profiles
-    ),
-    FilteredProfiles = lists:filtermap(
-        fun({_Id, Services}) ->
-            lists:member(ServiceId, Services)
-        end,
-        ProfileServices
-    ),
-    {ok, [erlang:element(1, P) || P <- FilteredProfiles]}.
+    {ok, Inbound} = where_used_inbound(ServiceId),
+    {ok, Outbound} = where_used_outbound(ServiceId),
+    {ok, lists:flatten(sets:to_list(sets:from_list([Inbound, Outbound])))}.
+
+%-spec where_used(ServiceId :: binary()) -> {ok, list()}.
+%Where_used(ServiceId) ->
+%    {ok, Profiles} = dog_profile:get_all(),
+%    ProfileServices = lists:map(
+%        fun(Profile) ->
+%            ProfileId = maps:get(<<"id">>, Profile),
+%            RuleId = maps:get(<<"ruleset_id">>, Profile),
+%            Services = get_all_in_rule(RuleId),
+%            ?LOG_DEBUG("Services: ~p", [Services]),
+%            {ProfileId, Services}
+%        end,
+%        Profiles
+%    ),
+%    FilteredProfiles = lists:filtermap(
+%        fun({_Id, Services}) ->
+%            lists:member(ServiceId, Services)
+%        end,
+%        ProfileServices
+%    ),
+%    {ok, [erlang:element(1, P) || P <- FilteredProfiles]}.
 
 get_all_in_rule(RuleId) ->
     %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
