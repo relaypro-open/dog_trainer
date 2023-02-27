@@ -84,7 +84,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, rules name not found: ~p", [Name]),
+            ?LOG_ERROR("error, ruleset name not found: ~p", [Name]),
             {error, notfound};
         _ ->
             Rules = hd(Result),
@@ -136,7 +136,7 @@ get_by_id(Id) ->
     ),
     case R of
         {ok, null} ->
-            ?LOG_DEBUG("rules id null return value: ~p", [Id]),
+            ?LOG_DEBUG("ruleset id null return value: ~p", [Id]),
             {error, notfound};
         {ok, Rules} ->
             {ok, Rules}
