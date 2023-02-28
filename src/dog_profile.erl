@@ -714,7 +714,7 @@ add_rules(Profile) ->
     ),
     case R2 of
         {ok, null} ->
-            {ok, maps:update(<<"rules">>, {}, Profile)};
+            {ok, maps:put(<<"rules">>, {}, Profile)};
         {ok, Result2} ->
             {ok, maps:put(<<"rules">>, maps:get(<<"rules">>, Result2), Profile)}
     end.
