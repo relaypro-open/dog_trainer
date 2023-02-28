@@ -24,15 +24,15 @@
 -spec create(Profile :: map()) -> {'ok', iolist()} | {atom(), binary()}.
 create(Profile) ->
     ?LOG_DEBUG("Profile: ~p~n", [Profile]),
-    Timestamp = dog_time:timestamp(),
+    %Timestamp = dog_time:timestamp(),
     case dog_json_schema:validate(?VALIDATION_TYPE, Profile) of
         ok ->
-            Profile@1 = maps:put(<<"created">>, Timestamp, Profile),
+            %Profile@1 = maps:put(<<"created">>, Timestamp, Profile),
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
                     reql:table(X, ?TYPE_TABLE),
-                    reql:insert(X, Profile@1, #{return_changes => always})
+                    reql:insert(X, Profile, #{return_changes => always})
                 end
             ),
             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
