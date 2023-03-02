@@ -174,6 +174,10 @@
 			"type": "string",
 			"minLength": 1
 		},
+		"profile_id": {
+			"type": "string",
+			"minLength": 1
+		},
 		"rules": {
 			"type": "object",
 			"properties": {

@@ -49,25 +49,19 @@ create(ServiceMap@0) ->
 
 -spec delete(ZoneId :: binary()) -> ok | {error, Error :: map()}.
 delete(Id) ->
-    case dog_service:in_profile(Id) of
-        {false, []} ->
-            {ok, R} = dog_rethink:run(
-                fun(X) ->
-                    reql:db(X, dog),
-                    reql:table(X, ?TYPE_TABLE),
-                    reql:get(X, Id),
-                    reql:delete(X)
-                end
-            ),
-            ?LOG_DEBUG("delete R: ~p~n", [R]),
-            Deleted = maps:get(<<"deleted">>, R),
-            case Deleted of
-                1 -> ok;
-                _ -> {error, #{<<"error">> => <<"error">>}}
-            end;
-        {true, Profiles} ->
-            ?LOG_INFO("service ~p not deleted, in profiles: ~p~n", [Id, Profiles]),
-            {error, #{<<"errors">> => #{<<"in active profile">> => Profiles}}}
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get(X, Id),
+            reql:delete(X)
+        end
+    ),
+    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    Deleted = maps:get(<<"deleted">>, R),
+    case Deleted of
+        1 -> ok;
+        _ -> {error, #{<<"error">> => <<"error">>}}
     end.
 
 -spec get(Name :: binary()) -> [map()].

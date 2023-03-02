@@ -11,6 +11,8 @@
     delete/1,
     get_by_id/1,
     get_by_name/1,
+    get_by_profile_id/1,
+    get_id_by_profile_id/1,
     get_all/0,
     get_schema/0,
     update/2
@@ -34,8 +36,8 @@ create(RulesMap) ->
     RulesMap@0 = names_to_ids(RulesMap),
     ?LOG_DEBUG(#{rulesmap@0 => RulesMap@0}),
     Name = maps:get(<<"name">>, RulesMap@0),
-    {ok, ExistingRuless} = get_all(),
-    ExistingNames = [maps:get(<<"name">>, Rules) || Rules <- ExistingRuless],
+    {ok, ExistingRules} = get_all(),
+    ExistingNames = [maps:get(<<"name">>, Rules) || Rules <- ExistingRules],
     case lists:member(Name, ExistingNames) of
         false ->
             case dog_json_schema:validate(?VALIDATION_TYPE, RulesMap@0) of
@@ -101,24 +103,24 @@ get_by_name(Name) ->
             {ok, ids_to_names(Rules)}
     end.
 
--spec all_active() -> {ok, Ruless :: list()}.
+-spec all_active() -> {ok, Rules :: list()}.
 all_active() ->
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
-            reql:table(X, group),
-            reql:get_field(X, <<"ruleset_id">>)
+            reql:table(X, ?TYPE_TABLE),
+            reql:has_field(X, <<"profile_id">>)
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
-    Ruless =
+    Rules =
         case lists:flatten(Result) of
             [] -> [];
             Else -> Else
         end,
-    {ok, Ruless}.
+    {ok, Rules}.
 
--spec all() -> {ok, Ruless :: list()}.
+-spec all() -> {ok, Rules :: list()}.
 all() ->
     {ok, R} = dog_rethink:run(
         fun(X) ->
@@ -128,12 +130,12 @@ all() ->
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
-    Ruless =
+    Rules =
         case lists:flatten(Result) of
             [] -> [];
             Else -> Else
         end,
-    {ok, Ruless}.
+    {ok, Rules}.
 
 -spec get_by_id(Id :: binary()) -> {ok, map()} | {error, notfound}.
 get_by_id(Id) ->
@@ -279,26 +281,10 @@ to_text(Rules) ->
     {ok, Text}.
 
 -spec where_used(RulesId :: binary()) -> {ok, list()}.
-where_used(RulesId) ->
-    {ok, R} = dog_rethink:run(
-        fun(X) ->
-            reql:db(X, dog),
-            reql:table(X, profile),
-            reql:has_fields(X, [<<"ruleset_id">>]),
-            reql:filter(X, fun(Y) ->
-                reql:bracket(Y, <<"ruleset_id">>),
-                reql:eq(Y, RulesId)
-            end),
-            reql:get_field(X, <<"id">>)
-        end
-    ),
-    {ok, Result} = rethink_cursor:all(R),
-    Groups =
-        case lists:flatten(Result) of
-            [] -> [];
-            Else -> Else
-        end,
-    {ok, Groups}.
+where_used(RulesetId) ->
+    {ok, Ruleset} = get_by_id(RulesetId),
+    ProfileId = maps:get(<<"profile_id">>, Ruleset),
+    {ok, ProfileId}.
 
 -spec ids_to_names(Rules :: map()) -> Rules :: {ok | error, map()}.
 ids_to_names(Rules) ->
@@ -443,6 +429,35 @@ rule_names_to_ids(Rules, ServicesByName, ZonesByName, GroupsByName) ->
         end,
         Rules
     ).
+
+-spec get_by_profile_id(ProfileId :: iolist()) -> {ok, Ruleset :: map()} | {error, notfound}.
+get_by_profile_id(ProfileId) ->
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get_all(X, ProfileId, #{index => <<"profile_id">>})
+        end
+    ),
+    {ok, R3} = rethink_cursor:all(R),
+    Result = lists:flatten(R3),
+    case Result of
+        [] ->
+            ?LOG_ERROR("error, no ruleset associated with profile: ~p", [ProfileId]),
+            {error, notfound};
+        _ ->
+            Rules = hd(Result),
+            {ok, Rules}
+    end.
+
+-spec get_id_by_profile_id(ProfileId :: iolist()) -> RulesetId :: iolist() | {error, notfound}.
+get_id_by_profile_id(ProfileId) ->
+    case get_by_profile_id(ProfileId) of
+        {ok, Profile} ->
+            maps:get(<<"id">>, Profile);
+        {error, notfound} ->
+            {error, notfound}
+    end.
 
 -spec get_schema() -> binary().
 get_schema() ->

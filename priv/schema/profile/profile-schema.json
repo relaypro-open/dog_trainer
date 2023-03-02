@@ -194,10 +194,6 @@
 				"inbound",
 				"outbound"
 			]
-		},
-		"ruleset_id": {
-			"type": "string",
-			"minLength": 1
 		}
 	},
 	"required": [

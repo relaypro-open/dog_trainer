@@ -45,27 +45,21 @@ create(Profile) ->
 
 -spec delete(GroupId :: binary()) -> (ok | {error, Error :: map()}).
 delete(Id) ->
-    case where_used(Id) of
-        {ok, []} ->
-            {ok, R} = dog_rethink:run(
-                fun(X) ->
-                    reql:db(X, dog),
-                    reql:table(X, ?TYPE_TABLE),
-                    reql:get(X, Id),
-                    reql:delete(X)
-                end
-            ),
-            ?LOG_DEBUG("delete R: ~p~n", [R]),
-            Deleted = maps:get(<<"deleted">>, R),
-            case Deleted of
-                1 ->
-                    ok;
-                _ ->
-                    {error, #{<<"error">> => <<"error">>}}
-            end;
-        {ok, Groups} ->
-            ?LOG_INFO("profile ~p not deleted, associated with group: ~p~n", [Id, Groups]),
-            {error, #{<<"errors">> => #{<<"associated with group">> => Groups}}}
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get(X, Id),
+            reql:delete(X)
+        end
+    ),
+    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    Deleted = maps:get(<<"deleted">>, R),
+    case Deleted of
+        1 ->
+            ok;
+        _ ->
+            {error, #{<<"error">> => <<"error">>}}
     end.
 
 -spec where_used(ProfileId :: binary()) -> {ok, list()}.
@@ -132,13 +126,40 @@ get_all_active() ->
 
 -spec get_by_id(Id :: binary()) -> {ok, map()} | {error, notfound}.
 get_by_id(Id) ->
-    {Result, Profile} = dog_profile:get_by_id(Id),
-    {Result, Profile}.
+    R = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get(X, Id)
+        end
+    ),
+    case R of
+        {ok, null} ->
+            ?LOG_DEBUG("profile id null return value: ~p", [Id]),
+            {error, notfound};
+        {ok, Profile} ->
+            {ok, Profile}
+    end.
 
--spec get_by_name(ProfileName :: binary()) -> {'ok', map()} | {error, atom()}.
-get_by_name(ProfileName) ->
-    {Result, Profile} = dog_profile:get_by_name(ProfileName),
-    {Result, Profile}.
+-spec get_by_name(Name :: binary()) -> {ok, map()} | {error, atom()}.
+get_by_name(Name) ->
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get_all(X, Name, #{index => <<"name">>})
+        end
+    ),
+    {ok, R3} = rethink_cursor:all(R),
+    Result = lists:flatten(R3),
+    case Result of
+        [] ->
+            ?LOG_ERROR("error, profile name not found: ~p", [Name]),
+            {error, notfound};
+        _ ->
+            Profile = hd(Result),
+            {ok, Profile}
+    end.
 
 -spec update(Id :: binary(), UpdateMap :: map()) -> {atom(), Id :: iolist()} | {false, atom()}.
 update(Id, UpdateMap) ->

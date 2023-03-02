@@ -17,6 +17,7 @@
 ]).
 
 -export([
+    add_rules/1,
     all/0,
     all_active/0,
     create_hash/1,
@@ -591,22 +592,27 @@ create(ProfileMap@0) ->
     {RulesMap@0, ProfileMap@1} = maps:take(<<"rules">>, ProfileMap@0),
     {ok, ExistingProfiles} = get_all(),
     ExistingNames = [maps:get(<<"name">>, Profile) || Profile <- ExistingProfiles],
-    {ok, RulesetId} = dog_ruleset:create(#{<<"name">> => Name, <<"rules">> => RulesMap@0}),
-    ProfileMap@2 = maps:merge(ProfileMap@1, #{<<"ruleset_id">> => RulesetId}),
     case lists:member(Name, ExistingNames) of
         false ->
-            case dog_json_schema:validate(?VALIDATION_TYPE, ProfileMap@2) of
+            case dog_json_schema:validate(?VALIDATION_TYPE, ProfileMap@1) of
                 ok ->
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
                             reql:table(X, ?TYPE_TABLE),
-                            reql:insert(X, ProfileMap@2)
+                            reql:insert(X, ProfileMap@1)
                         end
                     ),
-                    Key = hd(maps:get(<<"generated_keys">>, R)),
+                    ProfileId = hd(maps:get(<<"generated_keys">>, R)),
                     ?LOG_DEBUG("create R: ~p~n", [R]),
-                    {ok, Key};
+                    {ok, _RulesetId} = dog_ruleset:create(
+                        #{
+                            <<"name">> => Name,
+                            <<"rules">> => RulesMap@0,
+                            <<"profile_id">> => ProfileId
+                        }
+                    ),
+                    {ok, ProfileId};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
                     {validation_error, Response}
@@ -621,7 +627,7 @@ get_all() ->
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, ?TYPE_TABLE),
-            reql:pluck(X, [<<"name">>, <<"id">>, <<"created">>, <<"ruleset_id">>])
+            reql:pluck(X, [<<"name">>, <<"id">>, <<"created">>])
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
@@ -704,19 +710,12 @@ get_by_id(Id) ->
     end.
 
 add_rules(Profile) ->
-    RulesetId = maps:get(<<"ruleset_id">>, Profile),
-    R2 = dog_rethink:run(
-        fun(X) ->
-            reql:db(X, dog),
-            reql:table(X, <<"ruleset">>),
-            reql:get(X, RulesetId)
-        end
-    ),
-    case R2 of
-        {ok, null} ->
+    ProfileId = maps:get(<<"id">>, Profile),
+    case dog_ruleset:get_by_profile_id(ProfileId) of
+        {error, notfound} ->
             {ok, maps:put(<<"rules">>, {}, Profile)};
-        {ok, Result2} ->
-            {ok, maps:put(<<"rules">>, maps:get(<<"rules">>, Result2), Profile)}
+        {ok, Ruleset} ->
+            {ok, maps:put(<<"rules">>, maps:get(<<"rules">>, Ruleset), Profile)}
     end.
 
 -spec update(Id :: binary(), UpdateMap :: map()) ->
@@ -725,34 +724,72 @@ update(Id, UpdateMap) ->
     ?LOG_INFO("update_in_place"),
     case get_by_id(Id) of
         {ok, OldProfile} ->
-            RulesetId = maps:get(<<"ruleset_id">>, OldProfile),
-            ProfileName = maps:get(<<"name">>, OldProfile),
-            {Rules, UpdateMap@0} = maps:take(<<"rules">>, UpdateMap),
-            RulesMap@0 = #{<<"name">> => ProfileName, <<"rules">> => Rules},
-            {true, _NewRulesetId} = dog_ruleset:update(RulesetId, RulesMap@0),
-            UpdateMap@1 = maps:merge(UpdateMap@0, #{<<"ruleset_id">> => RulesetId}),
-            NewProfile = maps:merge(OldProfile, UpdateMap@1),
-            case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
-                ok ->
-                    {ok, R} = dog_rethink:run(
-                        fun(X) ->
-                            reql:db(X, dog),
-                            reql:table(X, ?TYPE_TABLE),
-                            reql:get(X, Id),
-                            reql:update(X, UpdateMap@1)
-                        end
-                    ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
-                    Replaced = maps:get(<<"replaced">>, R),
-                    Unchanged = maps:get(<<"unchanged">>, R),
-                    case {Replaced, Unchanged} of
-                        {1, 0} -> {true, Id};
-                        {0, 1} -> {false, Id};
-                        _ -> {false, no_updated}
+            ProfileId = maps:get(<<"id">>, OldProfile),
+            case dog_ruleset:get_id_by_profile_id(ProfileId) of
+                RulesetId ->
+                    ProfileName = maps:get(<<"name">>, OldProfile),
+                    {Rules, UpdateMap@0} = maps:take(<<"rules">>, UpdateMap),
+                    RulesMap@0 = #{
+                        <<"name">> => ProfileName,
+                        <<"rules">> => Rules,
+                        <<"profile_id">> => ProfileId
+                    },
+                    {true, _NewRulesetId} = dog_ruleset:update(RulesetId, RulesMap@0),
+                    NewProfile = maps:merge(OldProfile, UpdateMap@0),
+                    case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
+                        ok ->
+                            {ok, R} = dog_rethink:run(
+                                fun(X) ->
+                                    reql:db(X, dog),
+                                    reql:table(X, ?TYPE_TABLE),
+                                    reql:get(X, Id),
+                                    reql:update(X, UpdateMap@0)
+                                end
+                            ),
+                            ?LOG_DEBUG("update R: ~p~n", [R]),
+                            Replaced = maps:get(<<"replaced">>, R),
+                            Unchanged = maps:get(<<"unchanged">>, R),
+                            case {Replaced, Unchanged} of
+                                {1, 0} -> {true, Id};
+                                {0, 1} -> {false, Id};
+                                _ -> {false, no_updated}
+                            end;
+                        {error, Error} ->
+                            Response = dog_parse:validation_error(Error),
+                            {validation_error, Response}
                     end;
-                {error, Error} ->
-                    Response = dog_parse:validation_error(Error),
-                    {validation_error, Response}
+                {error, notfound} ->
+                    ProfileName = maps:get(<<"name">>, OldProfile),
+                    {Rules, UpdateMap@0} = maps:take(<<"rules">>, UpdateMap),
+                    RulesMap@0 = #{
+                        <<"name">> => ProfileName,
+                        <<"rules">> => Rules,
+                        <<"profile_id">> => ProfileId
+                    },
+                    {true, _NewRulesetId} = dog_ruleset:create(RulesMap@0),
+                    NewProfile = maps:merge(OldProfile, UpdateMap@0),
+                    case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
+                        ok ->
+                            {ok, R} = dog_rethink:run(
+                                fun(X) ->
+                                    reql:db(X, dog),
+                                    reql:table(X, ?TYPE_TABLE),
+                                    reql:get(X, Id),
+                                    reql:update(X, UpdateMap@0)
+                                end
+                            ),
+                            ?LOG_DEBUG("update R: ~p~n", [R]),
+                            Replaced = maps:get(<<"replaced">>, R),
+                            Unchanged = maps:get(<<"unchanged">>, R),
+                            case {Replaced, Unchanged} of
+                                {1, 0} -> {true, Id};
+                                {0, 1} -> {false, Id};
+                                _ -> {false, no_updated}
+                            end;
+                        {error, Error} ->
+                            Response = dog_parse:validation_error(Error),
+                            {validation_error, Response}
+                    end
             end;
         {error, Error} ->
             {false, Error}
@@ -762,8 +799,7 @@ update(Id, UpdateMap) ->
 delete(Id) ->
     case where_used(Id) of
         {ok, []} ->
-            {ok, Profile} = get_by_id(Id),
-            RulesetId = maps:get(<<"ruleset_id">>, Profile),
+            RulesetId = dog_ruleset:get_id_by_profile_id(Id),
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
@@ -1240,29 +1276,7 @@ get_ppps_outbound_ec2(ProfileJson, DestinationRegion) ->
 %% Helpers
 %%--------------------------------------------------------------------
 
-hex(N) when N < 10 ->
-    N + $0;
-hex(N) when N < 16 ->
-    N - 10 + $a.
-
-%For pre-2X Erlang:
-trim(String, trailing, " ") ->
-    re:replace(
-        re:replace(
-            String,
-            "\\s+$",
-            "",
-            [global, {return, list}]
-        ),
-        "^\\s+",
-        "",
-        [global, {return, list}]
-    ).
-
 split(String, Delimiter, all) ->
     split(String, Delimiter).
 split(String, Delimiter) ->
     re:split(String, Delimiter, [{return, list}]).
-replace(String, SearchPattern, Replacement, all) ->
-    Replaced = re:replace(String, SearchPattern, Replacement, [global, {return, list}]),
-    [Replaced].

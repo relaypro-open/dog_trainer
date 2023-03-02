@@ -45,36 +45,33 @@ create(Group@0) when is_map(Group@0) ->
         {error, notfound} ->
             Timestamp = dog_time:timestamp(),
             Group@1 = maps:put(<<"created">>, Timestamp, Group@0),
-            Group@2 =
-                case maps:find(<<"profile_name">>, Group@1) of
-                    error ->
-                        NewMap = maps:merge(DefaultMap, Group@1),
-                        ?LOG_INFO("NewMap: ~p", [NewMap]),
-                        NewMap;
-                    {ok, ProfileName} ->
-                        ProfileId =
-                            case dog_profile:get_by_name(ProfileName) of
-                                {error, notfound} ->
-                                    <<"">>;
-                                {ok, Profile} ->
-                                    case maps:find(<<"id">>, Profile) of
-                                        error ->
-                                            <<"">>;
-                                        {ok, Id} ->
-                                            Id
-                                    end
-                            end,
-                        NewMap = maps:merge(DefaultMap, Group@1),
-                        ?LOG_DEBUG("NewMap: ~p", [NewMap]),
-                        maps:merge(NewMap, #{<<"profile_id">> => ProfileId})
-                end,
-            case dog_json_schema:validate(?VALIDATION_TYPE, Group@2) of
+            %            ProfileIdValidated =
+            %                case maps:get(<<"profile_id">>, Group@0, <<"">>) of
+            %                    <<"">> ->
+            %                        <<"">>;
+            %                    ProfileId ->
+            %                        case dog_profile:get_by_id(ProfileId) of
+            %                            {error, notfound} ->
+            %                                <<"">>;
+            %                            {ok, Profile} ->
+            %                                case maps:find(<<"id">>, Profile) of
+            %                                    error ->
+            %                                        <<"">>;
+            %                                    {ok, Id} ->
+            %                                        Id
+            %                                end
+            %                        end
+            %                end,
+            %            Group@2 = maps:put(<<"profile_id">>, ProfileIdValidated, Group@1),
+            NewMap = maps:merge(DefaultMap, Group@1),
+            ?LOG_DEBUG("NewMap: ~p", [NewMap]),
+            case dog_json_schema:validate(?VALIDATION_TYPE, NewMap) of
                 ok ->
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
                             reql:table(X, ?TYPE_TABLE),
-                            reql:insert(X, Group@2, #{return_changes => always})
+                            reql:insert(X, NewMap, #{return_changes => always})
                         end
                     ),
                     NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
@@ -89,25 +86,19 @@ create(Group@0) when is_map(Group@0) ->
 
 -spec delete(GroupId :: binary()) -> (ok | {error, Error :: iolist()}).
 delete(Id) ->
-    case dog_group:in_profile(Id) of
-        {false, []} ->
-            {ok, R} = dog_rethink:run(
-                fun(X) ->
-                    reql:db(X, dog),
-                    reql:table(X, ?TYPE_TABLE),
-                    reql:get(X, Id),
-                    reql:delete(X)
-                end
-            ),
-            ?LOG_DEBUG("delete R: ~p~n", [R]),
-            Deleted = maps:get(<<"deleted">>, R),
-            case Deleted of
-                1 -> ok;
-                _ -> {error, #{<<"error">> => <<"error">>}}
-            end;
-        {true, Profiles} ->
-            ?LOG_ERROR("group ~p not deleted, in profiles: ~p~n", [Id, Profiles]),
-            {error, #{<<"errors">> => #{<<"in active profile">> => Profiles}}}
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get(X, Id),
+            reql:delete(X)
+        end
+    ),
+    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    Deleted = maps:get(<<"deleted">>, R),
+    case Deleted of
+        1 -> ok;
+        _ -> {error, #{<<"error">> => <<"error">>}}
     end.
 
 -spec get_all() -> {ok, list()}.
