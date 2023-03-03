@@ -446,10 +446,10 @@ publish_to_queue(Ipsets) ->
     ?LOG_INFO("local publish"),
     ?LOG_DEBUG("Ipsets: ~p", [Ipsets]),
     UserData = #{
-        iptables_ruleset4_ipset => false,
-        iptables_ruleset6_ipset => false,
-        iptables_ruleset4_iptables => false,
-        iptables_ruleset6_iptables => false,
+        ruleset4_ipset => false,
+        ruleset6_ipset => false,
+        ruleset4_iptables => false,
+        ruleset6_iptables => false,
         ipsets => Ipsets
     },
     Count = 1,

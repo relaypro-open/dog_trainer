@@ -180,14 +180,19 @@ valid_iptables() ->
     Ipsets :: list()
 ) -> any().
 publish_to_queue(
-    RoutingKey, R4IpsetsIptablesRuleset, R6IpsetsIptablesRuleset, R4IptablesIptablesRuleset, R6IptablesIptablesRuleset, Ipsets
+    RoutingKey,
+    R4IpsetsIptablesRuleset,
+    R6IpsetsIptablesRuleset,
+    R4IptablesIptablesRuleset,
+    R6IptablesIptablesRuleset,
+    Ipsets
 ) ->
     ?LOG_INFO("RoutingKey: ~p", [RoutingKey]),
     UserData = #{
-        iptables_ruleset4_ipset => R4IpsetsIptablesRuleset,
-        iptables_ruleset6_ipset => R6IpsetsIptablesRuleset,
-        iptables_ruleset4_iptables => R4IptablesIptablesRuleset,
-        iptables_ruleset6_iptables => R6IptablesIptablesRuleset,
+        ruleset4_ipset => R4IpsetsIptablesRuleset,
+        ruleset6_ipset => R6IpsetsIptablesRuleset,
+        ruleset4_iptables => R4IptablesIptablesRuleset,
+        ruleset6_iptables => R6IptablesIptablesRuleset,
         ipsets => Ipsets
     },
     Count = 1,
