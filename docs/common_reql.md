@@ -245,3 +245,26 @@ r.db('dog').table('host')
     r.row("active").eq("active")
   ).group("os_version","os_distribution").count()
 ```
+
+migrate rules from profile to ruleset tables:
+```
+r.db('dog').table('profile').forEach(function(profile) {
+  return r.db('dog').table('ruleset').insert(
+    {"name": profile("name"), "rules": profile("rules"), "profile_id": profile("id")})
+})
+
+r.db('dog').table('profile').replace(function(elem) {
+  return elem.without('rules')
+})
+```
+
+roll back rules from ruleset back to profile:
+```
+r.db('dog').table('ruleset').forEach(function(ruleset) {
+  return r.db('dog').table('profile').get(ruleset('profile_id')).update(
+    {"rules": ruleset("rules")})
+})
+```
+
+
+
