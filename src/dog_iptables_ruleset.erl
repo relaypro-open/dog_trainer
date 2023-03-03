@@ -541,7 +541,6 @@ json_to_rule(
             Ports = get_ports(maps:get(<<"ports">>, Service)),
             %ICMP ping request input becomes ICMP ping response output
             Ports@1 = get_ports_list(Direction, Protocol, Ports),
-            _Order = get_order(maps:get(<<"order">>, Json)),
             States = get_states(maps:get(<<"states">>, Json), Symmetric),
             _Log = get_log(maps:get(<<"log">>, Json)),
             _LogPrefix = get_log_prefix(maps:get(<<"log_prefix">>, Json)),
@@ -1240,10 +1239,6 @@ get_comment_json(CommentJson) ->
                     io_lib:format(" -m comment --comment \"~s\"", [Other])
             end
     end.
-
--spec get_order(integer()) -> string().
-get_order(Order) ->
-    integer_to_list(Order).
 
 -spec get_action(Action :: binary(), Version :: binary(), RuleType :: atom()) -> string() | atom().
 get_action(Action, Version, RuleType) ->

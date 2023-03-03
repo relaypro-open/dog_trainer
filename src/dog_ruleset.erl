@@ -259,7 +259,6 @@ rule_to_text(Rule, Keys) ->
 -spec to_text(Rules :: map()) -> {'ok', iolist()}.
 to_text(Rules) ->
     Keys = [
-        <<"order">>,
         <<"group">>,
         <<"service">>,
         <<"states">>,

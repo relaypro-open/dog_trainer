@@ -30,6 +30,10 @@ start_link() ->
 init([]) ->
     {ok,
         {{one_for_one, 100, 6000}, [
+            {ruleset_watcher, {dog_ruleset_watcher, start_link, []}, permanent, 5000, worker, [
+                dog_ruleset_watcher
+            ]},
+
             {profile_watcher, {dog_profile_watcher, start_link, []}, permanent, 5000, worker, [
                 dog_profile_watcher
             ]},

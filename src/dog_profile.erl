@@ -870,7 +870,6 @@ rule_to_text(Rule, Keys) ->
 -spec to_text(Profile :: map()) -> {'ok', iolist()}.
 to_text(Profile) ->
     Keys = [
-        <<"order">>,
         <<"group">>,
         <<"service">>,
         <<"states">>,
