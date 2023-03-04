@@ -14,6 +14,7 @@
     get_by_profile_id/1,
     get_id_by_profile_id/1,
     get_all/0,
+    get_all_grouped_by_id/0,
     get_schema/0,
     update/2
 ]).
@@ -65,8 +66,7 @@ get_all() ->
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
-            reql:table(X, ?TYPE_TABLE),
-            reql:pluck(X, [<<"name">>, <<"id">>, <<"created">>])
+            reql:table(X, ?TYPE_TABLE)
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
@@ -285,12 +285,20 @@ where_used(RulesetId) ->
     ProfileId = maps:get(<<"profile_id">>, Ruleset),
     {ok, ProfileId}.
 
+-spec get_all_grouped_by_id() -> map().
+get_all_grouped_by_id() ->
+    {ok, All} = dog_ruleset_api_v2:get_all(),
+    maps:from_list([{maps:get(<<"id">>, Ruleset), Ruleset} || Ruleset <- All]).
+
 -spec ids_to_names(Rules :: map()) -> Rules :: {ok | error, map()}.
 ids_to_names(Rules) ->
     case Rules of
         _ when not is_map(Rules) ->
             Rules;
         _ ->
+            %ProfileId = maps:get(<<"profile_id">>, Rules,[]),
+            %ProfilesById = get_all_grouped_by_id(),
+            %ProfileName = maps:get(<<"name">>,maps:get(ProfileId,ProfilesById,[])),
             Inbound = nested:get([<<"rules">>, <<"inbound">>], Rules, []),
             Outbound = nested:get([<<"rules">>, <<"outbound">>], Rules, []),
             ServicesById = dog_service:get_all_grouped_by_id(),
@@ -315,6 +323,7 @@ ids_to_names(Rules) ->
                 <<"outbound">> => OutboundReplaced
             },
             maps:put(<<"rules">>, NewRules, Rules)
+            %maps:put(<<"profile_id">>, ProfileName, Rules1)
     end.
 
 rule_ids_to_names(Rules, ServicesById, ZonesById, GroupsById) ->

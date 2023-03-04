@@ -734,7 +734,7 @@ update(Id, UpdateMap) ->
                         <<"rules">> => Rules,
                         <<"profile_id">> => ProfileId
                     },
-                    {true, _NewRulesetId} = dog_ruleset:update(RulesetId, RulesMap@0),
+                    {_, _NewRulesetId} = dog_ruleset:update(RulesetId, RulesMap@0),
                     NewProfile = maps:merge(OldProfile, UpdateMap@0),
                     case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
                         ok ->

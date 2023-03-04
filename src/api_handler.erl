@@ -38,7 +38,8 @@ handler_lookup(<<"host">>) -> dog_host;
 handler_lookup(<<"link">>) -> dog_link;
 handler_lookup(<<"profile">>) -> dog_profile;
 handler_lookup(<<"service">>) -> dog_service;
-handler_lookup(<<"zone">>) -> dog_zone.
+handler_lookup(<<"zone">>) -> dog_zone;
+handler_lookup(<<"ruleset">>) -> dog_ruleset.
 
 content_types_provided(Req, State) ->
     {
