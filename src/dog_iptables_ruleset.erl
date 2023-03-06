@@ -749,7 +749,7 @@ generate_basic_rule_unset(
                     end,
                     ZoneAddresses
                 );
-            {<<"ROLE">>, <<"ANY">>} ->
+            {G, <<"ANY">>} when G =:= <<"ROLE">> ; G =:= <<"GROUP">> ->
                 Addresses = maps:get(Group, IpRoleMap, []),
                 RoleAddresses =
                     case Chain of
@@ -775,7 +775,7 @@ generate_basic_rule_unset(
                     end,
                     RoleAddresses
                 );
-            {<<"ROLE">>, _} ->
+            {G, _} when G =:= <<"ROLE">> ; G =:= <<"GROUP">> ->
                 Addresses = maps:get(Group, IpRoleMap, []),
                 RoleAddresses =
                     case Chain of
@@ -1108,7 +1108,7 @@ get_service_name(ServiceId, ServiceIdMap) ->
 ) -> binary().
 get_group_name(GroupType, Group, GroupIdMap, ZoneIdMap) ->
     case GroupType of
-        <<"ROLE">> ->
+        G when G =:= <<"ROLE">> ; G =:= <<"GROUP">> ->
             %get_group_name_by_id(Group);
             maps:get(<<"name">>, maps:get(Group, GroupIdMap));
         <<"ZONE">> ->
@@ -1131,7 +1131,7 @@ get_ipset_name(GroupName, GroupType, Sep, Version) ->
                 case GroupType of
                     <<"ANY">> ->
                         <<"ANY">>;
-                    <<"ROLE">> ->
+                    G when G =:= <<"ROLE">> ; G =:= <<"GROUP">> ->
                         <<GroupName/bitstring, Sep/bitstring, <<"g">>/bitstring,
                             Version/bitstring>>;
                     <<"ZONE">> ->
