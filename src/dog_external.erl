@@ -25,7 +25,6 @@
     get_all_active/0,
     get_all_active_union_ec2_sgs/0,
     get_schema/0,
-    %get_thumper_spec/1,
     grouped_by_ipset_name/0,
     grouped_by_ipset_name/4,
     stop_external_broker_connection/1,
@@ -107,40 +106,6 @@ turtle_connection_config(Link) ->
             ]}
         ]
     }.
-
-%get_thumper_spec(Link) ->
-%  Connection = maps:get(<<"connection">>,Link),
-%  ThumperSpec =
-%  [
-%   {erlang:list_to_atom(
-%      binary:bin_to_list(
-%        maps:get(<<"name">>,Link))),
-%    [
-%     {rabbitmq_config,
-%      [
-%       {host, binary:bin_to_list(maps:get(<<"host">>,Connection))},
-%       {port, maps:get(<<"port">>,Connection)},
-%       {api_port, maps:get(<<"api_port">>,Connection)},
-%       {virtual_host, maps:get(<<"virtual_host">>,Connection)},
-%       {user, maps:get(<<"user">>,Connection)},
-%       {password, maps:get(<<"password">>,Connection)},
-%       {ssl_options, [{cacertfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"cacertfile">>],Connection))},
-%                      {certfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"certfile">>],Connection))},
-%                      {keyfile, binary:bin_to_list(nested:get([<<"ssl_options">>,<<"keyfile">>],Connection))},
-%                      {verify, erlang:list_to_atom(
-%                                 binary:bin_to_list(
-%                                   nested:get([<<"ssl_options">>,<<"verify">>],Connection)))},
-%                      {server_name_indication, erlang:list_to_atom(
-%                                                 binary:bin_to_list(
-%                                                   nested:get([<<"ssl_options">>,<<"server_name_indication">>],Connection)))},
-%                      {fail_if_no_peer_cert, nested:get([<<"ssl_options">>,<<"fail_if_no_peer_cert">>],Connection)}
-%                     ]}
-%      ]
-%     }
-%    ]
-%   }
-%  ],
-%  ThumperSpec.
 
 -spec get_by_name(Name :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_name(Name) ->
@@ -237,7 +202,6 @@ dump_all_active() ->
             [] ->
                 [];
             Else ->
-                %Else
                 lists:map(
                     fun(E) ->
                         ExternalName = maps:get(<<"name">>, E),
@@ -274,7 +238,6 @@ dump_all() ->
             [] ->
                 [];
             Else ->
-                %Else
                 lists:map(
                     fun(E) ->
                         ExternalName = maps:get(<<"name">>, E),
@@ -383,8 +346,6 @@ replace(Id, UpdateMap) ->
             NewExternal3 = maps:put(<<"id">>, Id, NewExternal2),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewExternal3) of
                 ok ->
-                    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-                    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
@@ -486,147 +447,6 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
     replace(ExtId, NewExt),
     ok.
 
-%set_inactive_by_id/1,
-
-%% ------------------------------------------------------------------
-%% Dev/Test Definitions
-%% ------------------------------------------------------------------
-%%
-%-spec publish_to_inbound_queue(IpsetExternalMap :: map()) -> any().
-%publish_to_inbound_queue(IpsetExternalMap) ->
-%    ?LOG_DEBUG("IpsetExternalMap: ~p",[IpsetExternalMap]),
-%    ExternalEnvName = maps:get(<<"name">>,IpsetExternalMap),
-%    {ok,LocalEnvName} = application:get_env(dog_trainer, env),
-%    UserData = #{
-%      ipsets => jsx:encode(IpsetExternalMap),
-%      name => LocalEnvName
-%                },
-%    Count = 1,
-%    Pid = erlang:self(),
-%    Message = term_to_binary([
-%                              {count, Count},
-%                              {local_time, calendar:local_time()},
-%                              {pid, Pid},
-%                              {user_data, UserData}
-%                             ]),
-%    RoutingKey = ExternalEnvName,
-%    ?LOG_INFO("~p, ~p, ~p",[Message, <<"inbound">>, RoutingKey]),
-%    Response = thumper:publish(Message, <<"inbound">>, RoutingKey),
-%    Response.
-
-%d2_ipsets() ->
-%  #{
-%  <<"name">> => <<"d2">>,
-%  <<"v4">> =>
-%  #{
-%      <<"groups">> =>
-%      #{
-%          <<"test_group">> => [<<"1.1.1.1">>]
-%         },
-%      <<"zones">> =>
-%      #{
-%          <<"test_zone">> => [<<"9.9.9.9">>]
-%         }
-%     },
-%  <<"v6">> =>
-%  #{
-%      <<"groups">> =>
-%      #{
-%          <<"test_group">> => [<<"fd42:aeb8:a6c5:b75d:216:3eff:fe5c:e3eb/64">>]
-%         },
-%      <<"zones">> =>
-%      #{
-%          <<"test_zone">> => [<<"ad42:aeb8:a6c5:b75d:216:3eff:fe5c:e3eb/64">>]
-%         }
-%     }
-% }.
-%
-%d2_ipsets2() ->
-%  #{
-%  <<"name">> => <<"d2">>,
-%  <<"v4">> =>
-%  #{
-%      <<"groups">> =>
-%      #{
-%          <<"test_group">> => [<<"10.1.1.1">>]
-%         },
-%      <<"zones">> =>
-%      #{
-%          <<"test_zone">> => [<<"10.9.9.9">>]
-%         }
-%     },
-%  <<"v6">> =>
-%  #{
-%      <<"groups">> =>
-%      #{
-%          <<"test_group">> => [<<"bd42:aeb8:a6c5:b75d:216:3eff:fe5c:e3eb/64">>]
-%         },
-%      <<"zones">> =>
-%      #{
-%          <<"test_zone">> => [<<"cd42:aeb8:a6c5:b75d:216:3eff:fe5c:e3eb/64">>]
-%         }
-%     }
-% }.
-%
-%d3_ipsets() ->
-%  #{
-%  <<"name">> => <<"d3">>,
-%  <<"v4">> =>
-%  #{
-%      <<"groups">> =>
-%      #{
-%          <<"test_group">> => [<<"3.1.1.1">>]
-%         },
-%      <<"zones">> =>
-%      #{
-%          <<"test_zone">> => [<<"3.9.9.9">>]
-%         }
-%     },
-%  <<"v6">> =>
-%  #{
-%      <<"groups">> =>
-%      #{
-%          <<"test_group">> => [<<"3d42:aeb8:a6c5:b75d:216:3eff:fe5c:e3eb/64">>]
-%         },
-%      <<"zones">> =>
-%      #{
-%          <<"test_zone">> => [<<"4d42:aeb8:a6c5:b75d:216:3eff:fe5c:e3eb/64">>]
-%         }
-%     }
-% }.
-%
-%d3_ipsets2() ->
-%  #{
-%  <<"name">> => <<"d3">>,
-%  <<"v4">> =>
-%  #{
-%      <<"groups">> =>
-%      #{
-%          <<"test_group">> => [<<"4.1.1.1">>]
-%         },
-%      <<"zones">> =>
-%      #{
-%          <<"test_zone">> => [<<"4.9.9.9">>]
-%         }
-%     },
-%  <<"v6">> =>
-%  #{
-%      <<"groups">> =>
-%      #{
-%          <<"test_group">> => [<<"5d42:aeb8:a6c5:b75d:216:3eff:fe5c:e3eb/64">>]
-%         },
-%      <<"zones">> =>
-%      #{
-%          <<"test_zone">> => [<<"6d42:aeb8:a6c5:b75d:216:3eff:fe5c:e3eb/64">>]
-%         }
-%     }
-% }.
-%
-%test_create_env() ->
-%	publish_to_inbound_queue(d2_ipsets()).
-%
-%test_create_env2() ->
-%	publish_to_inbound_queue(d2_ipsets2()).
 
 -spec get_schema() -> binary().
 get_schema() ->

@@ -17,51 +17,19 @@
     get_schema/0,
     update/2,
     update_by_hostkey/2
-    %update_by_name/2
 ]).
 
 -export([
-    %get_active_by_id/1,
     get_all_active_interfaces/0,
-    %get_all_ips/0,
-    %get_id_by_hostkey/1,
-    %get_id_by_name/1,
-    %get_state_by_id/1,
-    %group_hashes/0,
-    hash_check/1,
-    %host_hashes/0
+   hash_check/1,
     init/0,
-    %ipset_hash_age_check/1,
-    %ipset_hash_age_check/2,
-    %ipset_hash_age_update/2,
-    %iptables_hash_age_check/1,
-    %iptables_hash_age_check/2,
-    %iptables_hash_age_update/2,
-    %iptables_hash_logic/4,
-    keepalive_age_check/0,
+   keepalive_age_check/0,
     keepalive_age_check/1,
     keepalive_check/0,
     keepalive_check/1,
-    %new_state/4,
     retirement_check/0,
     retirement_check/1,
-    %send_hash_alert/2,
-    %send_hash_recover/2,
-    %send_keepalive_alert/1,
-    %send_keepalive_recover/1,
-    %send_retirement_alert/1,
-    %set_active_by_id/1,
-    %set_active_by_name/1,
-    %set_hosts_active/1,
-    %set_hosts_inactive/1,
-    %set_hosts_retired/1,
-    %set_inactive_by_id/1,
-    %set_inactive_by_name/1,
-    %set_retired_by_id/1,
-    %set_retired_by_name/1,
-    %set_state_by_id/2,
     state_event/3
-    %update_active/2,
 ]).
 
 -spec keepalive_check() -> {ok, Unalive :: list()}.
@@ -75,13 +43,10 @@ keepalive_check() ->
 
 -spec keepalive_check(TimeCutoff :: number()) -> {ok, list()}.
 keepalive_check(TimeCutoff) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, ?TYPE_TABLE),
-            %reql:filter(X,#{<<"active">> => <<"active">>}),
             reql:pluck(X, [<<"id">>, <<"name">>, <<"keepalive_timestamp">>])
         end
     ),
@@ -110,8 +75,6 @@ retirement_check() ->
 
 -spec retirement_check(TimeCutoff :: number()) -> {ok, list()}.
 retirement_check(TimeCutoff) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -133,43 +96,6 @@ retirement_check(TimeCutoff) ->
     ],
     ?LOG_INFO("OldAgents: ~p", [OldAgents]),
     {ok, OldAgents}.
-
-%-spec group_hashes() -> {ok, map()}.
-%group_hashes() ->
-%    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-%    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-%    {ok, R} = dog_rethink:run(
-%	fun(X) ->
-%		reql:db(X, dog),
-%		reql:table(X,group),
-%%        reql:has_fields(X,[<<"hash4_ipsets">>,<<"hash6_ipsets">>,<<"hash4_iptables">>,<<"hash6_iptables">>]),
-%        reql:pluck(X,[<<"name">>,<<"hash4_ipsets">>, <<"hash6_ipsets">>, <<"hash4_iptables">>, <<"hash6_iptables">>])
-%    end),
-%    {ok, GroupResult} = rethink_cursor:all(R),
-%    R1 = lists:flatten(GroupResult),
-%    Groups = [ A || A <- R1],
-%    GroupsList = lists:map(fun(G) ->
-%                      [{maps:get(<<"name">>,G),maps:remove(<<"name">>,G)}] end, Groups),
-%    GroupsMap = maps:from_list(lists:flatten(GroupsList)),
-%    {ok, GroupsMap}.
-
-%-spec host_hashes() -> list().
-%host_hashes() ->
-%    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-%    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-%    {ok, R} = dog_rethink:run(
-%	fun(X) ->
-%		reql:db(X, dog),
-%		reql:table(X,host),
-%        reql:has_fields(X,[<<"group">>,<<"hash4_ipsets">>,<<"hash6_ipsets">>,<<"hash4_iptables">>,<<"hash6_iptables">>,<<"ipset_hash">>]),
-%        reql:filter(X,#{<<"active">> => <<"active">>}),
-%        reql:filter(X,fun(Y) -> reql:bracket(Y, <<"group">>), reql:ne(Y, <<"">>) end),
-%        reql:pluck(X,[<<"name">>,<<"group">>,<<"hash4_ipsets">>,<<"hash6_ipsets">>,<<"hash4_iptables">>,<<"hash6_iptables">>,<<"ipset_hash">>])
-%    end),
-%    {ok, HostResult} = rethink_cursor:all(R),
-%    R1 = lists:flatten(HostResult),
-%    Hosts = [ A || A <- R1],
-%    Hosts.
 
 -spec hash_fail_count_check(HostId :: binary(), HashCheck :: (true | false), HashStatus :: map()) ->
     {true | false, map()}.
@@ -211,8 +137,6 @@ hash_fail_count(HostId) ->
 -spec hash_fail_count_update(HostId :: binary(), Count :: number()) ->
     {true, binary()} | {false, atom()}.
 hash_fail_count_update(HostId, Count) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -232,7 +156,6 @@ hash_fail_count_update(HostId, Count) ->
 
 -spec hash_check(HostId :: binary()) -> {pass, map()} | {fail, map()}.
 hash_check(Host) ->
-    %{ok, Host} = get_by_id(HostId),
     HostId = maps:get(<<"id">>, Host),
     HostName = maps:get(<<"name">>, Host),
     GroupName = maps:get(<<"group">>, Host),
@@ -259,19 +182,7 @@ hash_check(Host) ->
 
     IptablesHashAgeCheck = iptables_hash_age_check(HostId),
     Now = dog_time:timestamp(),
-    %case IptablesHashAgeCheck of
-    %    true ->
-    %        iptables_hash_age_update(HostId, Now);
-    %    _ ->
-    %        noop
-    %end,
     IpsetHashAgeCheck = ipset_hash_age_check(HostId),
-    %case IpsetHashAgeCheck of
-    %    true ->
-    %        ipset_hash_age_update(HostId, Now);
-    %    _ ->
-    %        noop
-    %end,
     HashStatus = #{
         <<"name">> => HostName,
         <<"id">> => HostId,
@@ -308,37 +219,6 @@ hash_check(Host) ->
                     {fail, HashStatus}
             end
     end.
-%    LastHostHash4Ipsets, LastHostHash6Ipsets, LastHostHash4Iptables, LastHostHash6Iptables, LastHostIpsetHash
-%send_hash_metrics(FailedChecks) ->
-%    MetricNames = [<<"hash4_iptables">>,<<"hash6_iptables">>,<<"hash4_ipsets">>,<<"hash6_ipsets">>,<<"ipset_hash">>],
-%    Metrics = lists:map(fun(MetricName) ->
-%        MetricNumber = length([HostName || {HostName,Map} <- maps:to_list(FailedChecks), maps:get(MetricName,Map) == false]),
-%        {MetricName, MetricNumber} end, MetricNames),
-%    imetrics:set_gauge(<<"hash_failures">>,Metrics),
-%    ok.
-
-%-spec update_last_hashes(Id :: binary(),HostHash4Ipsets :: binary(), HostHash6Ipsets :: binary(), HostHash4Iptables :: binary(), HostHash6Iptables :: binary(),HostIpsetHash :: binary()) -> {true,binary()} | {false,binary()} | {false, no_updated}.
-%update_last_hashes(Id, HostHash4Ipsets, HostHash6Ipsets, HostHash4Iptables, HostHash6Iptables, HostIpsetHash) ->
-%    {ok, R} = dog_rethink:run(
-%          fun(X) ->
-%                  reql:db(X, dog),
-%                  reql:table(X, ?TYPE_TABLE),
-%                  reql:get(X, Id),
-%                  reql:update(X,#{
-%                                  <<"last_hash4_ipsets">> => HostHash4Ipsets,
-%                                  <<"last_hash6_ipsets">> => HostHash6Ipsets,
-%                                  <<"last_hash4_iptables">> => HostHash4Iptables,
-%                                  <<"last_hash6_iptables">> => HostHash6Iptables,
-%                                  <<"last_ipset_hash">> => HostIpsetHash
-%                                 })
-%          end),
-%    Replaced = maps:get(<<"replaced">>, R),
-%    Unchanged = maps:get(<<"unchanged">>, R),
-%    case {Replaced,Unchanged} of
-%        {1,0} -> {true,Id};
-%        {0,1} -> {false,Id};
-%        _ -> {false, no_updated}
-%    end.
 
 -spec ipset_hash_age_check(HostId :: binary()) -> boolean().
 ipset_hash_age_check(HostId) ->
@@ -351,8 +231,6 @@ ipset_hash_age_check(HostId) ->
 
 -spec ipset_hash_age_check(HostId :: binary(), TimeCutoff :: number()) -> boolean().
 ipset_hash_age_check(HostId, TimeCutoff) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, IpsetHashTimestamp} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -382,8 +260,6 @@ iptables_hash_age_check(HostId) ->
 
 -spec iptables_hash_age_check(HostId :: binary(), TimeCutoff :: number()) -> boolean().
 iptables_hash_age_check(HostId, TimeCutoff) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, IptablesHashTimestamp} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -405,8 +281,6 @@ iptables_hash_age_check(HostId, TimeCutoff) ->
 -spec iptables_hash_age_update(HostId :: binary(), Timestamp :: number()) ->
     {true, binary()} | {false, atom()}.
 iptables_hash_age_update(HostId, Timestamp) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -427,8 +301,6 @@ iptables_hash_age_update(HostId, Timestamp) ->
 -spec ipset_hash_age_update(HostId :: binary(), Timestamp :: number()) ->
     {true, binary()} | {false, atom()}.
 ipset_hash_age_update(HostId, Timestamp) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -445,37 +317,6 @@ ipset_hash_age_update(HostId, Timestamp) ->
         {0, 1} -> {false, HostId};
         _ -> {false, no_updated}
     end.
-%-spec hash_age_check() -> {ok, Unalive :: list()}.
-%hash_age_check() ->
-%    Now =  erlang:system_time(second),
-%    KeepAliveAlertSeconds = application:get_env(dog_trainer,hashcheck_alert_seconds,30),
-%    TimeCutoff = Now - KeepAliveAlertSeconds,
-%    ?LOG_DEBUG("Now: ~p",[calendar:system_time_to_rfc3339(Now)]),
-%    ?LOG_DEBUG("TimeCutoff: ~p",[calendar:system_time_to_rfc3339(TimeCutoff)]),
-%    hash_age_check(TimeCutoff).
-
-%-spec hash_age_check(TimeCutoff :: number()) -> {ok, list()}.
-%hash_age_check(TimeCutoff) ->
-%    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-%    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-%    {ok, R} = dog_rethink:run(
-%        fun(X) ->
-%            reql:db(X, dog),
-%            reql:table(X, ?TYPE_TABLE),
-%            reql:filter(X,#{<<"active">> => <<"active">>}),
-%            reql:filter(X,fun(Y) -> reql:bracket(Y, <<"hash_timestamp">>), reql:lt(Y,<<"keepalive_timestamp">>) end),
-%            reql:pluck(X,[<<"id">>,<<"name">>,<<"hash_timestamp">>,<<"keepalive_timestamp">>])
-%        end),
-%    {ok, ResultTime} = rethink_cursor:all(R),
-%    ?LOG_INFO("ResultTime: ~p",[ResultTime]),
-%    R1 = lists:flatten(ResultTime),
-%    Ids = [maps:get(<<"id">>,X) || X <- R1],
-%    Names = [maps:get(<<"name">>,X) || X <- R1],
-%    Timestamps = [ maps:get(<<"hash_timestamp">>,X) || X <- R1],
-%    ZippedList = lists:zip3(Ids,Names,Timestamps),
-%    OldAgents = [#{<<"id">> => Id,<<"name">> => Name,<<"hash_timestamp">> => TimeStamp} || {Id,Name,TimeStamp} <- ZippedList, TimeStamp < TimeCutoff],
-%    ?LOG_INFO("OldAgents: ~p",[OldAgents]),
-%    {ok, OldAgents}.
 
 -spec keepalive_age_check() -> {ok, Unalive :: list()}.
 keepalive_age_check() ->
@@ -488,8 +329,6 @@ keepalive_age_check() ->
 
 -spec keepalive_age_check(TimeCutoff :: number()) -> {ok, list()}.
 keepalive_age_check(TimeCutoff) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -511,17 +350,6 @@ keepalive_age_check(TimeCutoff) ->
     ],
     ?LOG_INFO("OldAgents: ~p", [OldAgents]),
     {ok, OldAgents}.
-
-%-spec iptables_check_hashes(HostChecks :: list()) -> {list(), list()}.
-%iptables_check_hashes(HostChecks) ->
-%    ?LOG_INFO("HostChecks: ~p",[HostChecks]),
-%    lists:partition(fun(Host) ->
-%                HashCheck4Ipsets = maps:get(<<"hash4_ipsets">>,Host),
-%                HashCheck6Ipsets = maps:get(<<"hash6_ipsets">>,Host),
-%                HashCheck4Iptables = maps:get(<<"hash4_iptables">>,Host),
-%                HashCheck6Iptables = maps:get(<<"hash6_iptables">>,Host),
-%                %TODO: enable when ipv6 iptables_ruleset generation fixed
-%                iptables_hash_logic(HashCheck4Ipsets,HashCheck6Ipsets,HashCheck4Iptables,HashCheck6Iptables) end, HostChecks).
 
 -spec iptables_hash_logic(
     HashCheck4Ipsets :: boolean(),
@@ -720,8 +548,6 @@ init() ->
 
 -spec get_document_by_id(binary()) -> {ok, map()} | {error, atom()}.
 get_document_by_id(Id) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -736,8 +562,6 @@ get_document_by_id(Id) ->
 
 -spec get_by_name(binary()) -> {ok, map()} | {error, notfound}.
 get_by_name(Name) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -755,8 +579,6 @@ get_by_name(Name) ->
 
 -spec get_by_hostkey(binary()) -> {ok, map()} | {error, notfound}.
 get_by_hostkey(Name) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -780,8 +602,6 @@ get_by_id(HostId) ->
 
 -spec get_all() -> {ok, list()}.
 get_all() ->
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-    %{ok, R} = dog_rethink:run(
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -799,8 +619,6 @@ get_all() ->
 
 -spec get_all_active() -> {ok, list()}.
 get_all_active() ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -819,7 +637,6 @@ get_all_active() ->
 
 -spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(HostMap@0) ->
-    %Name = maps:get(<<"name">>, HostMap@0),
     Hostkey = maps:get(<<"hostkey">>, HostMap@0, notfound),
     case Hostkey of
         notfound ->
@@ -865,8 +682,6 @@ update(Id, UpdateMap) ->
             NewService = maps:merge(OldService, UpdateMap),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewService) of
                 ok ->
-                    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-                    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
@@ -900,19 +715,8 @@ update_by_hostkey(HostKey, UpdateMap) ->
             {error, Reason}
     end.
 
-%-spec update_by_name(HostName :: binary(), UpdateMap :: map()) -> no_return().
-%update_by_name(HostName, UpdateMap) ->
-%    case get_id_by_name(HostName) of
-%        {ok, Id} ->
-%            update(Id, UpdateMap);
-%        {error, Reason} ->
-%            {error, Reason}
-%    end.
-
 -spec delete(Id :: binary()) -> (ok | error).
 delete(Id) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -927,24 +731,6 @@ delete(Id) ->
         1 -> ok;
         _ -> error
     end.
-
-%-spec update_active(Id :: binary(), ActiveState :: binary() ) -> { true, binary() } | {false, no_updated}.
-%update_active(Id, ActiveState) ->
-%    ?LOG_DEBUG("Setting agent active state: ~p, ~p",[Id,ActiveState]),
-%    {ok, R} = dog_rethink:run(
-%          fun(X) ->
-%                  reql:db(X, dog),
-%                  reql:table(X, ?TYPE_TABLE),
-%                  reql:get(X, Id),
-%                  reql:update(X,#{<<"active">> => ActiveState})
-%          end),
-%    Replaced = maps:get(<<"replaced">>, R),
-%    Unchanged = maps:get(<<"unchanged">>, R),
-%    case {Replaced,Unchanged} of
-%        {1,0} -> {true,Id};
-%        {0,1} -> {false,Id};
-%        _ -> {false, no_updated}
-%    end.
 
 -spec get_state_from_host(Host :: map()) -> {'error', 'notfound'} | {'ok', _}.
 get_state_from_host(Host) ->
@@ -966,31 +752,6 @@ get_state_from_host(Host) ->
                 <<"inactive_hashfail">>
         end,
     {ok, State}.
-
-%-spec get_state_by_id(Id :: binary()) -> {'error','notfound'} | {'ok',_}.
-%get_state_by_id(Id) ->
-%    case get_document_by_id(Id) of
-%        {ok, Host} ->
-%            Active = maps:get(<<"active">>,Host,<<"new">>),
-%            Hashpass =  maps:get(<<"hashpass">>,Host,true),
-%            State = case {Active,Hashpass} of
-%                {<<"retired">>,_} ->
-%                    <<"retired">>;
-%                {<<"new">>,true} ->
-%                    <<"new">>;
-%                {<<"active">>,true} ->
-%                    <<"active">>;
-%                {<<"active">>,false} ->
-%                    <<"active_hashfail">>;
-%                {<<"inactive">>,true} ->
-%                    <<"inactive">>;
-%                {<<"inactive">>,false} ->
-%                    <<"inactive_hashfail">>
-%            end,
-%            {ok, State};
-%        {error, Error} ->
-%            {error, Error}
-%    end.
 
 -spec set_state_by_id(Id :: binary(), State :: binary()) ->
     {true, binary()} | {false, binary()} | {false, no_updated}.
@@ -1036,21 +797,8 @@ get_id_by_hostkey(Hostkey) ->
             {error, Reason}
     end.
 
-%-spec get_id_by_name(Name :: binary()) -> {ok, binary()} | {error, atom()}.
-%get_id_by_name(Name) ->
-%    case get_by_name(Name) of
-%        {ok,Host} ->
-%            Id = maps:get(<<"id">>,Host),
-%            {ok, Id};
-%        {error, Reason} ->
-%            {error, Reason}
-%    end.
-
 -spec get_all_active_interfaces() -> {ok, list()}.
 get_all_active_interfaces() ->
-    %r.db("dog").table("host").filter({"active":"active"}).getField("interfaces")
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -1062,88 +810,16 @@ get_all_active_interfaces() ->
     {ok, Result} = rethink_cursor:all(R),
     Interfaces = lists:flatten(Result),
     ?LOG_INFO("Interfaces: ~p", [Interfaces]),
-    %?LOG_DEBUG("Interfaces: ~p",[Interfaces]),
     Interfaces@1 = dog_group:merge(Interfaces),
-    %?LOG_DEBUG("Interfaces@1: ~p",[Interfaces@1]),
     case Interfaces@1 of
         [] -> {ok, []};
         _ -> {ok, Interfaces@1}
     end.
 
-%-spec set_inactive_by_name(Name :: binary()) -> { true, iolist() } | {false, no_updated}.
-%set_inactive_by_name(Name) ->
-%    {ok, Id} = get_id_by_name(Name),
-%    update_active(Id,<<"inactive">>).
-%
-%-spec set_active_by_name(Name :: binary()) -> { true, iolist() } | {false, no_updated}.
-%set_active_by_name(Name) ->
-%    {ok, Id} = get_id_by_name(Name),
-%    update_active(Id,<<"active">>).
-%
-%-spec set_retired_by_name(Name :: binary()) -> { true, iolist() } | {false, no_updated}.
-%set_retired_by_name(Name) ->
-%    {ok, Id} = get_id_by_name(Name),
-%    update_active(Id,<<"retired">>).
-%
-%-spec set_inactive_by_id(Id :: binary()) -> { true, iolist() } | {false, no_updated}.
-%set_inactive_by_id(Id) ->
-%    update_active(Id,<<"inactive">>).
-%
-%-spec set_active_by_id(Id :: binary()) -> { true, iolist() } | {false, no_updated}.
-%set_active_by_id(Id) ->
-%    update_active(Id,<<"active">>).
-%
-%-spec set_retired_by_id(Id :: binary()) -> { true, iolist() } | {false, no_updated}.
-%set_retired_by_id(Id) ->
-%    update_active(Id,<<"retired">>).
-%
-%-spec get_active_by_id(Id :: binary()) -> {'error','notfound'} | {'ok',_}.
-%get_active_by_id(Id) ->
-%    case get_document_by_id(Id) of
-%        {ok, Host} ->
-%            {ok, maps:get(<<"active">>,Host)};
-%        {error, Error} ->
-%            {error, Error}
-%    end.
-%
-%-spec set_hosts_active( Ids :: list() ) -> ok.
-%set_hosts_active(Ids) ->
-%    ?LOG_INFO("set_hosts_active: ~p",[Ids]),
-%    lists:foreach(fun(Id) -> set_active_by_id(Id) end, Ids),
-%    ok.
-%
-%-spec set_hosts_inactive( Ids :: list() ) -> ok.
-%set_hosts_inactive(Ids) ->
-%    ?LOG_INFO("set_hosts_inactive: ~p",[Ids]),
-%    lists:foreach(fun(Id) -> set_inactive_by_id(Id) end, Ids),
-%    ok.
-%
-%-spec set_hosts_retired( Ids :: list() ) -> ok.
-%set_hosts_retired(Ids) ->
-%    ?LOG_INFO("set_hosts_retired: ~p",[Ids]),
-%    lists:foreach(fun(Id) -> set_retired_by_id(Id) end, Ids),
-%    ok.
 
 -spec get_schema() -> binary().
 get_schema() ->
     dog_json_schema:get_file(<<"host">>).
-
-%-spec get_all_ips() -> {ok, list()}.
-%get_all_ips() ->
-%    {ok, R} = dog_rethink:run(
-%                              fun(X) ->
-%                                      reql:db(X, dog),
-%                                      reql:table(X, ?TYPE_TABLE),
-%                                      reql:filter(X,#{<<"active">> => <<"active">>}),
-%                                      reql:get_field(X, <<"interfaces">>)
-%                              end),
-%    {ok, Result} = rethink_cursor:all(R),
-%    Interfaces = case lists:flatten(Result) of
-%                [] -> [];
-%                Else -> Else
-%            end,
-%    Ips = lists:map(fun(Interface) -> element(2,dog_ips:addresses_from_interfaces(jsx:decode(Interface))) end, Interfaces),
-%    {ok, lists:flatten(Ips)}.
 
 -spec state_event(
     Id :: binary(),

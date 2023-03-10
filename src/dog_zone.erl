@@ -45,8 +45,6 @@ init() ->
 -spec get_name_by_id(ZoneId :: binary()) ->
     {ok, binary()} | {ok, null} | {ok, map()} | {error, atom()}.
 get_name_by_id(ZoneId) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     R = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -180,8 +178,6 @@ get_all_ipv6s_by_name(Name) ->
 
 -spec get_document_by_id(ZoneId :: binary()) -> {ok, map()} | {ok, null} | {error, atom()}.
 get_document_by_id(Id) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -196,8 +192,6 @@ get_document_by_id(Id) ->
 
 -spec get_by_name(binary()) -> {'ok', map()} | {'error', notfound}.
 get_by_name(Name) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -224,8 +218,6 @@ get_by_id(ZoneId) ->
 
 -spec get_all() -> {ok, list()}.
 get_all() ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -266,8 +258,6 @@ create(ZoneMap@0) ->
     ExistingNames = [maps:get(<<"name">>, Zone) || Zone <- ExistingZones],
     case lists:member(Name, ExistingNames) of
         false ->
-            %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-            %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
@@ -290,8 +280,6 @@ update(Id, UpdateMap@0) ->
             NewService = maps:merge(OldService, UpdateMap@1),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewService) of
                 ok ->
-                    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-                    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
@@ -338,14 +326,6 @@ delete(Id) ->
             ?LOG_INFO("zone ~p not deleted, in profiles: ~p~n", [Id, Profiles]),
             {error, #{<<"errors">> => #{<<"in active profile">> => Profiles}}}
     end.
-
-%r.db('dog').table('profile')
-%  .filter(function(group) {
-%        return group("rules")("inbound")("group").contains("058e7bc0-1ea1-463d-babf-73a39110edad")}).getField("id").union(
-%        r.db('dog').table('profile')
-%          .filter(function(group) {
-%                return group("rules")("outbound")("group").contains("058e7bc0-1ea1-463d-babf-73a39110edad")}).getField("id")).distinct()
-%                .setIntersection(r.db("dog").table("group")("profile_id").distinct())
 
 %TODO: differentiate between ROLE(Group) and ZONE(Zone) groups.
 -spec where_used_inbound(ZoneId :: binary()) -> {ok, ProfileIds :: list()}.

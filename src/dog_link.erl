@@ -61,8 +61,6 @@ get_id_by_name(Name) ->
 
 -spec get_by_name(Name :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_name(Name) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -76,7 +74,6 @@ get_by_name(Name) ->
         [] ->
             ?LOG_ERROR("error, link name not found: ~p", [Name]),
             {error, notfound};
-        %throw(link_not_found);
         _ ->
             Link = hd(Result),
             {ok, Link}
@@ -84,8 +81,6 @@ get_by_name(Name) ->
 
 -spec get_by_id(Id :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_id(Id) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -96,7 +91,6 @@ get_by_id(Id) ->
     case R of
         null ->
             {error, notfound};
-        %throw(link_not_found);
         _ ->
             Link = R,
             {ok, Link}
@@ -145,8 +139,6 @@ update(Id, UpdateMap) ->
             NewLink = maps:merge(OldLink, UpdateMap),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewLink) of
                 ok ->
-                    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-                    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
@@ -180,8 +172,6 @@ create(LinkMap@0) ->
         false ->
             case dog_json_schema:validate(?VALIDATION_TYPE, LinkMap@0) of
                 ok ->
-                    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-                    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
@@ -244,8 +234,6 @@ dump_all() ->
 
 -spec get_all_active() -> {ok, list()} | error.
 get_all_active() ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -263,12 +251,9 @@ get_all_active() ->
         _ ->
             {ok, Links}
     end.
-%ObfuscatedLinks = [obfuscate_password(Link) || Link <- Links],
 
 -spec get_all_active_outbound() -> {ok, list()} | error.
 get_all_active_outbound() ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -292,15 +277,6 @@ get_all_active_outbound() ->
             ],
             {ok, OutboundLinks}
     end.
-
-%-spec obfuscate_password(Link :: map()) -> {ok, Link :: map()}.
-%obfuscate_password(Link) ->
-%  case nested:get([<<"connection">>,<<"password">>],Link,not_found) of
-%    not_found ->
-%      Link;
-%    _ ->
-%      nested:update([<<"connection">>,<<"password">>],<<"******">>,Link)
-%  end.
 
 -spec get_schema() -> binary().
 get_schema() ->

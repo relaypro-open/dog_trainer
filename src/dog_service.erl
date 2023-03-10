@@ -56,7 +56,6 @@ get_name_by_id(Id) ->
         {error, Error} ->
             ?LOG_ERROR("error, service id not found: ~p, ~p", [Id, Error]),
             {error, Error}
-        %throw(service_not_found)
     end.
 
 -spec get_id_by_name(Name :: binary()) -> [iolist()].
@@ -68,8 +67,6 @@ get_id_by_name(Name) ->
 
 -spec get_by_name(Name :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_name(Name) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -83,7 +80,6 @@ get_by_name(Name) ->
         [] ->
             ?LOG_ERROR("error, service name not found: ~p", [Name]),
             {error, notfound};
-        %throw(service_not_found);
         _ ->
             {ok, hd(Result)}
     end.
@@ -94,8 +90,6 @@ get_by_id(Id) ->
         <<"any">> ->
             {ok, any_service()};
         _ ->
-            %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-            %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
@@ -106,7 +100,6 @@ get_by_id(Id) ->
             case R of
                 null ->
                     {error, notfound};
-                %throw(service_not_found);
                 _ ->
                     {ok, R}
             end
@@ -177,8 +170,6 @@ update(Id, UpdateMap) ->
             NewService = maps:merge(OldService, UpdateMap),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewService) of
                 ok ->
-                    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-                    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
@@ -212,8 +203,6 @@ create(ServiceMap@0) ->
         false ->
             case dog_json_schema:validate(?VALIDATION_TYPE, ServiceMap@0) of
                 ok ->
-                    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-                    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
@@ -234,8 +223,6 @@ create(ServiceMap@0) ->
 
 -spec get_all() -> {ok, list()}.
 get_all() ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -340,30 +327,7 @@ where_used(ServiceId) ->
     {ok, Outbound} = where_used_outbound(ServiceId),
     {ok, lists:flatten(sets:to_list(sets:from_list([Inbound, Outbound])))}.
 
-%-spec where_used(ServiceId :: binary()) -> {ok, list()}.
-%Where_used(ServiceId) ->
-%    {ok, Profiles} = dog_profile:get_all(),
-%    ProfileServices = lists:map(
-%        fun(Profile) ->
-%            ProfileId = maps:get(<<"id">>, Profile),
-%            RuleId = maps:get(<<"ruleset_id">>, Profile),
-%            Services = get_all_in_rule(RuleId),
-%            ?LOG_DEBUG("Services: ~p", [Services]),
-%            {ProfileId, Services}
-%        end,
-%        Profiles
-%    ),
-%    FilteredProfiles = lists:filtermap(
-%        fun({_Id, Services}) ->
-%            lists:member(ServiceId, Services)
-%        end,
-%        ProfileServices
-%    ),
-%    {ok, [erlang:element(1, P) || P <- FilteredProfiles]}.
-
 get_all_in_rule(RuleId) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     R = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),

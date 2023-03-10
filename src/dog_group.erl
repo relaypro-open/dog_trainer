@@ -1205,10 +1205,6 @@ set_ec2_group_mappings_from_members() ->
         Ec2SgMappings
     ).
 
-%set_ec2_group_mappings_from_members(GroupName) ->
-%    SgList = dog_group:get_ec2_security_group_ids_from_members(GroupName),
-%    set_ec2_group_mappings_from_members(GroupName, SgList).
-
 set_ec2_group_mappings_from_members(GroupName, SgList) ->
     {ok, GroupId} = dog_group:get_id_by_name(GroupName),
     io:format("GroupId: ~p, SgList: ~p~n", [GroupId, maps:from_list(SgList)]),
