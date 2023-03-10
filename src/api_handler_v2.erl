@@ -41,7 +41,8 @@ handler_lookup(<<"link">>) -> dog_link_api_v2;
 handler_lookup(<<"profile">>) -> dog_profile_api_v2;
 handler_lookup(<<"service">>) -> dog_service_api_v2;
 handler_lookup(<<"zone">>) -> dog_zone_api_v2;
-handler_lookup(<<"ruleset">>) -> dog_ruleset_api_v2.
+handler_lookup(<<"ruleset">>) -> dog_ruleset_api_v2;
+handler_lookup(<<"inventory">>) -> dog_inventory_api_v2.
 
 content_types_provided(Req, State) ->
     {

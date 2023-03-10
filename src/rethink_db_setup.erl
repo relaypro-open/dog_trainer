@@ -23,7 +23,8 @@ table_schema() ->
         <<"profile">> => [<<"docker">>, <<"name">>],
         <<"ruleset">> => [<<"name">>, <<"profile_id">>],
         <<"service">> => [<<"name">>],
-        <<"zone">> => [<<"name">>]
+        <<"zone">> => [<<"name">>],
+        <<"inventory">> => [<<"name">>]
     }.
 
 -spec wait_on_rethinkdb(Connection :: pid(), DatabaseName :: binary()) -> ok | change.

@@ -1,0 +1,46 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "",
+    "definitions": {
+        "group": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[A-Za-z_](0-9A-Za-z_)*"
+                },
+                "vars": {
+                    "type": "object"
+                },
+                "hosts": {
+                    "type": "object"
+                }
+            },
+            "required": [
+              	"name",
+                "vars",
+                "hosts"
+            ]
+        }
+    },
+    "type": "object",
+    "properties" :{
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[A-Za-z_](0-9A-Za-z_)*"
+        },
+        "groups": {
+            "type": "array",
+            "items":
+            {
+                "$ref": "#/definitions/group"
+            }
+        }
+    },
+    "required": [
+        "name",
+        "groups"
+    ]
+}
