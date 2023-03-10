@@ -7,20 +7,8 @@
 
 -export([
     config/1,
-    %create_port_anywhere_ingress_rules/1,
-    %create_port_anywhere_ingress_rules_by_id/1,
-    %ingress_record_to_ppps/1,
-    %ingress_records_to_ppps/1,
-    %ip_permissions/2,
-    %ppps_to_spps/1,
     publish_ec2_sg/1,
-    %publish_ec2_sg_by_id/1,
     publish_ec2_sg_by_name/1
-    %publish_ec2_sgs/1,
-    %tuple_to_ingress_records/1,
-    %update_sg/3
-    %       create_ingress_port_rules/4,
-    %        create_ingress_rules/1,
 ]).
 
 -export([
@@ -44,18 +32,11 @@ config(Region) ->
 
 default_ingress_spps_rules(Ec2SecurityGroupId) ->
     [
-        %{tcp,0,65535,{group_id,binary:bin_to_list(Ec2SecurityGroupId)}},
-        %{udp,0,65535,{group_id,binary:bin_to_list(Ec2SecurityGroupId)}}
         {'-1', 0, 0, {group_id, binary:bin_to_list(Ec2SecurityGroupId)}}
     ].
 
 default_egress_spps_rules() ->
-    [
-        %{-1,0,0,{cidr_ip,["0.0.0.0/0"]}}
-        %{tcp,0,0,{cidr_ip,["0.0.0.0/0"]}},
-        %{udp,0,0,{cidr_ip,["0.0.0.0/0"]}},
-        %{icmp,0,0,{cidr_ip,["0.0.0.0/0"]}}
-    ].
+    [].
 
 publish_ec2_sg_by_name(DogGroupName) ->
     case dog_group:get_by_name(DogGroupName) of
@@ -65,16 +46,6 @@ publish_ec2_sg_by_name(DogGroupName) ->
             ?LOG_INFO("Group not found: ~p~n", [DogGroupName]),
             []
     end.
-
-%-spec publish_ec2_sg_by_id(DogGroupId :: string()) -> {ok|error,DetailedResults :: list()}.
-%publish_ec2_sg_by_id(DogGroupId) ->
-%    case dog_group:get_by_id(DogGroupId) of
-%        {ok,DogGroup} ->
-%            publish_ec2_sgs(DogGroup);
-%        _ ->
-%            ?LOG_ERROR("Group not found: ~p~n",[DogGroupId]),
-%            []
-%    end.
 
 -spec publish_ec2_sgs(DogGroup :: map()) -> {ok | error, DetailedResults :: list()}.
 publish_ec2_sgs(DogGroup) ->
@@ -96,19 +67,6 @@ publish_ec2_sgs(DogGroup) ->
         Ec2SecurityGroupList
     ),
     Results.
-%AllResultTrueFalse = lists:all(fun({{{R,_}},_GroupName,_Region,_SgId}) -> R == ok end, Results),
-%AllResult = case AllResultTrueFalse of
-%    true -> ok;
-%    false -> error
-%end,
-%UpdateEc2SgResults = {AllResult,Results},
-%case UpdateEc2SgResults of
-%    {ok,_} ->
-%        ?LOG_INFO("UpdateEc2SgResults: ~p~n",[UpdateEc2SgResults]);
-%    {error,_} ->
-%        ?LOG_ERROR("UpdateEc2SgResults: ~p~n",[UpdateEc2SgResults])
-%end,
-%UpdateEc2SgResults.
 
 -spec publish_ec2_sg({DogGroup :: map(), Region :: string(), SgId :: string()}) ->
     {ok | error, DetailedResults :: list()}.
@@ -213,7 +171,6 @@ diff_sg_egress(Ec2SecurityGroupId, Region, DogGroupId) ->
     Ppps = dog_group:get_ppps_outbound_ec2(DogGroup, Region),
     DefaultPpps = default_egress_spps_rules(),
     EgressRulesPpps = ordsets:to_list(ordsets:from_list(Ppps ++ DefaultPpps)),
-    %EgressRulesPpps = Ppps ++ DefaultPpps,
     EgressRulesSpps = ppps_to_spps_egress(EgressRulesPpps),
     ?LOG_DEBUG("EgressRulesSpecs: ~p~n", [EgressRulesSpps]),
     case dog_ec2_update_agent:ec2_security_group(Ec2SecurityGroupId, Region) of
@@ -289,17 +246,7 @@ parse_authorize_response(AuthorizeResponse) ->
     ?LOG_DEBUG("AuthorizeResponse: ~p~n", [AuthorizeResponse]),
     case AuthorizeResponse of
         {error, {_ErrorType, _ErrorCode, _ErrorHeader, ErrorDescription}} ->
-            %{error,Error} ->
-            %{error,{http_error,400,"Bad Request",<<"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response><Errors><Error><Code>InvalidPermission.Duplicate</Code><Message>the specified rule \"peer: sg-0d741a6be4fa9691d, UDP, from port: 0, to port: 65535, ALLOW\" already exists</Message></Error></Errors><RequestID>3cbe6e0d-179d-4481-8589-34eea28bfc65</RequestID></Response>">>}}
-            %{error,{http_error,503,"Service Unavailable",<<"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response><Errors><Error><Code>Unavailable</Code><Message>The service is unavailable. Please try again shortly.</Message></Error></Errors><RequestID>c7413e5f-800a-4bdc-8f96-24c69ea1ad9e</RequestID></Response>">>}}}
             Xml = element(2, (erlsom:simple_form(ErrorDescription))),
-            %{"Response",[],
-            % [{"Errors",[],
-            %    [{"Error",[],
-            %         [{"Code",[],["InvalidPermission.Duplicate"]},
-            %               {"Message",[],
-            %                      ["the specified rule \"peer: sg-0d741  a6be4fa9691d, UDP, from port: 0, to port: 65535, ALLOW\" already exists"]}]}]},
-            %                        {"RequestID",[],["3cbe6e0d-179d-4481-8589-34eea28bfc65"]}]}
             {"Response", [], [
                 {"Errors", [], [
                     {"Error", [], [
@@ -309,6 +256,7 @@ parse_authorize_response(AuthorizeResponse) ->
                 ]},
                 {"RequestID", [], [_RequestId]}
             ]} = Xml,
+            ?LOG_ERROR(AuthorizeResponse),
             case Code of
                 %Ignore duplicate entry error
                 "InvalidPermission.Duplicate" ->
@@ -319,80 +267,6 @@ parse_authorize_response(AuthorizeResponse) ->
         Other ->
             Other
     end.
-
-%create_port_anywhere_ingress_rule(Protocol, Ports) ->
-%    lists:map(fun(Port) ->
-%                      {From,To} = case string:split(Port,":") of
-%                                      [F,T] ->
-%                                          {F,T};
-%                                      [F] ->
-%                                          case Protocol of
-%                                              <<"icmp">> ->
-%                                                  {F,<<"-1">>};
-%                                              _ ->
-%                                                  {F,F}
-%                                          end
-%                                  end,
-%                      #vpc_ingress_spec{
-%                         ip_protocol = binary_to_atom(Protocol),
-%                         from_port = binary_to_integer(From),
-%                         to_port = binary_to_integer(To),
-%                         cidr_ip= ["0.0.0.0/0"]
-%                        }
-%              end, Ports).
-
-%create_port_anywhere_ingress_rules(DogGroupName) ->
-%    ProtocolPorts = dog_group:get_all_inbound_ports_by_protocol(DogGroupName),
-%    AnywhereIngressRules = lists:map(fun({Protocol, Ports}) ->
-%                                             create_port_anywhere_ingress_rule(Protocol,Ports)
-%              end, ProtocolPorts),
-%    lists:flatten(AnywhereIngressRules).
-%
-%create_port_anywhere_ingress_rules_by_id(DogGroupId) ->
-%    {ok, DogGroup} = dog_group:get_by_id(DogGroupId),
-%    DogGroupName = maps:get(<<"name">>,DogGroup),
-%    create_port_anywhere_ingress_rules(DogGroupName).
-
-%-spec create_ingress_rules(Spps :: list() ) -> Rules :: list().
-%create_ingress_rules(Spps) ->
-%    Rules = lists:map(fun({{SourceType,Source},Protocol,Ports}) ->
-%                              create_ingress_port_rules(SourceType,Source,Protocol,Ports)
-%                      end, Spps),
-%    lists:flatten(Rules).
-%
-%-spec create_ingress_port_rules(SourceType :: string(),Source :: string(),Protocol :: string(), Ports :: list()) -> list().
-%create_ingress_port_rules(SourceType,Source,Protocol,Ports) ->
-%    PortRule = lists:map(fun(Port) ->
-%                                 ?LOG_DEBUG("Protocol: ~p, Port : ~p",[Protocol,Port]),
-%                                 {From,To} = case string:split(Port,":") of
-%                                                 [F,T] ->
-%                                                     {F,T};
-%                                                 [F] ->
-%                                                     case Protocol of
-%                                                         <<"icmp">> ->
-%                                                             {F,-1};
-%                                                         _ ->
-%                                                             {F,F}
-%                                                     end
-%                                             end,
-%                                 case SourceType of
-%                                     cidr_ip ->
-%                                         #vpc_ingress_spec{
-%                                            ip_protocol = binary_to_atom(Protocol),
-%                                            from_port = binary_to_integer(From),
-%                                            to_port = binary_to_integer(To),
-%                                            cidr_ip = [Source]
-%                                           };
-%                                     group_id ->
-%                                         #vpc_ingress_spec{
-%                                            ip_protocol = binary_to_atom(Protocol),
-%                                            from_port = binary_to_integer(From),
-%                                            to_port = binary_to_integer(To),
-%                                            group_id = [binary_to_list(Source)]
-%                                           }
-%                                 end
-%                         end, Ports),
-%    lists:flatten(PortRule).
 
 ppps_to_spps_ingress(Ppps) ->
     Function = fun tuple_to_ingress_records/1,
@@ -465,25 +339,6 @@ ppps_to_spps(Ppps, Accum) ->
     AccumNew = maps:put(Key, NewValue, Accum),
     ppps_to_spps(Rest, AccumNew).
 
-%-record(vpc_ingress_spec, {
-%          ip_protocol::tcp|udp|icmp,
-%          from_port::-1 | 0..65535,
-%          to_port::-1 | 0..65535,
-%          user_id::undefined|[string()],
-%          group_name::undefined|[string()],
-%          group_id::undefined|[string()],
-%          cidr_ip::undefined|[string()]
-%         }).
-%
-
-%#vpc_egress_spec{user_id = UserP,
-%                   group_name = GNameP,
-%                   group_id = GIdP,
-%                   cidr_ip = CidrP,
-%                   ip_protocol = IpProtocol,
-%                   from_port = FromPort,
-%                   to_port = ToPort}.
-
 -spec ip_permissions_ingress(Ec2Region :: string(), Ec2SecurityGroupId :: string()) ->
     IpPermisions :: list().
 ip_permissions_ingress(Ec2Region, Ec2SecurityGroupId) ->
@@ -542,15 +397,6 @@ tuple_to_egress_records(Keyvalpairs) ->
         ]
     ]),
     Foorecord.
-%-record(vpc_ingress_spec, {
-%          ip_protocol::tcp|udp|icmp,
-%          from_port::-1 | 0..65535,
-%          to_port::-1 | 0..65535,
-%          user_id::undefined|[string()],
-%          group_name::undefined|[string()],
-%          group_id::undefined|[string()],
-%          cidr_ip::undefined|[string()]
-%         }).
 
 ingress_records_to_ppps(IngressRecords) ->
     lists:flatten([ingress_record_to_ppps(Record) || Record <- IngressRecords]).
