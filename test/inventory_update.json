@@ -1,0 +1,40 @@
+{
+  "name" : "dev_qa",
+  "groups": 
+  [
+     {
+       "name": "all",
+     	"vars": {
+        	"key":"value",
+          	"key3": "value3"
+        },
+     	"hosts": {
+          "host1": {
+            "key": "value",
+            "key2": "value2"
+          },
+          "host2": {
+            "key2": "value2"
+          }
+        },
+        "children": [
+            "test"
+        ]
+     },
+     {
+       "name": "app",
+     	"vars": {
+        	"key":"value"
+        },
+     	"hosts": {
+          "host1": {
+            "key": "value"
+          }
+        },
+        "children": [
+            "test2"
+        ]
+     }
+  ]
+}
+

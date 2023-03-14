@@ -113,8 +113,11 @@ resource_exists(Req@0, State@0) ->
             Id = cowboy_req:binding(id, Req@0),
             case Id of
                 undefined ->
-                    case cowboy_req:match_qs([{name, [], plain}], Req@0) of
-                        #{name := Name} ->
+                    QsVals = cowboy_req:parse_qs(Req@0),
+                    NameTuple = lists:keyfind(<<"name">>, 1, QsVals),
+                    HostkeyTuple = lists:keyfind(<<"hostkey">>, 1, QsVals),
+                    case {NameTuple, HostkeyTuple} of
+                        {{<<"name">>, Name}, false} ->
                             case Handler:get_by_name(Name) of
                                 {ok, Object} ->
                                     State@1 = maps:put(<<"object">>, Object, State@0),
@@ -122,12 +125,19 @@ resource_exists(Req@0, State@0) ->
                                 {error, _Error} ->
                                     {false, Req@0, State@0}
                             end;
-                        _ ->
+                        {false, {<<"hostkey">>, Hostkey}} ->
+                            case Handler:get_by_hostkey(Hostkey) of
+                                {ok, Object2} ->
+                                    State@2 = maps:put(<<"object">>, Object2, State@0),
+                                    {true, Req@0, State@2};
+                                {error, _Error2} ->
+                                    {false, Req@0, State@0}
+                            end;
+                        {false, false} ->
                             {false, Req@0, State@0}
                     end;
-                Id ->
-                    Path = cowboy_req:path(Req@0),
-                    case Handler:get_by_id(Id) of
+                I ->
+                    case Handler:get_by_id(I) of
                         {ok, Object} ->
                             State@1 = maps:put(<<"object">>, Object, State@0),
                             {true, Req@0, State@1};
