@@ -15,12 +15,17 @@
                 },
                 "hosts": {
                     "type": "object"
+                },
+                "children": {
+                    "type": "array",
+                    "uniqueItems": true
                 }
             },
             "required": [
               	"name",
                 "vars",
-                "hosts"
+                "hosts",
+                "children"
             ]
         }
     },
