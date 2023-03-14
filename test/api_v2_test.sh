@@ -52,14 +52,14 @@ get ${BASEURL}/rulesets
 #RULESET_ID="604ade9a-57da-4e4a-865f-5116e4b28a77"
 
 echo "PROFILE"
-cat profile.json.template | sed 's/${RULESET_ID}/'${RULESET_ID}'/g' > profile.json
-cat profile_update.json.template | sed 's/${RULESET_ID}/'${RULESET_ID}'/g' > profile_update.json
+cat profile_v2.json.template | sed 's/${RULESET_ID}/'${RULESET_ID}'/g' > profile_v2.json
+cat profile_v2_update.json.template | sed 's/${RULESET_ID}/'${RULESET_ID}'/g' > profile_v2_update.json
 PROFILE_ID=$(post "${TESTDIR}/profile.json" "${BASEURL}/profile")
 get ${BASEURL}/profile/${PROFILE_ID}
 get ${BASEURL}/profile?name=drewtest
-put "${TESTDIR}/profile_update.json" "${BASEURL}/profile/${PROFILE_ID}"
-putc "${TESTDIR}/profile_update.json" "${BASEURL}/profile/${PROFILE_ID}" 303 #updates create new profiles
-putc "${TESTDIR}/profile_update_blank_name.json" "${BASEURL}/profile/${PROFILE_ID}" 500
+put "${TESTDIR}/profile_v2_update.json" "${BASEURL}/profile/${PROFILE_ID}"
+putc "${TESTDIR}/profile_v2_update.json" "${BASEURL}/profile/${PROFILE_ID}" 303 #updates create new profiles
+putc "${TESTDIR}/profile_v2_update_blank_name.json" "${BASEURL}/profile/${PROFILE_ID}" 500
 get ${BASEURL}/profile/${PROFILE_ID}
 delete ${BASEURL}/profile/${PROFILE_ID}
 get ${BASEURL}/profiles
@@ -86,7 +86,7 @@ put "${TESTDIR}/host_update.json" "${BASEURL}/host/${HOST_ID}"
 putc "${TESTDIR}/host_update.json" "${BASEURL}/host/${HOST_ID}" 303
 putc "${TESTDIR}/host_update_blank_hostname.json" "${BASEURL}/host/${HOST_ID}" 500
 get ${BASEURL}/host/${HOST_ID}
-#delete ${BASEURL}/host/${HOST_ID}
+delete ${BASEURL}/host/${HOST_ID}
 get ${BASEURL}/hosts
 
 echo "LINK/EXTERNAL"
@@ -100,6 +100,17 @@ delete ${BASEURL}/link/${HOST_ID}
 getc "${BASEURL}/link?name=x1" 404
 getc "${BASEURL}/external?name=x1" 404
 get ${BASEURL}/links
+
+echo "INVENTORY"
+INVENTORY_ID=$(post "${TESTDIR}/inventory.json" "${BASEURL}/inventory")
+get ${BASEURL}/inventory/${INVENTORY_ID}
+get "${BASEURL}/inventory?name=dev_qa"
+put "${TESTDIR}/inventory_update.json" "${BASEURL}/inventory/${INVENTORY_ID}"
+putc "${TESTDIR}/inventory_update.json" "${BASEURL}/inventory/${INVENTORY_ID}" 303
+putc "${TESTDIR}/inventory_update_blank_inventoryname.json" "${BASEURL}/inventory/${INVENTORY_ID}" 500
+get ${BASEURL}/inventory/${INVENTORY_ID}
+delete ${BASEURL}/inventory/${INVENTORY_ID}
+get ${BASEURL}/inventories
 
 echo
 #echo "PASS: ${PASS} / FAIL: ${FAIL}"

@@ -605,7 +605,7 @@ create(ProfileMap@0) ->
                     ),
                     ProfileId = hd(maps:get(<<"generated_keys">>, R)),
                     ?LOG_DEBUG("create R: ~p~n", [R]),
-                    {ok, _RulesetId} = dog_ruleset:create(
+                    {_, _RulesetId} = dog_ruleset:create(
                         #{
                             <<"name">> => Name,
                             <<"rules">> => RulesMap@0,
@@ -713,7 +713,15 @@ add_rules(Profile) ->
     ProfileId = maps:get(<<"id">>, Profile),
     case dog_ruleset:get_by_profile_id(ProfileId) of
         {error, notfound} ->
-            {ok, maps:put(<<"rules">>, {}, Profile)};
+            {ok,
+                maps:put(
+                    <<"rules">>,
+                    #{
+                        <<"inbound">> => [],
+                        <<"outbound">> => []
+                    },
+                    Profile
+                )};
         {ok, Ruleset} ->
             {ok, maps:put(<<"rules">>, maps:get(<<"rules">>, Ruleset), Profile)}
     end.
@@ -726,7 +734,7 @@ update(Id, UpdateMap) ->
         {ok, OldProfile} ->
             ProfileId = maps:get(<<"id">>, OldProfile),
             case dog_ruleset:get_id_by_profile_id(ProfileId) of
-                RulesetId ->
+                {error, notfound} ->
                     ProfileName = maps:get(<<"name">>, OldProfile),
                     {Rules, UpdateMap@0} = maps:take(<<"rules">>, UpdateMap),
                     RulesMap@0 = #{
@@ -734,7 +742,7 @@ update(Id, UpdateMap) ->
                         <<"rules">> => Rules,
                         <<"profile_id">> => ProfileId
                     },
-                    {_, _NewRulesetId} = dog_ruleset:update(RulesetId, RulesMap@0),
+                    {_ok_or_error, _NewRulesetId} = dog_ruleset:create(RulesMap@0),
                     NewProfile = maps:merge(OldProfile, UpdateMap@0),
                     case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
                         ok ->
@@ -758,7 +766,7 @@ update(Id, UpdateMap) ->
                             Response = dog_parse:validation_error(Error),
                             {validation_error, Response}
                     end;
-                {error, notfound} ->
+                RulesetId ->
                     ProfileName = maps:get(<<"name">>, OldProfile),
                     {Rules, UpdateMap@0} = maps:take(<<"rules">>, UpdateMap),
                     RulesMap@0 = #{
@@ -766,7 +774,6 @@ update(Id, UpdateMap) ->
                         <<"rules">> => Rules,
                         <<"profile_id">> => ProfileId
                     },
-                    {true, _NewRulesetId} = dog_ruleset:create(RulesMap@0),
                     NewProfile = maps:merge(OldProfile, UpdateMap@0),
                     case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
                         ok ->
@@ -785,7 +792,8 @@ update(Id, UpdateMap) ->
                                 {1, 0} -> {true, Id};
                                 {0, 1} -> {false, Id};
                                 _ -> {false, no_updated}
-                            end;
+                            end,
+                            {_, _NewRulesetId} = dog_ruleset:update(RulesetId, RulesMap@0);
                         {error, Error} ->
                             Response = dog_parse:validation_error(Error),
                             {validation_error, Response}
@@ -799,7 +807,8 @@ update(Id, UpdateMap) ->
 delete(Id) ->
     case where_used(Id) of
         {ok, []} ->
-            RulesetId = dog_ruleset:get_id_by_profile_id(Id),
+            {ok, Profile} = get_by_id(Id),
+            ProfileName = maps:get(<<"name">>, Profile),
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
@@ -809,14 +818,11 @@ delete(Id) ->
                 end
             ),
             ?LOG_DEBUG("delete R: ~p~n", [R]),
-            Deleted = maps:get(<<"deleted">>, R),
-            case Deleted of
-                1 ->
-                    dog_ruleset:delete(RulesetId),
-                    ok;
-                _ ->
-                    {error, #{<<"error">> => <<"error">>}}
-            end;
+            {ok, Ruleset} = dog_ruleset:get_by_name(ProfileName),
+            RulesetId = maps:get(<<"id">>, Ruleset),
+            ?LOG_DEBUG(#{ruleset_id => RulesetId}),
+            dog_ruleset:delete(RulesetId),
+            ok;
         {ok, Groups} ->
             ?LOG_INFO("profile ~p not deleted, associated with group: ~p~n", [Id, Groups]),
             {error, #{<<"errors">> => #{<<"associated with group">> => Groups}}}

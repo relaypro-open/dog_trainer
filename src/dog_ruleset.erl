@@ -139,6 +139,7 @@ all() ->
 
 -spec get_by_id(Id :: binary()) -> {ok, map()} | {error, notfound}.
 get_by_id(Id) ->
+    ?LOG_DEBUG(#{id => Id}),
     R = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -157,7 +158,7 @@ get_by_id(Id) ->
 -spec update(Id :: binary(), UpdateMap :: map()) ->
     {false, atom()} | {validation_error, iolist()} | {true, binary()}.
 update(Id, UpdateMap) ->
-    ?LOG_DEBUG(#{updatemap => UpdateMap}),
+    ?LOG_DEBUG(#{id => Id, updatemap => UpdateMap}),
     ?LOG_INFO("update_in_place"),
     case get_by_id(Id) of
         {ok, OldRules} ->
@@ -190,25 +191,19 @@ update(Id, UpdateMap) ->
 
 -spec delete(GroupId :: binary()) -> (ok | {error, Error :: map()}).
 delete(Id) ->
-    case where_used(Id) of
-        {ok, []} ->
-            {ok, R} = dog_rethink:run(
-                fun(X) ->
-                    reql:db(X, dog),
-                    reql:table(X, ?TYPE_TABLE),
-                    reql:get(X, Id),
-                    reql:delete(X)
-                end
-            ),
-            ?LOG_DEBUG("delete R: ~p~n", [R]),
-            Deleted = maps:get(<<"deleted">>, R),
-            case Deleted of
-                1 -> ok;
-                _ -> {error, #{<<"error">> => <<"error">>}}
-            end;
-        {ok, Groups} ->
-            ?LOG_INFO("rules ~p not deleted, associated with group: ~p~n", [Id, Groups]),
-            {error, #{<<"errors">> => #{<<"associated with group">> => Groups}}}
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get(X, Id),
+            reql:delete(X)
+        end
+    ),
+    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    Deleted = maps:get(<<"deleted">>, R),
+    case Deleted of
+        1 -> ok;
+        _ -> {error, #{<<"error">> => <<"error">>}}
     end.
 
 -spec rule_to_text(Rule :: map(), Keys :: list()) -> iolist().
@@ -281,6 +276,7 @@ to_text(Rules) ->
 
 -spec where_used(RulesId :: binary()) -> {ok, list()}.
 where_used(RulesetId) ->
+    ?LOG_DEBUG(#{rulesetid => RulesetId}),
     {ok, Ruleset} = get_by_id(RulesetId),
     ProfileId = maps:get(<<"profile_id">>, Ruleset),
     {ok, ProfileId}.
@@ -323,7 +319,7 @@ ids_to_names(Rules) ->
                 <<"outbound">> => OutboundReplaced
             },
             maps:put(<<"rules">>, NewRules, Rules)
-            %maps:put(<<"profile_id">>, ProfileName, Rules1)
+        %maps:put(<<"profile_id">>, ProfileName, Rules1)
     end.
 
 rule_ids_to_names(Rules, ServicesById, ZonesById, GroupsById) ->
@@ -351,7 +347,7 @@ rule_ids_to_names(Rules, ServicesById, ZonesById, GroupsById) ->
                                     maps:get(<<"name">>, maps:get(ZoneId, ZonesById))
                             end,
                         maps:update(<<"group">>, ZoneName, RuleServiceReplaced);
-                    G when G =:= <<"ROLE">> ; G =:= <<"GROUP">> ->
+                    G when G =:= <<"ROLE">>; G =:= <<"GROUP">> ->
                         GroupName =
                             case maps:get(<<"group">>, Rule) of
                                 <<"any">> ->
