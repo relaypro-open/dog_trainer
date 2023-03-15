@@ -1,9 +1,8 @@
 {
-  "name" : "dev_qa",
+  "name" : "mob_qa",
   "groups": 
-  [
-     {
-       "name": "all",
+  {
+     "all": {
      	"vars": {
         	"key":"value",
           	"key2": "value2"
@@ -22,8 +21,7 @@
             "test_group"
         ]
      },
-     {
-       "name": "test_group",
+     "test_group": {
      	"vars": {
         	"key":"value"
         },
@@ -36,8 +34,8 @@
             "test2"
         ]
      },
+     "test":
      {
-       "name": "test",
      	"vars": {
         	"test_key":"test_value"
         },
@@ -49,8 +47,8 @@
         "children": [
         ]
      },
+     "test2":
      {
-       "name": "test2",
      	"vars": {
         	"test2_key":"test2_value"
         },
@@ -62,5 +60,5 @@
         "children": [
         ]
      }
-  ]
+  }
 }

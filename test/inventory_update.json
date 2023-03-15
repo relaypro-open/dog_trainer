@@ -1,9 +1,9 @@
 {
   "name" : "dev_qa",
   "groups": 
-  [
+  { 
+     "all":
      {
-       "name": "all",
      	"vars": {
         	"key":"value",
           	"key3": "value3"
@@ -21,8 +21,7 @@
             "test"
         ]
      },
-     {
-       "name": "app",
+       "app": {
      	"vars": {
         	"key":"value"
         },
@@ -35,6 +34,6 @@
             "test2"
         ]
      }
-  ]
+  }
 }
 

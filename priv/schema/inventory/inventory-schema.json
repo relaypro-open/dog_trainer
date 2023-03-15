@@ -15,17 +15,12 @@
                 },
                 "hosts": {
                     "type": "object"
-                },
-                "children": {
-                    "type": "array",
-                    "uniqueItems": true
                 }
             },
             "required": [
               	"name",
                 "vars",
-                "hosts",
-                "children"
+                "hosts"
             ]
         }
     },
@@ -37,7 +32,7 @@
             "pattern": "^[A-Za-z_](0-9A-Za-z_)*"
         },
         "groups": {
-            "type": "array",
+            "type": "object",
             "items":
             {
                 "$ref": "#/definitions/group"

@@ -1,9 +1,9 @@
 {
   "name" : "",
   "groups": 
-  [
+  {
+     "all":
      {
-       "name": "all",
      	"vars": {
         	"key":"value",
           	"key3": "value3"
@@ -21,8 +21,8 @@
             "test"
         ]
      },
+     "app":
      {
-       "name": "app",
      	"vars": {
         	"key":"value"
         },
@@ -35,7 +35,7 @@
             "test2"
         ]
      }
-  ]
+  }
 }
 
 
