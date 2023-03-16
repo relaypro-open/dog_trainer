@@ -775,6 +775,7 @@ update(Id, UpdateMap) ->
                         <<"profile_id">> => ProfileId
                     },
                     NewProfile = maps:merge(OldProfile, UpdateMap@0),
+                    {_, _NewRulesetId} = dog_ruleset:update(RulesetId, RulesMap@0),
                     case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
                         ok ->
                             {ok, R} = dog_rethink:run(
@@ -792,8 +793,7 @@ update(Id, UpdateMap) ->
                                 {1, 0} -> {true, Id};
                                 {0, 1} -> {false, Id};
                                 _ -> {false, no_updated}
-                            end,
-                            {_, _NewRulesetId} = dog_ruleset:update(RulesetId, RulesMap@0);
+                            end;
                         {error, Error} ->
                             Response = dog_parse:validation_error(Error),
                             {validation_error, Response}
