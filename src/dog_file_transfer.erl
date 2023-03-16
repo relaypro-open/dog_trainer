@@ -50,7 +50,7 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
         ] ++ Opts
     ),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    CommandExecutionTimeout = application:get_env(dog_trainer, command_execution_timeout_ms, 10000),
+    CommandExecutionTimeout = application:get_env(dog_trainer, command_execution_timeout_ms, 30000),
     Response =
         case
             turtle:rpc_sync(
@@ -229,7 +229,7 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
         ] ++ Opts
     ),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    FileTransferTimeout = application:get_env(dog_trainer, file_transfer_timeout_ms, 20000),
+    FileTransferTimeout = application:get_env(dog_trainer, file_transfer_timeout_ms, 30000),
     case
         turtle:rpc_sync(
             file_transfer_publisher,
