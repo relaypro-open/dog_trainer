@@ -419,7 +419,7 @@ rule_names_to_ids(Rules, ServicesByName, ZonesByName, GroupsByName) ->
                                     maps:get(<<"id">>, maps:get(ZoneName, ZonesByName))
                             end,
                         maps:update(<<"group">>, ZoneId, RuleServiceReplaced);
-                    <<"ROLE">> ->
+                    G when G =:= <<"ROLE">>; G =:= <<"GROUP">> ->
                         GroupId =
                             case maps:get(<<"group">>, Rule) of
                                 <<"any">> ->

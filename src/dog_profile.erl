@@ -904,7 +904,7 @@ only_zone_group(Rule) ->
 
 only_role_group(Rule) ->
     case maps:get(<<"group_type">>, Rule) of
-        <<"ROLE">> -> {true, Rule};
+        G when G =:= <<"ROLE">>; G =:= <<"GROUP">> -> {true, Rule};
         _ -> false
     end.
 
@@ -1123,7 +1123,7 @@ get_ppps_inbound_ec2(ProfileJson, DestinationRegion) ->
                         end,
                         Sources
                     );
-                <<"ROLE">> ->
+                G when G =:= <<"ROLE">>; G =:= <<"GROUP">> ->
                     GroupId = maps:get(<<"group">>, Rule),
                     {ok, Group} = dog_group:get_by_id(GroupId),
                     GroupName = maps:get(<<"name">>, Group),
@@ -1224,7 +1224,7 @@ get_ppps_outbound_ec2(ProfileJson, DestinationRegion) ->
                         end,
                         Sources
                     );
-                <<"ROLE">> ->
+                G when G =:= <<"ROLE">>; G =:= <<"GROUP">> ->
                     GroupId = maps:get(<<"group">>, Rule),
                     {ok, Group} = dog_group:get_by_id(GroupId),
                     GroupName = maps:get(<<"name">>, Group),
