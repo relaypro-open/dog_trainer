@@ -44,14 +44,33 @@ to_json(Req, State) ->
             {ok, Services} = Handler:get_all(),
             Json = jsx:encode(Services),
             Sub = cowboy_req:binding(sub, Req),
-            case Sub of
-                undefined ->
-                    {Json, Req, State};
-                <<"schema">> ->
-                    Schema = Handler:get_schema(),
-                    {Schema, Req, State};
-                <<"ips">> ->
-                    {ok, Ips} = Handler:get_all_ips(),
-                    {jsx:encode(Ips), Req, State}
+            case Handler of
+                dog_host_api_v2 ->
+                    case Sub of
+                        <<"names">> ->
+                            ObjectHosts = dog_host:get_names_by_ips(),
+                            {jsx:encode(ObjectHosts), Req, State};
+                        <<"hostkeys">> ->
+                            ObjectHosts = dog_host:get_hostkeys_by_ips(),
+                            {jsx:encode(ObjectHosts), Req, State};
+                        undefined ->
+                            {Json, Req, State}
+                    end;
+                dog_zone_api_v2 ->
+                    case Sub of
+                        <<"ips">> ->
+                            {ok, Ips} = dog_zone:get_all_ips(),
+                            {jsx:encode(Ips), Req, State};
+                        undefined ->
+                            {Json, Req, State}
+                    end;
+                _ ->
+                    case Sub of
+                        <<"schema">> ->
+                            Schema = Handler:get_schema(),
+                            {Schema, Req, State};
+                        undefined ->
+                            {Json, Req, State}
+                    end
             end
     end.

@@ -21,14 +21,14 @@
 
 -export([
     get_all_active_interfaces/0,
-   hash_check/1,
+    get_hostkeys_by_ips/0,
+    get_names_by_ips/0,
+    hash_check/1,
     init/0,
-   keepalive_age_check/0,
-    keepalive_age_check/1,
-    keepalive_check/0,
-    keepalive_check/1,
-    retirement_check/0,
-    retirement_check/1,
+    interfaces_to_ips/1,
+    keepalive_age_check/0, keepalive_age_check/1,
+    keepalive_check/0, keepalive_check/1,
+    retirement_check/0, retirement_check/1,
     state_event/3
 ]).
 
@@ -634,6 +634,56 @@ get_all_active() ->
             Else -> Else
         end,
     {ok, Hosts}.
+
+get_names_by_ips() ->
+    get_by_ips(<<"name">>).
+
+get_hostkeys_by_ips() ->
+    get_by_ips(<<"hostkey">>).
+
+-spec get_by_ips(Key :: iolist()) -> map().
+get_by_ips(Key) ->
+    {ok, R} =
+        dog_rethink:run(fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:filter(X, #{<<"active">> => <<"active">>}),
+            reql:pluck(X, [Key, <<"interfaces">>])
+        end),
+    {ok, Result} = rethink_cursor:all(R),
+    Hosts =
+        case lists:flatten(Result) of
+            [] ->
+                [];
+            Else ->
+                Else
+        end,
+    IpsHosts =
+        lists:map(
+            fun(Host) ->
+                Interfaces = maps:get(<<"interfaces">>, Host),
+                Ips = interfaces_to_ips(Interfaces),
+                maps:remove(<<"interfaces">>, maps:put(<<"ips">>, Ips, Host))
+            end,
+            Hosts
+        ),
+    IpHost =
+        lists:map(
+            fun(Host) ->
+                Ips = maps:get(<<"ips">>, Host),
+                Name = maps:get(Key, Host),
+                lists:map(fun(Ip) -> {Ip, Name} end, Ips)
+            end,
+            IpsHosts
+        ),
+    maps:from_list(
+        lists:flatten(IpHost)
+    ).
+
+-spec interfaces_to_ips(InterfacesString :: iolist()) -> Ips :: list().
+interfaces_to_ips(InterfacesString) ->
+    Interfaces = jsx:decode(InterfacesString),
+    lists:delete(<<"127.0.0.1">>, lists:flatten([element(2, I) || I <- Interfaces])).
 
 -spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(HostMap@0) ->
