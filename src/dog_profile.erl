@@ -605,7 +605,7 @@ create(ProfileMap@0) ->
                     ),
                     ProfileId = hd(maps:get(<<"generated_keys">>, R)),
                     ?LOG_DEBUG("create R: ~p~n", [R]),
-                    {_, _RulesetId} = dog_ruleset:create(
+                    {ok, _RulesetId} = dog_ruleset:create(
                         #{
                             <<"name">> => Name,
                             <<"rules">> => RulesMap@0,

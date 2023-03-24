@@ -119,7 +119,7 @@ handle_query_result(Result, State) ->
                         fun(GroupId) ->
                             {ok, GroupName} = dog_group:get_name_by_id(GroupId),
                             ?LOG_INFO(GroupName),
-                            GroupType = <<"role">>,
+                            GroupType = <<"group">>,
                             dog_iptables:update_group_iptables(GroupName, GroupType)
                         end,
                         GroupIds

@@ -24,7 +24,7 @@ update_group_iptables(GroupZoneName, GroupType) ->
             true ->
                 {ok, GroupsList} =
                     case GroupType of
-                        G when G =:= <<"role">> ; G =:= <<"group">> ->
+                        G when G =:= <<"role">>; G =:= <<"group">> ->
                             dog_group:role_group_effects_groups(GroupZoneName);
                         <<"zone">> ->
                             dog_group:zone_group_effects_groups(GroupZoneName)
@@ -33,7 +33,7 @@ update_group_iptables(GroupZoneName, GroupType) ->
             false ->
                 {ok, GroupsList} =
                     case GroupType of
-                        <<"role">> ->
+                        G when G =:= <<"role">>; G =:= <<"group">> ->
                             {ok, [GroupZoneName]};
                         <<"zone">> ->
                             case dog_zone:get_by_name(GroupZoneName) of

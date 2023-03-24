@@ -1257,7 +1257,7 @@ update_group_ec2_security_groups(GroupZoneIdentifier, GroupType) ->
     ?LOG_INFO("GroupZoneIdentifier: ~p", [GroupZoneIdentifier]),
     Groups =
         case GroupType of
-            <<"role">> ->
+            G when G =:= <<"role">>; G =:= <<"group">> ->
                 {ok, G} = dog_group:role_group_effects_groups(GroupZoneIdentifier),
                 G;
             <<"zone">> ->
