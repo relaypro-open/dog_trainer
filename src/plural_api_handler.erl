@@ -18,7 +18,7 @@ handler_lookup(<<"profiles">>) -> dog_profile;
 handler_lookup(<<"services">>) -> dog_service;
 handler_lookup(<<"zones">>) -> dog_zone;
 handler_lookup(<<"rulesets">>) -> dog_ruleset;
-handler_lookup(<<"inventories">>) -> dog_inventory.
+handler_lookup(<<"facts">>) -> dog_fact.
 
 init(Req, Opts) ->
     {cowboy_rest, Req, Opts}.

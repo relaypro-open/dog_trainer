@@ -40,7 +40,7 @@ handler_lookup(<<"profile">>) -> dog_profile;
 handler_lookup(<<"service">>) -> dog_service;
 handler_lookup(<<"zone">>) -> dog_zone;
 handler_lookup(<<"ruleset">>) -> dog_ruleset;
-handler_lookup(<<"inventory">>) -> dog_inventory.
+handler_lookup(<<"fact">>) -> dog_fact.
 
 content_types_provided(Req, State) ->
     {

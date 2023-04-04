@@ -1,9 +1,10 @@
--module(dog_inventory_api_v2).
+
+-module(dog_fact_api_v2).
 
 -include_lib("kernel/include/logger.hrl").
 
--define(VALIDATION_TYPE, <<"inventory">>).
--define(TYPE_TABLE, inventory).
+-define(VALIDATION_TYPE, <<"fact">>).
+-define(TYPE_TABLE, fact).
 
 %API
 -export([
@@ -16,18 +17,18 @@
     update/2
 ]).
 
--spec create(Inventory :: map()) -> {ok | error, Key :: iolist() | name_exists}.
-create(InventoryMap@0) ->
-    Name = maps:get(<<"name">>, InventoryMap@0),
-    {ok, ExistingInventorys} = get_all(),
-    ExistingNames = [maps:get(<<"name">>, Inventory) || Inventory <- ExistingInventorys],
+-spec create(Fact :: map()) -> {ok | error, Key :: iolist() | name_exists}.
+create(FactMap@0) ->
+    Name = maps:get(<<"name">>, FactMap@0),
+    {ok, ExistingFacts} = get_all(),
+    ExistingNames = [maps:get(<<"name">>, Fact) || Fact <- ExistingFacts],
     case lists:member(Name, ExistingNames) of
         false ->
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
                     reql:table(X, ?TYPE_TABLE),
-                    reql:insert(X, InventoryMap@0, #{return_changes => always})
+                    reql:insert(X, FactMap@0, #{return_changes => always})
                 end
             ),
             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
@@ -36,7 +37,7 @@ create(InventoryMap@0) ->
             {error, name_exists}
     end.
 
--spec delete(InventoryId :: binary()) -> ok | {error, Error :: map()}.
+-spec delete(FactId :: binary()) -> ok | {error, Error :: map()}.
 delete(Id) ->
     {ok, R} = dog_rethink:run(
         fun(X) ->
@@ -62,22 +63,22 @@ get_all() ->
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
-    Inventorys =
+    Facts =
         case lists:flatten(Result) of
             [] -> [];
             Else -> Else
         end,
-    {ok, Inventorys}.
+    {ok, Facts}.
 
--spec get_by_id(InventoryId :: binary()) -> {ok, map()} | {ok, null} | {error, atom()}.
-get_by_id(InventoryId) ->
-    dog_inventory:get_by_id(InventoryId).
+-spec get_by_id(FactId :: binary()) -> {ok, map()} | {ok, null} | {error, atom()}.
+get_by_id(FactId) ->
+    dog_fact:get_by_id(FactId).
 
 -spec get_by_name(binary()) -> {'ok', map()} | {'error', notfound}.
 get_by_name(Name) ->
-    dog_inventory:get_by_name(Name).
+    dog_fact:get_by_name(Name).
 
--spec update(InventoryId :: binary(), UpdateMap :: map()) -> {atom(), any()}.
+-spec update(FactId :: binary(), UpdateMap :: map()) -> {atom(), any()}.
 update(Id, UpdateMap@0) ->
     ?LOG_DEBUG("UpdateMap: ~p~n", [UpdateMap@0]),
     case get_by_id(Id) of

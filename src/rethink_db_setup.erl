@@ -24,7 +24,7 @@ table_schema() ->
         <<"ruleset">> => [<<"name">>, <<"profile_id">>],
         <<"service">> => [<<"name">>],
         <<"zone">> => [<<"name">>],
-        <<"inventory">> => [<<"name">>]
+        <<"fact">> => [<<"name">>]
     }.
 
 -spec wait_on_rethinkdb(Connection :: pid(), DatabaseName :: binary()) -> ok | change.

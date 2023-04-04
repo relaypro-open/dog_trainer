@@ -1,9 +1,9 @@
--module(dog_inventory).
+-module(dog_fact).
 
 -include_lib("kernel/include/logger.hrl").
 
--define(VALIDATION_TYPE, <<"inventory">>).
--define(TYPE_TABLE, inventory).
+-define(VALIDATION_TYPE, <<"fact">>).
+-define(TYPE_TABLE, fact).
 
 %API
 -export([
@@ -38,11 +38,11 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, inventory name not found: ~p", [Name]),
+            ?LOG_ERROR("error, fact name not found: ~p", [Name]),
             {error, notfound};
         _ ->
-            Inventory = hd(Result),
-            {ok, Inventory}
+            Fact = hd(Result),
+            {ok, Fact}
     end.
 
 -spec get_by_id(Id :: binary()) -> {ok, map()} | {error, atom()}.
@@ -58,8 +58,8 @@ get_by_id(Id) ->
         null ->
             {error, notfound};
         _ ->
-            Inventory = R,
-            {ok, Inventory}
+            Fact = R,
+            {ok, Fact}
     end.
 
 -spec delete(Id :: binary()) -> ok | {error, Error :: map()}.
@@ -82,9 +82,9 @@ delete(Id) ->
 -spec update(Id :: binary(), UpdateMap :: map()) -> {atom(), any()}.
 update(Id, UpdateMap) ->
     case get_by_id(Id) of
-        {ok, OldInventory} ->
-            NewInventory = maps:merge(OldInventory, UpdateMap),
-            case dog_json_schema:validate(?VALIDATION_TYPE, NewInventory) of
+        {ok, OldFact} ->
+            NewFact = maps:merge(OldFact, UpdateMap),
+            case dog_json_schema:validate(?VALIDATION_TYPE, NewFact) of
                 ok ->
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
@@ -111,19 +111,19 @@ update(Id, UpdateMap) ->
     end.
 
 -spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists}.
-create(InventoryMap@0) ->
-    Name = maps:get(<<"name">>, InventoryMap@0),
-    {ok, ExistingInventorys} = get_all(),
-    ExistingNames = [maps:get(<<"name">>, Inventory) || Inventory <- ExistingInventorys],
+create(FactMap@0) ->
+    Name = maps:get(<<"name">>, FactMap@0),
+    {ok, ExistingFacts} = get_all(),
+    ExistingNames = [maps:get(<<"name">>, Fact) || Fact <- ExistingFacts],
     case lists:member(Name, ExistingNames) of
         false ->
-            case dog_json_schema:validate(?VALIDATION_TYPE, InventoryMap@0) of
+            case dog_json_schema:validate(?VALIDATION_TYPE, FactMap@0) of
                 ok ->
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
                             reql:table(X, ?TYPE_TABLE),
-                            reql:insert(X, InventoryMap@0)
+                            reql:insert(X, FactMap@0)
                         end
                     ),
                     Key = hd(maps:get(<<"generated_keys">>, R)),
@@ -147,32 +147,32 @@ get_all() ->
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
-    Inventorys =
+    Facts =
         case lists:flatten(Result) of
             [] ->
                 [];
             Else ->
                 Else
         end,
-    {ok, Inventorys}.
+    {ok, Facts}.
 
 -spec dump_all() -> {ok, list()}.
 dump_all() ->
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
-            reql:table(X, inventory)
+            reql:table(X, fact)
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
-    Inventorys =
+    Facts =
         case lists:flatten(Result) of
             [] ->
                 [];
             Else ->
                 Else
         end,
-    {ok, Inventorys}.
+    {ok, Facts}.
 
 -spec get_schema() -> binary().
 get_schema() ->

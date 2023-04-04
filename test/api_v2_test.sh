@@ -101,16 +101,16 @@ getc "${BASEURL}/link?name=x1" 404
 getc "${BASEURL}/external?name=x1" 404
 get ${BASEURL}/links
 
-echo "INVENTORY"
-INVENTORY_ID=$(post "${TESTDIR}/inventory.json" "${BASEURL}/inventory")
-get ${BASEURL}/inventory/${INVENTORY_ID}
-get "${BASEURL}/inventory?name=dev_qa"
-put "${TESTDIR}/inventory_update.json" "${BASEURL}/inventory/${INVENTORY_ID}"
-putc "${TESTDIR}/inventory_update.json" "${BASEURL}/inventory/${INVENTORY_ID}" 303
-putc "${TESTDIR}/inventory_update_blank_inventoryname.json" "${BASEURL}/inventory/${INVENTORY_ID}" 500
-get ${BASEURL}/inventory/${INVENTORY_ID}
-delete ${BASEURL}/inventory/${INVENTORY_ID}
-get ${BASEURL}/inventories
+echo "FACT"
+FACT_ID=$(post "${TESTDIR}/fact.json" "${BASEURL}/fact")
+get ${BASEURL}/fact/${FACT_ID}
+get "${BASEURL}/fact?name=dev_qa"
+put "${TESTDIR}/fact_update.json" "${BASEURL}/fact/${FACT_ID}"
+putc "${TESTDIR}/fact_update.json" "${BASEURL}/fact/${FACT_ID}" 303
+putc "${TESTDIR}/fact_update_blank_factname.json" "${BASEURL}/fact/${FACT_ID}" 500
+get ${BASEURL}/fact/${FACT_ID}
+delete ${BASEURL}/fact/${FACT_ID}
+get ${BASEURL}/facts
 
 echo
 #echo "PASS: ${PASS} / FAIL: ${FAIL}"

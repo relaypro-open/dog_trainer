@@ -96,14 +96,14 @@ start_link() ->
             {"/api/V2/zones", plural_api_handler_v2, #{}},
             {"/api/V2/zones/:sub", plural_api_handler_v2, #{}},
             {"/api/V2/zones/ips", plural_api_handler_v2, #{}},
-            {"/api/inventory", api_handler, #{}},
-            {"/api/inventory/:id", api_handler, #{}},
-            {"/api/inventories", plural_api_handler, #{}},
-            {"/api/inventories/:sub", plural_api_handler, #{}},
-            {"/api/V2/inventory", api_handler_v2, #{}},
-            {"/api/V2/inventory/:id", api_handler_v2, #{}},
-            {"/api/V2/inventories", plural_api_handler_v2, #{}},
-            {"/api/V2/inventories/:sub", plural_api_handler_v2, #{}}
+            {"/api/fact", api_handler, #{}},
+            {"/api/fact/:id", api_handler, #{}},
+            {"/api/facts", plural_api_handler, #{}},
+            {"/api/facts/:sub", plural_api_handler, #{}},
+            {"/api/V2/fact", api_handler_v2, #{}},
+            {"/api/V2/fact/:id", api_handler_v2, #{}},
+            {"/api/V2/facts", plural_api_handler_v2, #{}},
+            {"/api/V2/facts/:sub", plural_api_handler_v2, #{}}
         ]}
     ]),
     {ok, _} = cowboy:start_clear(

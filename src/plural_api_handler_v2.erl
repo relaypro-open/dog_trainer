@@ -19,7 +19,7 @@ handler_lookup(<<"services">>) -> dog_service_api_v2;
 handler_lookup(<<"zones">>) -> dog_zone_api_v2;
 handler_lookup(<<"ipsets">>) -> dog_ipset_api_v2;
 handler_lookup(<<"rulesets">>) -> dog_ruleset_api_v2;
-handler_lookup(<<"inventories">>) -> dog_inventory_api_v2.
+handler_lookup(<<"facts">>) -> dog_fact_api_v2.
 
 init(Req, Opts) ->
     {cowboy_rest, Req, Opts}.
