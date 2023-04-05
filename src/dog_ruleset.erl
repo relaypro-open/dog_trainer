@@ -24,8 +24,7 @@
     all_active/0,
     init/0,
     to_text/1,
-    where_used/1,
-    names_to_ids/1
+    where_used/1
 ]).
 
 -spec init() -> any().
@@ -34,7 +33,7 @@ init() ->
 
 -spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(RulesMap) ->
-    RulesMap@0 = names_to_ids(RulesMap),
+    RulesMap@0 = RulesMap,
     ?LOG_DEBUG(#{rulesmap@0 => RulesMap@0}),
     Name = maps:get(<<"name">>, RulesMap@0),
     {ok, ExistingRules} = get_all(),
@@ -52,7 +51,7 @@ create(RulesMap) ->
                     ),
                     Key = hd(maps:get(<<"generated_keys">>, R)),
                     ?LOG_DEBUG("create R: ~p~n", [R]),
-                    {ok, ids_to_names(Key)};
+                    {ok, Key};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
                     {validation_error, Response}
@@ -77,7 +76,7 @@ get_all() ->
         end,
     RulesReplaced = lists:map(
         fun(Rule) ->
-            ids_to_names(Rule)
+            Rule
         end,
         Rules
     ),
@@ -100,7 +99,7 @@ get_by_name(Name) ->
             {error, notfound};
         _ ->
             Rules = hd(Result),
-            {ok, ids_to_names(Rules)}
+            {ok, Rules}
     end.
 
 -spec all_active() -> {ok, Rules :: list()}.
@@ -152,7 +151,7 @@ get_by_id(Id) ->
             ?LOG_DEBUG("rules id null return value: ~p", [Id]),
             {error, notfound};
         {ok, Rules} ->
-            {ok, ids_to_names(Rules)}
+            {ok, Rules}
     end.
 
 -spec update(Id :: binary(), UpdateMap :: map()) ->
@@ -285,154 +284,6 @@ where_used(RulesetId) ->
 get_all_grouped_by_id() ->
     {ok, All} = dog_ruleset_api_v2:get_all(),
     maps:from_list([{maps:get(<<"id">>, Ruleset), Ruleset} || Ruleset <- All]).
-
--spec ids_to_names(Rules :: map()) -> Rules :: {ok | error, map()}.
-ids_to_names(Rules) ->
-    case Rules of
-        _ when not is_map(Rules) ->
-            Rules;
-        _ ->
-            %ProfileId = maps:get(<<"profile_id">>, Rules,[]),
-            %ProfilesById = get_all_grouped_by_id(),
-            %ProfileName = maps:get(<<"name">>,maps:get(ProfileId,ProfilesById,[])),
-            Inbound = nested:get([<<"rules">>, <<"inbound">>], Rules, []),
-            Outbound = nested:get([<<"rules">>, <<"outbound">>], Rules, []),
-            ServicesById = dog_service:get_all_grouped_by_id(),
-            ZonesById = dog_zone:get_all_grouped_by_id(),
-            GroupsById = dog_group:get_all_grouped_by_id(),
-            InboundReplaced =
-                case Inbound of
-                    [] ->
-                        [];
-                    _ ->
-                        rule_ids_to_names(Inbound, ServicesById, ZonesById, GroupsById)
-                end,
-            OutboundReplaced =
-                case Outbound of
-                    [] ->
-                        [];
-                    _ ->
-                        rule_ids_to_names(Outbound, ServicesById, ZonesById, GroupsById)
-                end,
-            NewRules = #{
-                <<"inbound">> => InboundReplaced,
-                <<"outbound">> => OutboundReplaced
-            },
-            maps:put(<<"rules">>, NewRules, Rules)
-        %maps:put(<<"profile_id">>, ProfileName, Rules1)
-    end.
-
-rule_ids_to_names(Rules, ServicesById, ZonesById, GroupsById) ->
-    lists:map(
-        fun(Rule) ->
-            ServiceName =
-                case maps:get(<<"service">>, Rule) of
-                    <<"any">> ->
-                        <<"any">>;
-                    ServiceId ->
-                        Service = maps:get(ServiceId, ServicesById),
-                        maps:get(<<"name">>, Service)
-                end,
-            RuleServiceReplaced = maps:update(<<"service">>, ServiceName, Rule),
-            ZonesGroupsReplaced =
-                case maps:get(<<"group_type">>, Rule) of
-                    <<"ANY">> ->
-                        RuleServiceReplaced;
-                    <<"ZONE">> ->
-                        ZoneName =
-                            case maps:get(<<"group">>, Rule) of
-                                <<"any">> ->
-                                    <<"any">>;
-                                ZoneId ->
-                                    maps:get(<<"name">>, maps:get(ZoneId, ZonesById))
-                            end,
-                        maps:update(<<"group">>, ZoneName, RuleServiceReplaced);
-                    G when G =:= <<"ROLE">>; G =:= <<"GROUP">> ->
-                        GroupName =
-                            case maps:get(<<"group">>, Rule) of
-                                <<"any">> ->
-                                    <<"any">>;
-                                GroupId ->
-                                    maps:get(<<"name">>, maps:get(GroupId, GroupsById))
-                            end,
-                        maps:update(<<"group">>, GroupName, RuleServiceReplaced)
-                end,
-            ZonesGroupsReplaced
-        end,
-        Rules
-    ).
-
-%nti(RulesId) ->
-%    {ok, Rules} = get_by_id(RulesId),
-%    %Itn = ids_to_names(Rules),
-%    names_to_ids(Rules).
-
--spec names_to_ids(Rules :: map()) -> Rules :: {ok | error, map()}.
-names_to_ids(Rules) ->
-    Inbound = nested:get([<<"rules">>, <<"inbound">>], Rules, []),
-    Outbound = nested:get([<<"rules">>, <<"outbound">>], Rules, []),
-    ServicesByName = dog_service:get_all_grouped_by_name(),
-    ZonesByName = dog_zone:get_all_grouped_by_name(),
-    GroupsByName = dog_group:get_all_grouped_by_name(),
-    InboundReplaced =
-        case Inbound of
-            [] ->
-                [];
-            _ ->
-                rule_names_to_ids(Inbound, ServicesByName, ZonesByName, GroupsByName)
-        end,
-    OutboundReplaced =
-        case Outbound of
-            [] ->
-                [];
-            _ ->
-                rule_names_to_ids(Outbound, ServicesByName, ZonesByName, GroupsByName)
-        end,
-    NewRules = #{
-        <<"inbound">> => InboundReplaced,
-        <<"outbound">> => OutboundReplaced
-    },
-    ?LOG_DEBUG(#{newrules => NewRules}),
-    maps:update(<<"rules">>, NewRules, Rules).
-
-rule_names_to_ids(Rules, ServicesByName, ZonesByName, GroupsByName) ->
-    lists:map(
-        fun(Rule) ->
-            ServiceId =
-                case maps:get(<<"service">>, Rule) of
-                    <<"any">> ->
-                        <<"any">>;
-                    ServiceName ->
-                        maps:get(<<"id">>, maps:get(ServiceName, ServicesByName))
-                end,
-            RuleServiceReplaced = maps:update(<<"service">>, ServiceId, Rule),
-            ZonesGroupsReplaced =
-                case maps:get(<<"group_type">>, Rule) of
-                    <<"ANY">> ->
-                        RuleServiceReplaced;
-                    <<"ZONE">> ->
-                        ZoneId =
-                            case maps:get(<<"group">>, Rule) of
-                                <<"any">> ->
-                                    <<"any">>;
-                                ZoneName ->
-                                    maps:get(<<"id">>, maps:get(ZoneName, ZonesByName))
-                            end,
-                        maps:update(<<"group">>, ZoneId, RuleServiceReplaced);
-                    G when G =:= <<"ROLE">>; G =:= <<"GROUP">> ->
-                        GroupId =
-                            case maps:get(<<"group">>, Rule) of
-                                <<"any">> ->
-                                    <<"any">>;
-                                GroupName ->
-                                    maps:get(<<"id">>, maps:get(GroupName, GroupsByName))
-                            end,
-                        maps:update(<<"group">>, GroupId, RuleServiceReplaced)
-                end,
-            ZonesGroupsReplaced
-        end,
-        Rules
-    ).
 
 -spec get_by_profile_id(ProfileId :: iolist()) -> {ok, Ruleset :: map()} | {error, notfound}.
 get_by_profile_id(ProfileId) ->
