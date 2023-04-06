@@ -92,7 +92,8 @@ handle_command(Hostkey, Message, ApiUserName) ->
                 [{use_shell, UseShell}, {api_user, ApiUserName}]
         end,
     ?LOG_DEBUG("NewOpts: ~p", [NewOpts]),
-    dog_file_transfer:execute_command(Command, Hostkey, NewOpts).
+    %dog_file_transfer:execute_command(Command, Hostkey, NewOpts).
+    dog_file_transfer_agent:execute_command(Command, Hostkey, NewOpts).
 
 terminate(_Reason, _Req, _State) ->
     ok.
@@ -116,7 +117,7 @@ resource_exists(Req, State) ->
                 end,
             ?LOG_DEBUG("ID: ~p, Path:~p", [Id, Path]),
             Opts = [{api_user, ApiUserName}],
-            case dog_file_transfer:fetch_file(Path, Id, Opts) of
+            case dog_file_transfer_agent:fetch_file(Path, Id, Opts) of
                 timeout ->
                     Req@2 = cowboy_req:reply(
                         500,
@@ -200,7 +201,7 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
                         {ok, IoDevice} = file:open(LocalFilePath, [raw, write, binary]),
                         Req5 = stream_file(Req2, IoDevice),
                         file:close(IoDevice),
-                        dog_file_transfer:send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts),
+                        dog_file_transfer_agent:send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts),
                         [Req5, RemoteFilePath]
                 end,
             acc_multipart(Hostkey, Req4, [{Headers, Body} | Acc], Opts);
@@ -275,7 +276,7 @@ delete_resource(Req@0, State) ->
     ?LOG_DEBUG("ID: ~p, Path:~p", [Id, Path]),
     Opts = [{api_user, ApiUserName}],
     {Result, Req@1} =
-        case dog_file_transfer:delete_file(Path, Id, Opts) of
+        case dog_file_transfer_agent:delete_file(Path, Id, Opts) of
             ok ->
                 {true, Req@0};
             timeout ->

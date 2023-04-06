@@ -15,5 +15,9 @@ start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 init([]) ->
-    ChildSpecs = [],
+    ChildSpecs = [
+            {dog_file_transfer_agent, {dog_file_transfer_agent, start_link, []}, permanent, 5000, worker, [
+                dog_file_transfer_agent
+            ]}
+    ],
     {ok, {{one_for_all, 10, 60}, ChildSpecs}}.
