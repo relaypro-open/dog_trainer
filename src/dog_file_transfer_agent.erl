@@ -48,7 +48,9 @@ start_link() ->
 
 %-spec periodic_publish() -> OldServer :: ok.
 execute_command(ExecuteCommand, Hostkey, Opts) ->
-    [Response, _State] = gen_server:call(?MODULE, {execute_command, ExecuteCommand, Hostkey, Opts}),
+    CommandExecutionTimeout = application:get_env(dog_trainer, command_execution_timeout_ms, 30000),
+    [Response, _State] = gen_server:call(?MODULE, {execute_command, ExecuteCommand, Hostkey, Opts},
+                                        CommandExecutionTimeout),
     Response.
 
 delete_file(FilePath, Hostkey, Opts) ->
