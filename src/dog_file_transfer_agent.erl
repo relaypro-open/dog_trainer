@@ -49,20 +49,22 @@ start_link() ->
 %-spec periodic_publish() -> OldServer :: ok.
 execute_command(ExecuteCommand, Hostkey, Opts) ->
     CommandExecutionTimeout = application:get_env(dog_trainer, command_execution_timeout_ms, 30000),
-    [Response, _State] = gen_server:call(?MODULE, {execute_command, ExecuteCommand, Hostkey, Opts},
-                                        CommandExecutionTimeout),
+    [Response, _State] = gen_server:call(?MODULE, {execute_command, ExecuteCommand, Hostkey, Opts}, CommandExecutionTimeout),
     Response.
 
 delete_file(FilePath, Hostkey, Opts) ->
-    [Response, _State] = gen_server:call(?MODULE, {delete_file, FilePath, Hostkey, Opts}),
+    DeleteFileTimeout = application:get_env(dog_trainer, delete_file_timeout_ms, 30000),
+    [Response, _State] = gen_server:call(?MODULE, {delete_file, FilePath, Hostkey, Opts}, DeleteFileTimeout),
     Response.
 
 fetch_file(FilePath, Hostkey, Opts) ->
-    [Response, _State] = gen_server:call(?MODULE, {fetch_file, FilePath, Hostkey, Opts}),
+    FetchFileTimeout = application:get_env(dog_trainer, fetch_file_timeout_ms, 30000),
+    [Response, _State] = gen_server:call(?MODULE, {fetch_file, FilePath, Hostkey, Opts}, FetchFileTimeout),
     Response.
 
 send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
-    [Response, _State] = gen_server:call(?MODULE, {send_file, LocalFilePath, RemoteFilePath, Hostkey, Opts}),
+    SendFileTimeout = application:get_env(dog_trainer, send_file_timeout_ms, 30000),
+    [Response, _State] = gen_server:call(?MODULE, {send_file, LocalFilePath, RemoteFilePath, Hostkey, Opts}, SendFileTimeout),
     Response.
 
 %% ------------------------------------------------------------------
