@@ -29,7 +29,8 @@ get_by_name(Name) ->
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, ?TYPE_TABLE),
-            reql:get_all(X, Name, #{index => <<"name">>})
+            reql:get_all(X, Name, #{index => <<"name">>}),
+            reql:filter(X, #{<<"active">> => <<"active">>})
         end
     ),
     {ok, R3} = rethink_cursor:all(R),
