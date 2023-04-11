@@ -1,5 +1,6 @@
--module(dog_file_transfer_agent).
+-module(dog_file_transfer_worker).
 -behaviour(gen_server).
+-behaviour(poolboy_worker).
 
 %% ------------------------------------------------------------------
 %% Record and Type Definitions
@@ -16,7 +17,8 @@
          execute_command/3,
          fetch_file/3,
          send_file/4,
-         start_link/0
+         start_link/0,
+         start_link/1
         ]).
 
 %% ------------------------------------------------------------------
@@ -46,25 +48,40 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+start_link(Args) ->
+    gen_server:start_link(?MODULE, Args, []).
+
 %-spec periodic_publish() -> OldServer :: ok.
 execute_command(ExecuteCommand, Hostkey, Opts) ->
     CommandExecutionTimeout = application:get_env(dog_trainer, command_execution_timeout_ms, 30000),
-    [Response, _State] = gen_server:call(?MODULE, {execute_command, ExecuteCommand, Hostkey, Opts}, CommandExecutionTimeout),
+    [Response, _State] = 
+        poolboy:transaction(?FILE_TRANSFER_POOL, fun(Worker) ->
+            gen_server:call(Worker, {execute_command, ExecuteCommand, Hostkey, Opts}, CommandExecutionTimeout)
+        end),
     Response.
 
 delete_file(FilePath, Hostkey, Opts) ->
     DeleteFileTimeout = application:get_env(dog_trainer, delete_file_timeout_ms, 30000),
-    [Response, _State] = gen_server:call(?MODULE, {delete_file, FilePath, Hostkey, Opts}, DeleteFileTimeout),
+    [Response, _State] = 
+        poolboy:transaction(?FILE_TRANSFER_POOL, fun(Worker) ->
+            gen_server:call(Worker, {delete_file, FilePath, Hostkey, Opts}, DeleteFileTimeout)
+        end),
     Response.
 
 fetch_file(FilePath, Hostkey, Opts) ->
     FetchFileTimeout = application:get_env(dog_trainer, fetch_file_timeout_ms, 30000),
-    [Response, _State] = gen_server:call(?MODULE, {fetch_file, FilePath, Hostkey, Opts}, FetchFileTimeout),
+    [Response, _State] = 
+        poolboy:transaction(?FILE_TRANSFER_POOL, fun(Worker) ->
+            gen_server:call(Worker, {fetch_file, FilePath, Hostkey, Opts}, FetchFileTimeout)
+        end),
     Response.
 
 send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
     SendFileTimeout = application:get_env(dog_trainer, send_file_timeout_ms, 30000),
-    [Response, _State] = gen_server:call(?MODULE, {send_file, LocalFilePath, RemoteFilePath, Hostkey, Opts}, SendFileTimeout),
+    [Response, _State] = 
+        poolboy:transaction(?FILE_TRANSFER_POOL, fun(Worker) ->
+            gen_server:call(Worker, {send_file, LocalFilePath, RemoteFilePath, Hostkey, Opts}, SendFileTimeout)
+        end),
     Response.
 
 %% ------------------------------------------------------------------

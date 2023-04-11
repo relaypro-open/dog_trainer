@@ -14,7 +14,9 @@
 
 -define(CMD(S), os:cmd(S)).
 
--define(POOL, pool1).
+-define(RETHINKDB_POOL, rethinkdb_pool1).
+
+-define(FILE_TRANSFER_POOL, file_transfer_pool1).
 
 -define(DB_NAME, <<"dog">>).
 

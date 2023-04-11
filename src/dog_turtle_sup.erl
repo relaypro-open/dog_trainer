@@ -98,6 +98,7 @@ file_publisher_spec() ->
     ConnName = default,
     AMQPDecls = [
         #'exchange.declare'{exchange = <<"file_transfer">>, type = <<"topic">>, durable = true}
+
     ],
     AMQPPoolChildSpec =
         turtle_publisher:child_spec(

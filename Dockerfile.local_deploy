@@ -78,3 +78,4 @@ RUN mkdir -p /etc/dog_trainer/certs \
 	&& chmod 700 /etc/dog_trainer/private
 
 CMD /bin/bash -c "/etc/rabbitmq/csc_certs.sh" && /bin/bash -c "/opt/dog_trainer/bin/dog_trainer foreground"
+#CMD /bin/bash -c "/etc/rabbitmq/csc_certs.sh"  && /bin/bash -c "sleep infinity"

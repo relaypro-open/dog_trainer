@@ -12,4 +12,4 @@
     | {error, {atom(), Reason :: binary()}}.
 run(Fun) ->
     {ok, RethinkTimeout} = application:get_env(dog_trainer, rethink_timeout_ms),
-    dog_db_pool_sup:run(?POOL, Fun, RethinkTimeout).
+    dog_db_pool_sup:run(?RETHINKDB_POOL, Fun, RethinkTimeout).

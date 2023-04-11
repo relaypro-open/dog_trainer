@@ -183,7 +183,8 @@ send_data(IoDevice, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, Cur
             ?LOG_DEBUG(#{
                 remotefilepath => RemoteFilePath,
                 maxblocksizebytes => MaxBlockSizeBytes,
-                currentblock => CurrentBlock
+                currentblock => CurrentBlock,
+                total_blocks => TotalBlocks
             }),
             % Write Data to Socket
             NextBlock = CurrentBlock + 1,
