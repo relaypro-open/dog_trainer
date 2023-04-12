@@ -166,12 +166,9 @@ publish_file_send(
 send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
     MaxBlockSizeBytes = application:get_env(dog_trainer, max_block_size_bytes, 134217728),
     ?LOG_DEBUG(#{localfilepath => LocalFilePath, hostkey => Hostkey}),
-    try
-        {ok, IoDevice} = file:open(LocalFilePath, [read, binary, read_ahead, raw]),
-        send_data(IoDevice, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts)
-    after
-        file:close(LocalFilePath)
-    end.
+    {ok, IoDevice} = file:open(LocalFilePath, [read, binary, read_ahead, raw]),
+    send_data(IoDevice, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts),
+    ok = file:close(IoDevice).
 
 send_data(IoDevice, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts) ->
     TotalBlocks = number_blocks(RemoteFilePath, MaxBlockSizeBytes),
