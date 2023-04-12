@@ -34,6 +34,7 @@ execute_command(ExecuteCommand, Hostkey) ->
     execute_command(ExecuteCommand, Hostkey, []).
 
 execute_command(ExecuteCommand, Hostkey, Opts) ->
+    metrics:add_m(filt_transfer, execute_command),
     publish_execute_command(Hostkey, ExecuteCommand, Opts).
 
 -spec publish_execute_command(Hostkey :: string(), ExecuteCommand :: string(), Opts :: list()) ->
@@ -83,6 +84,7 @@ decode_payload(Payload) ->
     {Response, Message}.
 
 delete_file(FilePath, Hostkey, Opts) ->
+    metrics:add_m(filt_transfer, delete_file),
     publish_file_delete(Hostkey, FilePath, Opts).
 
 -spec publish_file_delete(Hostkey :: string(), Filename :: string(), Opts :: list()) -> any().
@@ -161,6 +163,7 @@ publish_file_send(
     Response.
 
 -spec send_file(
+    metrics:add_m(filt_transfer, send_file),
     LocalFilePath :: string(), RemoteFilePath :: string(), Hostkey :: string(), Opts :: list()
 ) -> ok | error.
 send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
@@ -212,6 +215,7 @@ number_blocks(RemoteFilePath, MaxBlockSizeBytes) ->
     FileSize.
 
 fetch_file(FilePath, Hostkey, Opts) ->
+    metrics:add_m(filt_transfer, fetch_file),
     publish_file_fetch(Hostkey, FilePath, Opts).
 
 %Requires capability CAP_DAC_READ_SEARCH to read all files
