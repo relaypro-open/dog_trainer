@@ -163,10 +163,10 @@ publish_file_send(
     Response.
 
 -spec send_file(
-    metrics:add_m(filt_transfer, send_file),
     LocalFilePath :: string(), RemoteFilePath :: string(), Hostkey :: string(), Opts :: list()
 ) -> ok | error.
 send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
+    metrics:add_m(filt_transfer, send_file),
     MaxBlockSizeBytes = application:get_env(dog_trainer, max_block_size_bytes, 134217728),
     ?LOG_DEBUG(#{localfilepath => LocalFilePath, hostkey => Hostkey}),
     {ok, IoDevice} = file:open(LocalFilePath, [read, binary, read_ahead, raw]),
