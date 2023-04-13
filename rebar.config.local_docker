@@ -33,8 +33,9 @@
 
 {relx, [
         {release, 
-          {dog_trainer, "v1.4" }, 
-          [dog_trainer]},
+        {dog_trainer,
+          {cmd, "date +%s | tr -d '\n'"} %% relflow-release-version-marker
+          }, [dog_trainer]},
         {dev_mode, false},
         {sys_config, "config/sys.config"},
         {include_erts, true},
