@@ -21,32 +21,36 @@ get_file(Type) ->
 
 -spec validate(Type :: binary(), Document :: map()) -> ok | {error, _}.
 validate(Type, Document) ->
-    try
+    %try
         SchemaContents = get_file(Type),
-        {ok, SchemaMap} = 'Elixir.Jason':decode(SchemaContents),
+        SchemaMap = jsx:decode(SchemaContents),
+        %{ok, SchemaMap} = 'Elixir.Jason':decode(SchemaContents),
         ?LOG_DEBUG("SchemaMap: ~p", [SchemaMap]),
-        Schema = 'Elixir.JsonXema':new(SchemaMap),
+        %Schema = 'Elixir.JsonXema':new(SchemaMap),
         %?LOG_DEBUG("Schema: ~p",[Schema]),
         Name = maps:get(<<"name">>, Document, <<"NONE">>),
         Id = maps:get(<<"id">>, Document, <<"NONE">>),
-        Validation = 'Elixir.JsonXema':validate(Schema, Document),
+        %Validation = 'Elixir.JsonXema':validate(Schema, Document),
+        Validation = jesse:validate_with_schema(SchemaMap, Document),
+        ?LOG_DEBUG("Validation: ~p",[Validation]),
         case Validation of
-            ok ->
-                ?LOG_INFO("Schema Validation: ~p, ~p, ~p: ~p", [Type, Name, Id, Validation]);
-            {error, _} ->
-                ?LOG_ERROR("Schema Validation: ~p, ~p, ~p: ~p", [Type, Name, Id, Validation])
-        end,
-        Validation
-    catch
-        Exception:ExceptionReason:Stacktrace ->
-            ?LOG_ERROR(#{
-                schematype => Type,
-                exception => Exception,
-                exceptionreason => ExceptionReason,
-                stacktrace => Stacktrace
-            }),
-            throw(error)
-    end.
+            {ok, _Reason} ->
+                ?LOG_INFO("Schema Validation: ~p, ~p, ~p: ~p", [Type, Name, Id, Validation]),
+                ok;
+            {error, Reason} ->
+                ?LOG_ERROR("Schema Validation: ~p, ~p, ~p: ~p", [Type, Name, Id, Validation]),
+                {error, Reason}
+        end.
+    %catch
+    %    Exception:ExceptionReason:Stacktrace ->
+    %        ?LOG_ERROR(#{
+    %            schematype => Type,
+    %            exception => Exception,
+    %            exceptionreason => ExceptionReason,
+    %            stacktrace => Stacktrace
+    %        }),
+    %        throw(error)
+    %end.
 
 -spec validate_all(Type :: binary()) -> ResultMap :: map().
 validate_all(Type) ->
@@ -65,7 +69,7 @@ validate_all(Type) ->
     Result = lists:map(
         fun(Document) ->
             Id = maps:get(<<"id">>, Document),
-            {Id, dog_json_schema:validate(Type, element(2, DocumentType:get_by_id(Id)))}
+            {Id, validate(Type, element(2, DocumentType:get_by_id(Id)))}
         end,
         Documents
     ),

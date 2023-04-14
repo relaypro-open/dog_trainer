@@ -26,8 +26,14 @@
         {check_v6_hashes, true},
         {generate_unset_tables, false},
         {max_interval_since_last_agent_update,2},
-        {pools, [
-            {pool1, [
+        {rethinkdb_pools, [
+            {rethinkdb_pool1, [
+                {size, 10},
+                {max_overflow, 20}
+            ], []}
+        ]},
+        {file_transfer_pools, [
+            {file_transfer_pool1, [
                 {size, 10},
                 {max_overflow, 20}
             ], []}

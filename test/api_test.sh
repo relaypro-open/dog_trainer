@@ -31,8 +31,8 @@ get ${BASEURL}/service?name=drewtest
 echo -e "{\n\"name\":\"drewtest2\"\n}" > ${TESTDIR}/service_update.json
 put "${TESTDIR}/service_update.json" "${BASEURL}/service/${SERVICE_ID}"
 putc "${TESTDIR}/service_update.json" "${BASEURL}/service/${SERVICE_ID}" 303
-putc "${TESTDIR}/service_update_no_ports.json" "${BASEURL}/service/${SERVICE_ID}" 500
-putc "${TESTDIR}/service_update_string_ports.json" "${BASEURL}/service/${SERVICE_ID}" 500
+putc "${TESTDIR}/service_update_no_ports.json" "${BASEURL}/service/${SERVICE_ID}" 400
+putc "${TESTDIR}/service_update_string_ports.json" "${BASEURL}/service/${SERVICE_ID}" 400
 get ${BASEURL}/service/${SERVICE_ID}
 delete ${BASEURL}/service/${SERVICE_ID}
 get ${BASEURL}/services
@@ -58,7 +58,7 @@ get ${BASEURL}/group/${GROUP_ID}
 get "${BASEURL}/group?name=drewtest"
 put "${TESTDIR}/group_update.json" "${BASEURL}/group/${GROUP_ID}"
 putc "${TESTDIR}/group_update.json" "${BASEURL}/group/${GROUP_ID}" 303
-putc "${TESTDIR}/group_update_blank_name.json" "${BASEURL}/group/${GROUP_ID}" 500
+putc "${TESTDIR}/group_update_blank_name.json" "${BASEURL}/group/${GROUP_ID}" 400
 get ${BASEURL}/group/${GROUP_ID}
 delete ${BASEURL}/group/${GROUP_ID}
 get ${BASEURL}/groups
@@ -69,7 +69,7 @@ get ${BASEURL}/host/${HOST_ID}
 get "${BASEURL}/host?hostkey=drewtest-phoneboothdev-info"
 put "${TESTDIR}/host_update.json" "${BASEURL}/host/${HOST_ID}"
 putc "${TESTDIR}/host_update.json" "${BASEURL}/host/${HOST_ID}" 303
-putc "${TESTDIR}/host_update_blank_hostname.json" "${BASEURL}/host/${HOST_ID}" 500
+putc "${TESTDIR}/host_update_blank_hostname.json" "${BASEURL}/host/${HOST_ID}" 400
 get ${BASEURL}/host/${HOST_ID}
 delete ${BASEURL}/host/${HOST_ID}
 get ${BASEURL}/hosts
@@ -92,7 +92,7 @@ get ${BASEURL}/fact/${FACT_ID}
 get "${BASEURL}/fact?name=dev_qa"
 put "${TESTDIR}/fact_update.json" "${BASEURL}/fact/${FACT_ID}"
 putc "${TESTDIR}/fact_update.json" "${BASEURL}/fact/${FACT_ID}" 303
-putc "${TESTDIR}/fact_update_blank_factname.json" "${BASEURL}/fact/${FACT_ID}" 500
+putc "${TESTDIR}/fact_update_blank_factname.json" "${BASEURL}/fact/${FACT_ID}" 400
 get ${BASEURL}/fact/${FACT_ID}
 delete ${BASEURL}/fact/${FACT_ID}
 get ${BASEURL}/facts

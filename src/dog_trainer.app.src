@@ -26,7 +26,6 @@
         base16,
         plists,
         imetrics,
-        json_xema,
         nested,
         poolboy,
         jsn,
@@ -34,12 +33,7 @@
         erlcloud,
         erlsom,
         cache_tab,
-        elixir,
-        logger,
-        xema,
-        conv_case,
-        flatlog,
-        jason
+        flatlog
     ]},
     {env, []},
     {modules, []},
