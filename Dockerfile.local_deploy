@@ -1,11 +1,11 @@
 # Build stage 0
-FROM erlang:23 as base
+FROM erlang:24 as base
 RUN apt-get update && apt-get install -y less ack lsb-release vim-tiny jq curl
 
 #Set working directory
 RUN mkdir /data
 WORKDIR /data
-COPY rebar.config.local_docker rebar.config
+COPY rebar.config .
 COPY rebar.lock .
 COPY rebar3 .
 
