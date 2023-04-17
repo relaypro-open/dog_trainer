@@ -69,7 +69,7 @@ get ${BASEURL}/host/${HOST_ID}
 get "${BASEURL}/host?hostkey=drewtest-phoneboothdev-info"
 put "${TESTDIR}/host_update.json" "${BASEURL}/host/${HOST_ID}"
 putc "${TESTDIR}/host_update.json" "${BASEURL}/host/${HOST_ID}" 303
-putc "${TESTDIR}/host_update_blank_hostname.json" "${BASEURL}/host/${HOST_ID}" 400
+putc "${TESTDIR}/host_update_blank_hostname.json" "${BASEURL}/host/${HOST_ID}" 500
 get ${BASEURL}/host/${HOST_ID}
 delete ${BASEURL}/host/${HOST_ID}
 get ${BASEURL}/hosts

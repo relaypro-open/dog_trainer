@@ -749,8 +749,7 @@ update(Id, UpdateMap) ->
                         _ -> {false, no_updated}
                     end;
                 {error, Error} ->
-                    Response = dog_parse:validation_error(Error),
-                    {validation_error, Response}
+                    {validation_error, Error}
             end;
         {error, Error} ->
             {false, Error}
