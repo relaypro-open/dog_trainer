@@ -75,6 +75,8 @@ init() ->
 -spec get_all_ips_by_id(Id :: binary()) -> {ok, iolist()}.
 get_all_ips_by_id(Id) ->
     case Id of
+        <<"self">> ->
+            {ok, []};
         <<"all-active">> ->
             {ok, dog_ips:uniq(lists:flatten(all_ipv4s() ++ all_ipv6s()))};
         <<"internal-active">> ->
@@ -211,7 +213,7 @@ get_all() ->
             [] -> [];
             Else -> Else
         end,
-    Groups@1 = lists:append(Groups, [all_active()]),
+    Groups@1 = lists:append(Groups, [all_active(), self_group()]),
     {ok, Groups@1}.
 
 -spec get_all_grouped_by_id() -> map().
@@ -353,6 +355,16 @@ all_active() ->
         <<"internal_ipv6_addresses">> => InternalIpv6s
     }.
 
+self_group() ->
+    #{
+        <<"name">> => <<"self">>,
+        <<"id">> => <<"self">>,
+        <<"external_ipv4_addresses">> => [],
+        <<"external_ipv6_addresses">> => [],
+        <<"internal_ipv4_addresses">> => [],
+        <<"internal_ipv6_addresses">> => []
+        }.
+
 internal_active() ->
     InternalIpv4s = all_internal_ipv4s(),
     InternalIpv6s = all_internal_ipv6s(),
@@ -376,6 +388,8 @@ external_active() ->
 -spec get_id_by_name(GroupName :: binary()) -> {ok, binary()}.
 get_id_by_name(GroupName) ->
     case GroupName of
+        <<"self">> ->
+            {ok, <<"self">>};
         <<"all-active">> ->
             {ok, <<"all-active">>};
         <<"internal-active">> ->
@@ -395,6 +409,8 @@ get_id_by_name(GroupName) ->
 -spec get_name_by_id(GroupId :: binary()) -> {ok, binary()} | {error, atom()}.
 get_name_by_id(GroupId) ->
     case GroupId of
+        <<"self">> ->
+            {ok, <<"self">>};
         <<"all-active">> ->
             {ok, <<"all-active">>};
         <<"internal-active">> ->
@@ -460,6 +476,8 @@ set_hash(GroupName, Hash, Field) ->
 -spec get_by_name(GroupName :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_name(GroupName) ->
     case GroupName of
+        <<"self">> ->
+            {ok, self_group()};
         <<"all-active">> ->
             {ok, all_active()};
         <<"internal-active">> ->
@@ -494,6 +512,8 @@ get_by_name(GroupName) ->
 -spec get_by_id(GroupId :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_id(GroupId) ->
     case GroupId of
+        <<"self">> ->
+            {ok, self_group()};
         <<"all-active">> ->
             {ok, all_active()};
         <<"internal-active">> ->
@@ -619,6 +639,8 @@ delete(Id) ->
 -spec get_internal_ips_by_id(binary()) -> {'ok', list()} | {'error', atom()}.
 get_internal_ips_by_id(GroupId) ->
     case GroupId of
+        <<"self">> ->
+            {ok, []};
         <<"all-active">> ->
             {ok, all_ips()};
         <<"internal-active">> ->
@@ -634,6 +656,8 @@ get_internal_ips_by_id(GroupId) ->
 -spec get_internal_ipv4s_by_id(binary()) -> {'ok', list()} | {'error', atom()}.
 get_internal_ipv4s_by_id(GroupId) ->
     case GroupId of
+        <<"self">> ->
+            {ok, []};
         <<"all-active">> ->
             {ok, all_ipv4s()};
         <<"internal-active">> ->
@@ -649,6 +673,8 @@ get_internal_ipv4s_by_id(GroupId) ->
 -spec get_internal_ipv6s_by_id(binary()) -> {'ok', list()} | {'error', atom()}.
 get_internal_ipv6s_by_id(GroupId) ->
     case GroupId of
+        <<"self">> ->
+            {ok, []};
         <<"all-active">> ->
             {ok, all_ipv6s()};
         <<"internal-active">> ->
@@ -664,6 +690,8 @@ get_internal_ipv6s_by_id(GroupId) ->
 -spec get_external_ips_by_id(binary()) -> {'ok', list()} | {'error', atom()}.
 get_external_ips_by_id(Id) ->
     case Id of
+        <<"self">> ->
+            {ok, []};
         <<"all-active">> ->
             {ok,
                 dog_ips:uniq(
@@ -682,6 +710,8 @@ get_external_ips_by_id(Id) ->
 -spec get_external_ipv6s_by_id(binary()) -> {'ok', list()} | {'error', atom()}.
 get_external_ipv6s_by_id(Id) ->
     case Id of
+        <<"self">> ->
+            {ok, []};
         <<"all-active">> ->
             {ok, all_external_ipv6s()};
         <<"internal-active">> ->
@@ -708,6 +738,8 @@ get_external_ipv6s_by_id(Id) ->
 -spec get_external_ipv4s_by_id(binary()) -> {'ok', list()} | {'error', atom()}.
 get_external_ipv4s_by_id(Id) ->
     case Id of
+        <<"self">> ->
+            {ok, []};
         <<"all-active">> ->
             {ok, all_external_ipv4s()};
         <<"internal-active">> ->
@@ -734,6 +766,8 @@ get_external_ipv4s_by_id(Id) ->
 -spec get_hosts_by_id(GroupId :: binary()) -> {ok, list()}.
 get_hosts_by_id(GroupId) ->
     case GroupId of
+        <<"self">> ->
+            {ok, []};
         <<"all-active">> ->
             dog_host:get_all();
         <<"internal-active">> ->
@@ -993,6 +1027,8 @@ get_all_ipv6s_by_name(GroupName) ->
 -spec get_all_ipv4s_by_id(GroupId :: binary()) -> {'ok', [any()]}.
 get_all_ipv4s_by_id(GroupId) ->
     case GroupId of
+        <<"self">> ->
+            {ok, []};
         <<"all-active">> ->
             {ok, all_ipv4s()};
         <<"internal-active">> ->
@@ -1009,6 +1045,8 @@ get_all_ipv4s_by_id(GroupId) ->
 -spec get_all_ipv6s_by_id(GroupId :: binary()) -> {'ok', [any()]}.
 get_all_ipv6s_by_id(GroupId) ->
     case GroupId of
+        <<"self">> ->
+            {ok, []};
         <<"all-active">> ->
             {ok, all_ipv6s()};
         <<"internal-active">> ->

@@ -5,8 +5,8 @@
 -export([
     %cidr_netmask/1,
     %cidr_network/1,
-    generate_iptables_ruleset/10,
-    generate_iptables_ruleset/3,
+    generate_iptables_ruleset/11,
+    generate_iptables_ruleset/4,
     %netmask_cidr/1,
     read_iptables_ruleset_set_v4_from_file/1,
     read_iptables_ruleset_set_v6_from_file/1,
@@ -18,9 +18,10 @@
     write_iptables_ruleset_unset_v6_to_file/2
 ]).
 
--spec generate_iptables_ruleset(ProfileJson :: map(), Type :: atom(), Version :: binary()) ->
+-spec generate_iptables_ruleset(ProfileJson :: map(), Type :: atom(), Version :: binary(),
+                                SelfGroupName :: binary()) ->
     {'ok', iolist()}.
-generate_iptables_ruleset(ProfileJson, Type, Version) ->
+generate_iptables_ruleset(ProfileJson, Type, Version, SelfGroupName) ->
     {Ipv4RoleMap, Ipv6RoleMap, Ipv4ZoneMap, Ipv6ZoneMap, ZoneIdMap, GroupIdMap, ServiceIdMap} = dog_ipset:id_maps(),
     generate_iptables_ruleset(
         ProfileJson,
@@ -32,7 +33,8 @@ generate_iptables_ruleset(ProfileJson, Type, Version) ->
         Ipv6ZoneMap,
         ZoneIdMap,
         GroupIdMap,
-        ServiceIdMap
+        ServiceIdMap,
+        SelfGroupName
     ).
 
 -spec generate_iptables_ruleset(
@@ -45,7 +47,8 @@ generate_iptables_ruleset(ProfileJson, Type, Version) ->
     Ipv6ZoneMap :: map(),
     ZoneIdMap :: map(),
     GroupIdMap :: map(),
-    ServiceIdMap :: map()
+    ServiceIdMap :: map(),
+    SelfGroupName :: binary()
 ) -> {'ok', iolist()}.
 generate_iptables_ruleset(
     ProfileJson,
@@ -57,7 +60,8 @@ generate_iptables_ruleset(
     Ipv6ZoneMap,
     ZoneIdMap,
     GroupIdMap,
-    ServiceIdMap
+    ServiceIdMap,
+    SelfGroupName
 ) ->
     try
         Docker = get_docker(maps:get(<<"docker">>, ProfileJson, <<"undefined">>)),
@@ -82,7 +86,8 @@ generate_iptables_ruleset(
                         Ipv6ZoneMap,
                         ServiceIdMap,
                         GroupIdMap,
-                        ZoneIdMap
+                        ZoneIdMap,
+                        SelfGroupName
                     ),
                     Rules
                 catch
@@ -129,7 +134,8 @@ generate_iptables_ruleset(
                                 Ipv6ZoneMap,
                                 ServiceIdMap,
                                 GroupIdMap,
-                                ZoneIdMap
+                                ZoneIdMap,
+                                SelfGroupName
                             ),
                             Rules
                         catch
@@ -165,7 +171,8 @@ generate_iptables_ruleset(
                         Ipv6ZoneMap,
                         ServiceIdMap,
                         GroupIdMap,
-                        ZoneIdMap
+                        ZoneIdMap,
+                        SelfGroupName
                     ),
                     Rules
                 catch
@@ -428,7 +435,8 @@ footer_v6() ->
     Ipv6ZoneMap :: map(),
     ServiceIdMap :: map(),
     GroupIdMap :: map(),
-    ZoneIdMap :: map()
+    ZoneIdMap :: map(),
+    SelfGroupName :: binary()
 ) -> iolist().
 json_to_rules(
     Json,
@@ -442,7 +450,8 @@ json_to_rules(
     Ipv6ZoneMap,
     ServiceIdMap,
     GroupIdMap,
-    ZoneIdMap
+    ZoneIdMap,
+    SelfGroupName
 ) ->
     case Json of
         [] ->
@@ -473,7 +482,8 @@ json_to_rules(
                         Ipv4ZoneMap,
                         Ipv6ZoneMap,
                         GroupIdMap,
-                        ZoneIdMap
+                        ZoneIdMap,
+                        SelfGroupName
                     ),
                     ?LOG_DEBUG("Rules: ~p~n", [Rules]),
                     Rules
@@ -493,7 +503,8 @@ json_to_rules(
     Ipv4ZoneMap :: map(),
     Ipv6ZoneMap :: map(),
     GroupIdMap :: map(),
-    ZoneIdMap :: map()
+    ZoneIdMap :: map(),
+    SelfGroupName :: binary()
 ) -> iolist().
 json_to_rule(
     Json,
@@ -508,7 +519,8 @@ json_to_rule(
     Ipv4ZoneMap,
     Ipv6ZoneMap,
     GroupIdMap,
-    ZoneIdMap
+    ZoneIdMap,
+    SelfGroupName
 ) ->
     lists:map(
         fun(Service) ->
@@ -529,7 +541,7 @@ json_to_rule(
             GroupName =
                 case Environment of
                     <<"local">> ->
-                        get_group_name(GroupType, Group, GroupIdMap, ZoneIdMap);
+                        get_group_name(GroupType, Group, GroupIdMap, ZoneIdMap, SelfGroupName);
                     _ ->
                         Group
                 end,
@@ -1104,13 +1116,20 @@ get_service_name(ServiceId, ServiceIdMap) ->
     end.
 
 -spec get_group_name(
-    GroupType :: binary(), Group :: binary(), GroupIdMap :: map(), ZoneIdMap :: map()
+    GroupType :: binary(), Group :: binary(), GroupIdMap :: map(), ZoneIdMap :: map(), SelfGroupName
+    :: binary()
 ) -> binary().
-get_group_name(GroupType, Group, GroupIdMap, ZoneIdMap) ->
+get_group_name(GroupType, Group, GroupIdMap, ZoneIdMap, SelfGroupName) ->
     case GroupType of
         G when G =:= <<"ROLE">> ; G =:= <<"GROUP">> ->
             %get_group_name_by_id(Group);
-            maps:get(<<"name">>, maps:get(Group, GroupIdMap));
+            GroupName = maps:get(<<"name">>, maps:get(Group, GroupIdMap)),
+            case GroupName of
+                <<"self">> ->
+                    SelfGroupName;
+                _ ->
+                    GroupName
+            end;
         <<"ZONE">> ->
             %get_zone_name_by_id(Group);
             maps:get(<<"name">>, maps:get(Group, ZoneIdMap));

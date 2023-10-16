@@ -27,9 +27,9 @@
     create_iptables_ruleset/13,
     date_string/0,
     generate_ipv4_iptables_ruleset_by_group_id/1,
-    generate_ipv4_iptables_ruleset_by_id/1,
+    generate_ipv4_iptables_ruleset_by_id/2,
     generate_ipv6_iptables_ruleset_by_group_id/1,
-    generate_ipv6_iptables_ruleset_by_id/1,
+    generate_ipv6_iptables_ruleset_by_id/2,
     get_all_inbound_ports_by_protocol/1,
     get_ppps_inbound_ec2/2,
     get_ppps_outbound_ec2/2,
@@ -44,27 +44,27 @@
 init() ->
     pass.
 
--spec generate_ipv6_iptables_ruleset_by_id(Id :: binary()) -> {{ok, iolist()}, {ok, iolist()}}.
-generate_ipv6_iptables_ruleset_by_id(Id) ->
+-spec generate_ipv6_iptables_ruleset_by_id(Id :: binary(), SelfGroupName :: binary()) -> {{ok, iolist()}, {ok, iolist()}}.
+generate_ipv6_iptables_ruleset_by_id(Id, SelfGroupName) ->
     case get_by_id(Id) of
         {error, _Error} ->
             ?LOG_INFO("No profile associated with group id: ~p", [Id]),
             throw(profile_not_found);
         {ok, ProfileJson} ->
             IpsetsIptablesRulesetResult = dog_iptables_ruleset:generate_iptables_ruleset(
-                ProfileJson, ipsets, <<"v6">>
+                ProfileJson, ipsets, <<"v6">>, SelfGroupName
             ),
             IptablesIptablesRulesetResult = dog_iptables_ruleset:generate_iptables_ruleset(
-                ProfileJson, iptables, <<"v6">>
+                ProfileJson, iptables, <<"v6">>, SelfGroupName
             ),
             {IpsetsIptablesRulesetResult, IptablesIptablesRulesetResult}
     end.
 
--spec generate_ipv4_iptables_ruleset_by_id(GroupId :: binary()) -> {{ok, iolist()}, {ok, iolist()}}.
-generate_ipv4_iptables_ruleset_by_id(Id) ->
+-spec generate_ipv4_iptables_ruleset_by_id(GroupId :: binary(), SelfGroupName :: binary() ) -> {{ok, iolist()}, {ok, iolist()}}.
+generate_ipv4_iptables_ruleset_by_id(Id, SelfGroupName) ->
     {ok, Json} = get_by_id(Id),
-    Ipsets = dog_iptables_ruleset:generate_iptables_ruleset(Json, ipsets, <<"v4">>),
-    Iptables = dog_iptables_ruleset:generate_iptables_ruleset(Json, iptables, <<"v4">>),
+    Ipsets = dog_iptables_ruleset:generate_iptables_ruleset(Json, ipsets, <<"v4">>, SelfGroupName),
+    Iptables = dog_iptables_ruleset:generate_iptables_ruleset(Json, iptables, <<"v4">>, SelfGroupName),
     {Ipsets, Iptables}.
 
 -spec generate_ipv4_iptables_ruleset_by_group_name(
@@ -103,7 +103,8 @@ generate_ipv4_iptables_ruleset_by_group_name(
                 Ipv6ZoneMap,
                 ZoneIdMap,
                 GroupIdMap,
-                ServiceIdMap
+                ServiceIdMap,
+                GroupName
             ),
             IptablesIptablesRulesetResult =
                 case application:get_env(dog_trainer, generate_unset_tables, true) of
@@ -118,7 +119,8 @@ generate_ipv4_iptables_ruleset_by_group_name(
                             Ipv6ZoneMap,
                             ZoneIdMap,
                             GroupIdMap,
-                            ServiceIdMap
+                            ServiceIdMap,
+                            GroupName
                         );
                     false ->
                         {ok, []}
@@ -128,14 +130,15 @@ generate_ipv4_iptables_ruleset_by_group_name(
 
 -spec generate_ipv6_iptables_ruleset_by_group_id(GroupId :: binary()) -> {iolist(), iolist()}.
 generate_ipv6_iptables_ruleset_by_group_id(GroupId) ->
+    SelfGroupName = maps:get(<<"Name">>, dog_group:get_by_id(GroupId)),
     ProfileId =
         case dog_group:get_profile_by_id(GroupId) of
             {'error', 'notfound'} -> profile_not_found(GroupId);
             {ok, Id} -> Id
         end,
     {ok, Json} = get_by_id(ProfileId),
-    {ok, Ipsets} = dog_iptables_ruleset:generate_iptables_ruleset(Json, ipsets, <<"v4">>),
-    {ok, Iptables} = dog_iptables_ruleset:generate_iptables_ruleset(Json, iptables, <<"v4">>),
+    {ok, Ipsets} = dog_iptables_ruleset:generate_iptables_ruleset(Json, ipsets, <<"v4">>, SelfGroupName),
+    {ok, Iptables} = dog_iptables_ruleset:generate_iptables_ruleset(Json, iptables, <<"v4">>, SelfGroupName),
     {Ipsets, Iptables}.
 
 -spec profile_not_found(GroupId :: binary()) -> no_return().
@@ -180,7 +183,8 @@ generate_ipv6_iptables_ruleset_by_group_name(
                 Ipv6ZoneMap,
                 ZoneIdMap,
                 GroupIdMap,
-                ServiceIdMap
+                ServiceIdMap,
+                GroupName
             ),
             IptablesIptablesRulesetResult =
                 case application:get_env(dog_trainer, generate_unset_tables, true) of
@@ -195,7 +199,8 @@ generate_ipv6_iptables_ruleset_by_group_name(
                             Ipv6ZoneMap,
                             ZoneIdMap,
                             GroupIdMap,
-                            ServiceIdMap
+                            ServiceIdMap,
+                            GroupName
                         );
                     false ->
                         {ok, []}
@@ -205,14 +210,15 @@ generate_ipv6_iptables_ruleset_by_group_name(
 
 -spec generate_ipv4_iptables_ruleset_by_group_id(GroupId :: binary()) -> {iolist(), iolist()}.
 generate_ipv4_iptables_ruleset_by_group_id(GroupId) ->
+    SelfGroupName = maps:get(<<"Name">>, dog_group:get_by_id(GroupId)),
     ProfileId =
         case dog_group:get_profile_by_id(GroupId) of
             {'error', 'notfound'} -> profile_not_found(GroupId);
             {ok, Id} -> Id
         end,
     {ok, Json} = get_by_id(ProfileId),
-    {ok, Ipsets} = dog_iptables_ruleset:generate_iptables_ruleset(Json, ipsets, <<"v4">>),
-    {ok, Iptables} = dog_iptables_ruleset:generate_iptables_ruleset(Json, iptables, <<"v4">>),
+    {ok, Ipsets} = dog_iptables_ruleset:generate_iptables_ruleset(Json, ipsets, <<"v4">>, SelfGroupName),
+    {ok, Iptables} = dog_iptables_ruleset:generate_iptables_ruleset(Json, iptables, <<"v4">>, SelfGroupName),
     {Ipsets, Iptables}.
 
 -spec write_profile_to_file(Profile :: map(), GroupName :: binary()) -> ok.
