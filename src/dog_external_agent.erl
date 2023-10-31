@@ -188,8 +188,8 @@ inbound_service_spec(EnvName) ->
     Config = #{
         name => Name,
         connection => default,
-        function => fun dog_external:loop/4,
-        handle_info => fun dog_external_agent:handle_info/2,
+        function => fun loop/4,
+        handle_info => fun handle_info/2,
         init_state => #{},
         declarations =>
             [
