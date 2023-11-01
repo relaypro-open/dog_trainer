@@ -16,7 +16,8 @@
     get_all_active/0,
     get_schema/0,
     update/2,
-    update_by_hostkey/2
+    update_by_hostkey/2,
+    get_id_by_hostkey/1
 ]).
 
 -export([

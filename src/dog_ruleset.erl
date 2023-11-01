@@ -108,7 +108,7 @@ all_active() ->
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, ?TYPE_TABLE),
-            reql:has_field(X, <<"profile_id">>)
+            reql:has_fields(X, [<<"profile_id">>])
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
