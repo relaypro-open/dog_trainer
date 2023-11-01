@@ -140,7 +140,7 @@ handle_query_result(Result, State) ->
                 Result
             )
     end,
-    dog_ipset:update_ipsets(all_envs),
+    dog_ipset:force_update_ipsets(),
     {noreply, [Result | State]}.
 
 handle_query_done(State) ->
