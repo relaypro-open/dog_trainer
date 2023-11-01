@@ -188,7 +188,7 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
             [Req4, Body] =
                 case cow_multipart:form_data(Headers) of
                     {data, _FieldName} ->
-                        {ok, MyBody, Req3} = cowboy_req:part_body(Req2),
+                        {ok, MyBody, Req3} = cowboy_req:read_part_body(Req2),
                         [Req3, MyBody];
                     {file, _FieldName, RemoteFilePath, CType} ->
                         ?LOG_DEBUG("stream_file filename=~p content_type=~p~n", [
