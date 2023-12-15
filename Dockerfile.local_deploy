@@ -42,7 +42,7 @@ COPY src src/
 COPY priv priv/
 COPY config config/
 RUN mkdir -p /etc/dog_trainer
-COPY config/sys.config.src config/sys.config.src
+COPY config/sys.config.local_docker config/sys.config
 COPY include include/
 COPY scripts scripts/
 
