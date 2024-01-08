@@ -60,7 +60,7 @@ start_link() ->
 
 -spec init(_) -> {'ok', []}.
 init(_Args) ->
-    Ec2SgCacheSeconds = application:get_env(dog_trainer, ec2_sg_cache_seconds, 60),
+    Ec2SgCacheSeconds = application:get_env(dog_trainer, ec2_sg_cache_seconds, 10),
     cache_tab:new(ec2_sgs, [{life_time, Ec2SgCacheSeconds}]),
     State = ordsets:new(),
     {ok, State}.
