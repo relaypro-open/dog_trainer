@@ -44,13 +44,13 @@
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
--spec start_external_broker_connection(LinkName :: binary()) -> ok.
+-spec start_external_broker_connection(LinkName :: binary()) -> {ok, pid()}.
 start_external_broker_connection(EnvName) ->
     ?LOG_DEBUG("EnvName: ~p", [EnvName]),
     {ok, Link} = dog_link:get_by_name(EnvName),
     turtle_conn:new(turtle_connection_config(Link)).
 
--spec restart_external_broker_connection(LinkName :: binary()) -> ok.
+-spec restart_external_broker_connection(LinkName :: binary()) -> {ok, pid()}.
 restart_external_broker_connection(EnvName) ->
     stop_external_broker_connection(EnvName),
     start_external_broker_connection(EnvName).

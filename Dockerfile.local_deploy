@@ -68,7 +68,7 @@ RUN mkdir /etc/rabbitmq
 COPY csc_certs.sh /etc/rabbitmq/ 
 
 RUN mkdir -p /etc/dog_trainer/certs \
-	&& mkdir -p /etc/d g_trainer/private \
+	&& mkdir -p /etc/dog_trainer/private \
 	&& chmod 700 /etc/dog_trainer/private
 RUN tar czf /tmp/dog_trainer.tar.gz /opt/dog_trainer
 
