@@ -266,5 +266,10 @@ r.db('dog').table('ruleset').forEach(function(ruleset) {
 })
 ```
 
-
-
+find IP in zones:
+```
+r.db('dog').table('zone')
+  .filter(
+    r.row("ipv4_addresses").toJSON().match("1.1.1.1")
+  )
+```
