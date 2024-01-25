@@ -45,6 +45,23 @@ to_json(Req, State) ->
             Json = jsx:encode(Services),
             Sub = cowboy_req:binding(sub, Req),
             case Handler of
+                dog_ruleset_api_v2 ->
+                    #{names := Names} =
+                        cowboy_req:match_qs(
+                            [
+                                {names, [], undefined}
+                            ],
+                            Req
+                        ),
+                    case Names of
+                        <<"true">> ->
+                            {ok, Rulesets} = dog_ruleset_api_v2:get_all_names(),
+                            {jsx:encode(Rulesets), Req, State};
+                        <<"false">> ->
+                            {Json, Req, State};
+                        undefined ->
+                            {Json, Req, State}
+                    end;
                 dog_host_api_v2 ->
                     case Sub of
                         <<"names">> ->
