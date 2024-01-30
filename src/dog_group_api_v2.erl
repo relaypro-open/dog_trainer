@@ -190,8 +190,12 @@ update(Id, UpdateMap) ->
             NewService = maps:merge(OldService, UpdateMap),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewService) of
                 ok ->
-                    Vars = maps:get(<<"vars">>,UpdateMap),
-                    UpdateMapWithLiteral = maps:update(<<"vars">>, reql:literal(Vars), UpdateMap),
+                    UpdateMapWithLiteral = case maps:get(<<"vars">>,UpdateMap, notfound) of
+                        notfound ->
+                            UpdateMap;
+                        Vars -> 
+                            maps:update(<<"vars">>, reql:literal(Vars), UpdateMap)
+                    end,
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
