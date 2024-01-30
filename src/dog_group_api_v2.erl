@@ -190,14 +190,14 @@ update(Id, UpdateMap) ->
             NewService = maps:merge(OldService, UpdateMap),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewService) of
                 ok ->
-                    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-                    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
+                    Vars = maps:get(<<"vars">>,UpdateMap),
+                    UpdateMapWithLiteral = maps:update(<<"vars">>, reql:literal(Vars), UpdateMap),
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
                             reql:table(X, ?TYPE_TABLE),
                             reql:get(X, Id),
-                            reql:update(X, UpdateMap, #{return_changes => always})
+                            reql:update(X, UpdateMapWithLiteral, #{return_changes => always})
                         end
                     ),
                     ?LOG_DEBUG("update R: ~p~n", [R]),

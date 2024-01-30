@@ -82,16 +82,22 @@ get_by_name(Name) ->
 update(Id, UpdateMap@0) ->
     ?LOG_DEBUG("UpdateMap: ~p~n", [UpdateMap@0]),
     case get_by_id(Id) of
-        {ok, OldService} ->
-            NewService = maps:merge(OldService, UpdateMap@0),
-            case dog_json_schema:validate(?VALIDATION_TYPE, NewService) of
+        {ok, OldFact} ->
+            NewFact = maps:merge(OldFact, UpdateMap@0),
+            case dog_json_schema:validate(?VALIDATION_TYPE, NewFact) of
                 ok ->
+                    Groups = maps:get(<<"groups">>, NewFact),
+                    GroupsLiteral = maps:map(fun(_Key,Value) -> 
+                                                     nested:update([<<"vars">>], 
+                                                                   fun(X) -> reql:literal(X) end, Value)
+                                             end, Groups),
+                    UpdateMapWithLiteral = maps:update(<<"groups">>, GroupsLiteral, UpdateMap@0),
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
                             reql:table(X, ?TYPE_TABLE),
                             reql:get(X, Id),
-                            reql:update(X, UpdateMap@0, #{return_changes => always})
+                            reql:update(X, UpdateMapWithLiteral, #{return_changes => always})
                         end
                     ),
                     ?LOG_DEBUG("update R: ~p~n", [R]),
