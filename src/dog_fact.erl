@@ -93,8 +93,10 @@ update(Id, UpdateMap) ->
                                                          notfound ->
                                                              Value;
                                                          _ ->
-                                                             maps:update_with(<<"vars">>, 
-                                                                           fun(X) -> reql:literal(X) end, Value)
+                                                             ValueUpdate = maps:update_with(<<"vars">>, 
+                                                                           fun(X) -> reql:literal(X)
+                                                                           end, Value),
+                                                            ValueUpdate
                                                      end
                                              end, Groups),
                     UpdateMapWithLiteral = maps:update(<<"groups">>, GroupsLiteral, UpdateMap),
