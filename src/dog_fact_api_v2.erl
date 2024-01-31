@@ -88,8 +88,14 @@ update(Id, UpdateMap@0) ->
                 ok ->
                     Groups = maps:get(<<"groups">>, NewFact),
                     GroupsLiteral = maps:map(fun(_Key,Value) -> 
-                                                     nested:update([<<"vars">>], 
-                                                                   fun(X) -> reql:literal(X) end, Value)
+                                                     case maps:get(<<"vars">>, Value, notfound)
+                                                     of
+                                                         notfound ->
+                                                             Value;
+                                                         _ ->
+                                                             maps:update_with(<<"vars">>, 
+                                                                           fun(X) -> reql:literal(X) end, Value)
+                                                     end
                                              end, Groups),
                     UpdateMapWithLiteral = maps:update(<<"groups">>, GroupsLiteral, UpdateMap@0),
                     {ok, R} = dog_rethink:run(
