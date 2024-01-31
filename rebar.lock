@@ -82,7 +82,7 @@
   0},
  {<<"rethink">>,
   {git,"https://github.com/relaypro-open/rethink-erlang.git",
-       {ref,"3f5230ca75c0d30472d680d3aedd48b9c0ea0d64"}},
+       {ref,"489adfb9578943c97469e524373904b8e54f069a"}},
   0},
  {<<"rfc3339">>,{pkg,<<"rfc3339">>,<<"0.2.2">>},1},
  {<<"setup">>,{pkg,<<"setup">>,<<"2.1.0">>},2},
