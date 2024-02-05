@@ -76,9 +76,9 @@ resource_exists(Req@0, State@0) ->
         <<"POST">> ->
             Path = cowboy_req:path(Req@0),
             Handler = get_handler_module(Path),
-            Body = cowboy_req:read_urlencoded_body(Req@0),
-            ?LOG_INFO("~p", [Body]),
-            {ok, [{NewContent, true}], Req@1} = Body,
+            Body = cowboy_req:read_body(Req@0),
+            ?LOG_DEBUG("~p", [Body]),
+            {ok, NewContent, Req@1} = Body,
             Map = jsx:decode(NewContent, [return_maps]),
             ObjectName = maps:get(<<"name">>, Map),
             Object = Handler:get_by_name(ObjectName),
@@ -97,9 +97,9 @@ resource_exists(Req@0, State@0) ->
         <<"PUT">> ->
             Path = cowboy_req:path(Req@0),
             Handler = get_handler_module(Path),
-            Body = cowboy_req:read_urlencoded_body(Req@0),
-            ?LOG_INFO("~p", [Body]),
-            {ok, [{NewContent, true}], Req@1} = Body,
+            Body = cowboy_req:read_body(Req@0),
+            ?LOG_DEBUG("~p", [Body]),
+            {ok, NewContent, Req@1} = Body,
             Map = jsx:decode(NewContent, [return_maps]),
             ObjectName = maps:get(<<"name">>, Map),
             Object = Handler:get_by_name(ObjectName),
@@ -249,7 +249,7 @@ from_put_json(Req@0, State) ->
     SuccessMap = #{<<"id">> => Id},
     Req@1 = cowboy_req:set_resp_body([jsx:encode(SuccessMap)], Req@0),
     InPlace = cowboy_req:match_qs([{inplace, [], plain}], Req@1),
-    ?LOG_INFO("InPlace: ~p", [InPlace]),
+    ?LOG_DEBUG("InPlace: ~p", [InPlace]),
     Response =
         case InPlace of
             #{inplace := <<"True">>} ->
