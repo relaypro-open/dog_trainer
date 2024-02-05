@@ -19,6 +19,7 @@
 
 -spec create(Fact :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(FactMap@0) ->
+    ?LOG_DEBUG("create: ~p",[FactMap@0]),
     Name = maps:get(<<"name">>, FactMap@0),
     {ok, ExistingFacts} = get_all(),
     ExistingNames = [maps:get(<<"name">>, Fact) || Fact <- ExistingFacts],
@@ -80,14 +81,12 @@ get_by_name(Name) ->
 
 -spec update(FactId :: binary(), UpdateMap :: map()) -> {atom(), any()}.
 update(Id, UpdateMap@0) ->
-    ?LOG_DEBUG("UpdateMap: ~p~n", [UpdateMap@0]),
     case get_by_id(Id) of
         {ok, OldFact} ->
             NewFact = maps:merge(OldFact, UpdateMap@0),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewFact) of
                 ok ->
                     Groups = maps:get(<<"groups">>, NewFact),
-                    ?LOG_DEBUG("Groups: ~p~n", [Groups]),
                     GroupsLiteral = maps:map(fun(_Key,Value) -> 
                                                      case maps:get(<<"vars">>, Value, notfound)
                                                      of
@@ -100,7 +99,6 @@ update(Id, UpdateMap@0) ->
                                                      end
                                              end, Groups),
                     UpdateMapWithLiteral = maps:update(<<"groups">>, GroupsLiteral, UpdateMap@0),
-                    ?LOG_DEBUG("UpdateMapWithLiteral: ~p~n", [UpdateMapWithLiteral]),
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
