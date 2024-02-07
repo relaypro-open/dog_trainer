@@ -325,6 +325,7 @@ get_schema() ->
 
 -spec ids_to_names(Profile :: map()) -> Profile :: {ok | error, map()}.
 ids_to_names(Profile) ->
+    ?LOG_DEBUG("Profile: ~p",[Profile]),
     case Profile of
         _ when not is_map(Profile) ->
             Profile;
