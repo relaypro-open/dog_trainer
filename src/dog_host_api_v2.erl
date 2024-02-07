@@ -122,22 +122,16 @@ delete(Id) ->
     {ok, iolist()} | {false, iolist()} | {false, no_updated} | {validation_error, iolist()}.
 update(Id, UpdateMap) ->
     case dog_host:get_by_id(Id) of
-        {ok, OldService} ->
-            NewService = maps:merge(OldService, UpdateMap),
-            case dog_json_schema:validate(?VALIDATION_TYPE, NewService) of
+        {ok, OldHost} ->
+            NewHost = maps:merge(OldHost, UpdateMap),
+            case dog_json_schema:validate(?VALIDATION_TYPE, NewHost) of
                 ok ->
-                    UpdateMapWithLiteral = case maps:get(<<"vars">>,UpdateMap, notfound) of
-                        notfound ->
-                            UpdateMap;
-                        Vars -> 
-                            maps:update(<<"vars">>, reql:literal(Vars), UpdateMap)
-                    end,
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
                             reql:table(X, ?TYPE_TABLE),
                             reql:get(X, Id),
-                            reql:update(X, UpdateMapWithLiteral, #{return_changes => always})
+                            reql:replace(X, NewHost, #{return_changes => always})
                         end
                     ),
                     ?LOG_DEBUG("update R: ~p~n", [R]),

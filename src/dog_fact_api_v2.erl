@@ -86,25 +86,12 @@ update(Id, UpdateMap@0) ->
             NewFact = maps:merge(OldFact, UpdateMap@0),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewFact) of
                 ok ->
-                    Groups = maps:get(<<"groups">>, NewFact),
-                    GroupsLiteral = maps:map(fun(_Key,Value) -> 
-                                                     case maps:get(<<"vars">>, Value, notfound)
-                                                     of
-                                                         notfound ->
-                                                             Value;
-                                                         _ ->
-                                                             maps:update_with(<<"vars">>, 
-                                                                           fun(X) -> reql:literal(X)
-                                                                           end, Value)
-                                                     end
-                                             end, Groups),
-                    UpdateMapWithLiteral = maps:update(<<"groups">>, GroupsLiteral, UpdateMap@0),
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
                             reql:table(X, ?TYPE_TABLE),
                             reql:get(X, Id),
-                            reql:update(X, UpdateMapWithLiteral, #{return_changes => always})
+                            reql:replace(X, NewFact, #{return_changes => always})
                         end
                     ),
                     ?LOG_DEBUG("update R: ~p~n", [R]),

@@ -3,10 +3,7 @@
   "groups": 
   { 
      "all": {
-     	"vars": {
-        	"key":"value",
-          	"key2": "value2"
-        },
+        "vars": "a + b",
      	"hosts": {
           "host1": {
             "key": "value",
@@ -22,9 +19,7 @@
      },
      "app":
      {
-     	"vars": {
-        	"key":"value"
-        },
+     	"vars": "",
      	"hosts": {
           "host1": {
             "key": "value"

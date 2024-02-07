@@ -186,22 +186,16 @@ replace_profile_by_profile_id(OldId, NewId, ProfileName) ->
 -spec update(GroupId :: binary(), UpdateMap :: map()) -> {atom(), any()}.
 update(Id, UpdateMap) ->
     case get_by_id(Id) of
-        {ok, OldService} ->
-            NewService = maps:merge(OldService, UpdateMap),
-            case dog_json_schema:validate(?VALIDATION_TYPE, NewService) of
+        {ok, OldGroup} ->
+            NewGroup = maps:merge(OldGroup, UpdateMap),
+            case dog_json_schema:validate(?VALIDATION_TYPE, NewGroup) of
                 ok ->
-                    UpdateMapWithLiteral = case maps:get(<<"vars">>,UpdateMap, notfound) of
-                        notfound ->
-                            UpdateMap;
-                        Vars -> 
-                            maps:update(<<"vars">>, reql:literal(Vars), UpdateMap)
-                    end,
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
                             reql:table(X, ?TYPE_TABLE),
                             reql:get(X, Id),
-                            reql:update(X, UpdateMapWithLiteral, #{return_changes => always})
+                            reql:replace(X, NewGroup, #{return_changes => always})
                         end
                     ),
                     ?LOG_DEBUG("update R: ~p~n", [R]),
