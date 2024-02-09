@@ -10,6 +10,7 @@
     create/1,
     delete/1,
     get_all/0,
+    get_all_active/0,
     get_by_hostkey/1,
     get_by_id/1,
     get_by_name/1,
@@ -91,6 +92,23 @@ get_all() ->
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, ?TYPE_TABLE)
+        end
+    ),
+    {ok, Result} = rethink_cursor:all(R),
+    Hosts =
+        case lists:flatten(Result) of
+            [] -> [];
+            Else -> Else
+        end,
+    {ok, Hosts}.
+
+-spec get_all_active() -> {ok, list()}.
+get_all_active() ->
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:filter(X, #{<<"active">> => <<"active">>})
         end
     ),
     {ok, Result} = rethink_cursor:all(R),

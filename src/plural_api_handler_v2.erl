@@ -71,7 +71,22 @@ to_json(Req, State) ->
                             ObjectHosts = dog_host:get_hostkeys_by_ips(),
                             {jsx:encode(ObjectHosts), Req, State};
                         undefined ->
-                            {Json, Req, State}
+                            #{active := Active} =
+                                cowboy_req:match_qs(
+                                    [
+                                        {active, [], undefined}
+                                    ],
+                                    Req
+                                ),
+                            case Active of
+                                <<"true">> ->
+                                    {ok, Rulesets} = dog_host_api_v2:get_all_active(),
+                                    {jsx:encode(Rulesets), Req, State};
+                                <<"false">> ->
+                                    {Json, Req, State};
+                                undefined ->
+                                    {Json, Req, State}
+                            end
                     end;
                 dog_zone_api_v2 ->
                     case Sub of
