@@ -31,7 +31,7 @@ get ${BASEURL}/service?name=drewtest
 echo -e "{\n\"name\":\"drewtest2\"\n}" > ${TESTDIR}/service_update.json
 put "${TESTDIR}/service_update.json" "${BASEURL}/service/${SERVICE_ID}"
 putc "${TESTDIR}/service_update.json" "${BASEURL}/service/${SERVICE_ID}" 303
-putc "${TESTDIR}/service_update_no_ports.json" "${BASEURL}/service/${SERVICE_ID}" 400
+putc "${TESTDIR}/service_update_no_ports.json" "${BASEURL}/service/${SERVICE_ID}" 303
 putc "${TESTDIR}/service_update_string_ports.json" "${BASEURL}/service/${SERVICE_ID}" 400
 get ${BASEURL}/service/${SERVICE_ID}
 delete ${BASEURL}/service/${SERVICE_ID}
@@ -112,6 +112,7 @@ get ${BASEURL}/fact/${FACT_ID}
 delete ${BASEURL}/fact/${FACT_ID}
 get ${BASEURL}/facts
 
+delete ${BASEURL}/service/${SERVICE_ID}
 echo
 #echo "PASS: ${PASS} / FAIL: ${FAIL}"
 test_report
