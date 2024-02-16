@@ -19,23 +19,29 @@
 
 -spec create(Fact :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(FactMap@0) ->
-    ?LOG_DEBUG("create: ~p",[FactMap@0]),
-    Name = maps:get(<<"name">>, FactMap@0),
-    {ok, ExistingFacts} = get_all(),
-    ExistingNames = [maps:get(<<"name">>, Fact) || Fact <- ExistingFacts],
-    case lists:member(Name, ExistingNames) of
-        false ->
-            {ok, R} = dog_rethink:run(
-                fun(X) ->
-                    reql:db(X, dog),
-                    reql:table(X, ?TYPE_TABLE),
-                    reql:insert(X, FactMap@0, #{return_changes => always})
-                end
-            ),
-            NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
-            {ok, NewVal};
-        true ->
-            {error, name_exists}
+    case dog_json_schema:validate(?VALIDATION_TYPE, FactMap@0) of
+        ok ->
+            ?LOG_DEBUG("create: ~p",[FactMap@0]),
+            Name = maps:get(<<"name">>, FactMap@0),
+            {ok, ExistingFacts} = get_all(),
+            ExistingNames = [maps:get(<<"name">>, Fact) || Fact <- ExistingFacts],
+            case lists:member(Name, ExistingNames) of
+                false ->
+                    {ok, R} = dog_rethink:run(
+                        fun(X) ->
+                            reql:db(X, dog),
+                            reql:table(X, ?TYPE_TABLE),
+                            reql:insert(X, FactMap@0, #{return_changes => always})
+                        end
+                    ),
+                    NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                    {ok, NewVal};
+                true ->
+                    {error, name_exists}
+            end;
+        {error, Error} ->
+            Response = dog_parse:validation_error(Error),
+            {validation_error, Response}
     end.
 
 -spec delete(FactId :: binary()) -> ok | {error, Error :: map()}.
