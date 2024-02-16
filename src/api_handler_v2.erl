@@ -57,13 +57,7 @@ content_types_provided(Req, State) ->
 content_types_accepted(Req, State) ->
     case cowboy_req:method(Req) of
         <<"POST">> ->
-            {
-                [
-                    {<<"application/json">>, from_post_json}
-                ],
-                Req,
-                State
-            };
+            {[{<<"application/json">>, from_post_json}], Req, State };
         <<"PUT">> ->
             {[{<<"application/json">>, from_put_json}], Req, State}
     end.
@@ -74,31 +68,12 @@ allowed_methods(Req, State) ->
 resource_exists(Req@0, State@0) ->
     case cowboy_req:method(Req@0) of
         <<"POST">> ->
-            Path = cowboy_req:path(Req@0),
-            Handler = get_handler_module(Path),
-            Body = cowboy_req:read_body(Req@0),
-            ?LOG_DEBUG("~p", [Body]),
-            {ok, NewContent, Req@1} = Body,
-            Map = jsx:decode(NewContent, [return_maps]),
-            ObjectName = maps:get(<<"name">>, Map),
-            Object = Handler:get_by_name(ObjectName),
-            Result =
-                case Object of
-                    {error, notfound} ->
-                        false;
-                    {validation_error, _Error} ->
-                        false;
-                    {ok, _} ->
-                        true
-                end,
-            State@1 = maps:put(<<"object">>, Object, State@0),
-            State@2 = maps:put(<<"content">>, NewContent, State@1),
-            {Result, Req@1, State@2};
+            {true, Req@0, State@0};
         <<"PUT">> ->
             Path = cowboy_req:path(Req@0),
             Handler = get_handler_module(Path),
             Body = cowboy_req:read_body(Req@0),
-            ?LOG_DEBUG("~p", [Body]),
+            ?LOG_DEBUG("PUT Body ~p", [Body]),
             {ok, NewContent, Req@1} = Body,
             Map = jsx:decode(NewContent, [return_maps]),
             ObjectName = maps:get(<<"name">>, Map),
@@ -176,51 +151,46 @@ resource_exists(Req@0, State@0) ->
     end.
 
 from_post_json(Req@0, State) ->
-    Path = cowboy_req:path(Req@0),
+    Body = cowboy_req:read_body(Req@0),
+    {ok, NewContent, Req@1} = Body,
+    Path = cowboy_req:path(Req@1),
     Handler = get_handler_module(Path),
     HandlerPath = get_handler_path(Path),
-    Content = maps:get(<<"content">>, State),
-    Map = jsx:decode(Content, [return_maps]),
-    Object = maps:get(<<"object">>, State),
-    case Object of
+    Map = jsx:decode(NewContent, [return_maps]),
+    ?LOG_DEBUG("Map: ~p", [Map]),
+    %Object = maps:get(<<"object">>, State),
+    %case Object of
+    %    {error, notfound} ->
+    case Handler:create(Map) of
+        {validation_error, Error} ->
+            cowboy_req:reply(
+                409,
+                #{<<"content-type">> => <<"application/json">>},
+                Error,
+                Req@0
+            );
+        {error, exists} ->
+            cowboy_req:reply(
+                409,
+                #{<<"content-type">> => <<"application/json">>},
+                <<"Object exists">>,
+                Req@0
+            ),
+            {stop, Req@0, State};
         {error, notfound} ->
-            case Handler:create(Map) of
-                {validation_error, Error} ->
-                    cowboy_req:reply(
-                        400,
-                        #{<<"content-type">> => <<"application/json">>},
-                        Error,
-                        Req@0
-                    );
-                {ok, SuccessMap} ->
-                    %SuccessMap = #{<<"id">> => Id, <<"result">> => <<"created">>},
-                    Id = maps:get(<<"id">>, SuccessMap),
-                    Req@1 = cowboy_req:set_resp_body([jsx:encode(SuccessMap)], Req@0),
-                    Uri = io_lib:format("~s/~s/~s", [
-                        ?V2ROOT, HandlerPath, erlang:binary_to_list(Id)
-                    ]),
-                    %?LOG_INFO("Uri: ~p~n",[Uri]),
-                    %{{true, list_to_binary(Uri)}, Req@1, State}
-                    %{{true, term_to_binary(SuccessMap)}, Req@1, State}
-                    cowboy_req:reply(
-                        201,
-                        #{
-                            <<"content-type">> => <<"application/json">>,
-                            <<"location">> => Uri
-                        },
-                        jsx:encode(SuccessMap),
-                        Req@1
-                    )
-            end;
+            cowboy_req:reply(
+                400,
+                #{<<"content-type">> => <<"application/json">>},
+                <<"Object not found">>,
+                Req@0
+            ),
+            {stop, Req@0, State};
         {ok, SuccessMap} ->
-            %{ok, Result} ->
-            %Id = maps:get(<<"id">>,Result),
-            %SuccessMap = #{<<"id">> => Id, <<"result">> => <<"exists">>},
-            Req@1 = cowboy_req:set_resp_body([jsx:encode(SuccessMap)], Req@0),
             Id = maps:get(<<"id">>, SuccessMap),
-            Uri = io_lib:format("~s/~s/~s", [?V2ROOT, HandlerPath, erlang:binary_to_list(Id)]),
-            %{{true, list_to_binary(Uri)}, Req@1, State}; %303 redirect
-            %{{true, term_to_binary(SuccessMap)}, Req@1, State}; %303 redirect
+            Req@2 = cowboy_req:set_resp_body([jsx:encode(SuccessMap)], Req@1),
+            Uri = io_lib:format("~s/~s/~s", [
+                ?V2ROOT, HandlerPath, erlang:binary_to_list(Id)
+            ]),
             cowboy_req:reply(
                 201,
                 #{
@@ -228,15 +198,9 @@ from_post_json(Req@0, State) ->
                     <<"location">> => Uri
                 },
                 jsx:encode(SuccessMap),
-                Req@1
-            );
-        {validation_error, Error} ->
-            cowboy_req:reply(
-                400,
-                #{<<"content-type">> => <<"application/json">>},
-                Error,
-                Req@0
-            )
+                Req@2
+            ),
+            {stop, Req@2, State}
     end.
 
 from_put_json(Req@0, State) ->
@@ -263,12 +227,9 @@ from_put_json(Req@0, State) ->
             Req@2 = cowboy_req:set_resp_body([atom_to_list(Error)], Req@1),
             {false, Req@2, State};
         {false, ResponseMap} ->
-            %?LOG_INFO("{false, ~p}",[ObjectId]),
-            %SuccessMap2 = #{<<"id">> => ObjectId},
             ObjectId = maps:get(<<"id">>, ResponseMap),
             Uri = io_lib:format("~s/~s/~s", [?V2ROOT, HandlerPath, ObjectId]),
             ?LOG_DEBUG("ObjectId: ~p", [ObjectId]),
-            %OldVal = maps:get(<<"old_val">>,hd(maps:get(<<"changes">>,ResponseMap))),
             Req@2 = cowboy_req:reply(
                 303,
                 #{
@@ -280,12 +241,9 @@ from_put_json(Req@0, State) ->
             ),
             {stop, Req@2, State};
         {true, ResponseMap} ->
-            %?LOG_INFO("{true, ~p}",[ObjectId]),
-            %SuccessMap2 = #{<<"id">> => ObjectId},
             ObjectId = maps:get(<<"id">>, ResponseMap),
             Uri = io_lib:format("~s/~s/~s", [?V2ROOT, HandlerPath, ObjectId]),
             ?LOG_DEBUG("ObjectId: ~p", [ObjectId]),
-            %NewVal = maps:get(<<"new_val">>,hd(maps:get(<<"changes">>,ResponseMap))),
             Req@2 = cowboy_req:reply(
                 303,
                 #{
@@ -306,11 +264,11 @@ from_put_json(Req@0, State) ->
     end.
 
 to_json(Req, State) ->
-    Id = cowboy_req:binding(id, Req),
+    Id@0 = cowboy_req:binding(id, Req),
     Sub = cowboy_req:binding(sub, Req),
     Object = maps:get(<<"object">>, State),
     Json =
-        case Id of
+        case Id@0 of
             undefined ->
                 jsx:encode(Object);
             Id ->
@@ -349,62 +307,18 @@ to_json(Req, State) ->
                         jsx:encode(ObjectHosts);
                     <<"ec2_security_group_ids">> ->
                         ObjectHosts = dog_group:get_internal_ec2_security_group_ids_by_id(Id),
-                        jsx:encode(ObjectHosts);
-                    _ ->
-                        case cowboy_req:match_qs([{git_changes, [], plain}], Req) of
-                            #{git_changes := plain} ->
-                                jsx:encode("");
-                            #{git_changes := DiffId} ->
-                                case Sub of
-                                    <<"iptablesv4">> ->
-                                        {_, {ok, Iptables1}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                            Id
-                                        ),
-                                        {_, {ok, Iptables2}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                            DiffId
-                                        ),
-                                        {ok, Diff} = diff:diff_changes(Iptables1, Iptables2),
-                                        jsx:encode(Diff);
-                                    <<"iptablesv6">> ->
-                                        {_, {ok, Iptables1}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                            Id
-                                        ),
-                                        {_, {ok, Iptables2}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                            DiffId
-                                        ),
-                                        {ok, Diff} = diff:diff_changes(Iptables1, Iptables2),
-                                        jsx:encode(Diff);
-                                    <<"ipsetsv4">> ->
-                                        {{ok, Ipsets1}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                            Id
-                                        ),
-                                        {{ok, Ipsets2}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                            Id
-                                        ),
-                                        {ok, Diff} = diff:diff_changes(Ipsets1, Ipsets2),
-                                        jsx:encode(Diff);
-                                    <<"ipsetsv6">> ->
-                                        {{ok, Ipsets1}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                            Id
-                                        ),
-                                        {{ok, Ipsets2}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                            Id
-                                        ),
-                                        {ok, Diff} = diff:diff_changes(Ipsets1, Ipsets2),
-                                        jsx:encode(Diff)
-                                end
-                        end
+                        jsx:encode(ObjectHosts)
                 end
         end,
     {Json, Req, State}.
 
 to_text(Req, State) ->
-    Id = cowboy_req:binding(id, Req),
+    Id@0 = cowboy_req:binding(id, Req),
     Sub = cowboy_req:binding(sub, Req),
     Path = cowboy_req:path(Req),
     HandlerPath = get_handler_path(Path),
     Text =
-        case Id of
+        case Id@0 of
             undefined ->
                 error;
             Id ->
@@ -467,71 +381,6 @@ to_text(Req, State) ->
                                                 Error1_;
                                             {{ok, _Profile1_}, {error, Error2_}} ->
                                                 Error2_
-                                        end
-                                end;
-                            _ ->
-                                case cowboy_req:match_qs([{git_diff, [], plain}], Req) of
-                                    #{git_diff := plain} ->
-                                        case Sub of
-                                            <<"iptablesv4">> ->
-                                                {_, {ok, Iptables}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                Iptables;
-                                            <<"iptablesv6">> ->
-                                                {_, {ok, Iptables}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                Iptables;
-                                            <<"ipsetsv4">> ->
-                                                {{ok, Ipsets}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                Ipsets;
-                                            <<"ipsetsv6">> ->
-                                                {{ok, Ipsets}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                Ipsets
-                                        end;
-                                    #{git_diff := DiffId} ->
-                                        case Sub of
-                                            <<"iptablesv4">> ->
-                                                {_, {ok, Iptables1}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                {_, {ok, Iptables2}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                                    DiffId
-                                                ),
-                                                {ok, Diff} = diff:diff_git(Iptables1, Iptables2),
-                                                Diff;
-                                            <<"iptablesv6">> ->
-                                                {_, {ok, Iptables1}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                {_, {ok, Iptables2}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                                    DiffId
-                                                ),
-                                                {ok, Diff} = diff:diff_git(Iptables1, Iptables2),
-                                                Diff;
-                                            <<"ipsetsv4">> ->
-                                                {{ok, Ipsets1}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                {{ok, Ipsets2}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                {ok, Diff} = diff:diff_git(Ipsets1, Ipsets2),
-                                                Diff;
-                                            <<"ipsetsv6">> ->
-                                                {{ok, Ipsets1}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                {{ok, Ipsets2}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                {_, Diff} = diff:diff_git(Ipsets1, Ipsets2),
-                                                Diff
                                         end
                                 end
                         end;
