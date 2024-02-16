@@ -306,51 +306,7 @@ to_json(Req, State) ->
                         jsx:encode(ObjectHosts);
                     <<"ec2_security_group_ids">> ->
                         ObjectHosts = dog_group:get_internal_ec2_security_group_ids_by_id(Id),
-                        jsx:encode(ObjectHosts);
-                    _ ->
-                        case cowboy_req:match_qs([{git_changes, [], plain}], Req) of
-                            #{git_changes := plain} ->
-                                jsx:encode("");
-                            #{git_changes := DiffId} ->
-                                case Sub of
-                                    <<"iptablesv4">> ->
-                                        {_, {ok, Iptables1}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                            Id
-                                        ),
-                                        {_, {ok, Iptables2}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                            DiffId
-                                        ),
-                                        {ok, Diff} = diff:diff_changes(Iptables1, Iptables2),
-                                        jsx:encode(Diff);
-                                    <<"iptablesv6">> ->
-                                        {_, {ok, Iptables1}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                            Id
-                                        ),
-                                        {_, {ok, Iptables2}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                            DiffId
-                                        ),
-                                        {ok, Diff} = diff:diff_changes(Iptables1, Iptables2),
-                                        jsx:encode(Diff);
-                                    <<"ipsetsv4">> ->
-                                        {{ok, Ipsets1}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                            Id
-                                        ),
-                                        {{ok, Ipsets2}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                            Id
-                                        ),
-                                        {ok, Diff} = diff:diff_changes(Ipsets1, Ipsets2),
-                                        jsx:encode(Diff);
-                                    <<"ipsetsv6">> ->
-                                        {{ok, Ipsets1}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                            Id
-                                        ),
-                                        {{ok, Ipsets2}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                            Id
-                                        ),
-                                        {ok, Diff} = diff:diff_changes(Ipsets1, Ipsets2),
-                                        jsx:encode(Diff)
-                                end
-                        end
+                        jsx:encode(ObjectHosts)
                 end
         end,
     {Json, Req, State}.
@@ -424,71 +380,6 @@ to_text(Req, State) ->
                                                 Error1_;
                                             {{ok, _Profile1_}, {error, Error2_}} ->
                                                 Error2_
-                                        end
-                                end;
-                            _ ->
-                                case cowboy_req:match_qs([{git_diff, [], plain}], Req) of
-                                    #{git_diff := plain} ->
-                                        case Sub of
-                                            <<"iptablesv4">> ->
-                                                {_, {ok, Iptables}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                Iptables;
-                                            <<"iptablesv6">> ->
-                                                {_, {ok, Iptables}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                Iptables;
-                                            <<"ipsetsv4">> ->
-                                                {{ok, Ipsets}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                Ipsets;
-                                            <<"ipsetsv6">> ->
-                                                {{ok, Ipsets}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                Ipsets
-                                        end;
-                                    #{git_diff := DiffId} ->
-                                        case Sub of
-                                            <<"iptablesv4">> ->
-                                                {_, {ok, Iptables1}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                {_, {ok, Iptables2}} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                                    DiffId
-                                                ),
-                                                {ok, Diff} = diff:diff_git(Iptables1, Iptables2),
-                                                Diff;
-                                            <<"iptablesv6">> ->
-                                                {_, {ok, Iptables1}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                {_, {ok, Iptables2}} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                                    DiffId
-                                                ),
-                                                {ok, Diff} = diff:diff_git(Iptables1, Iptables2),
-                                                Diff;
-                                            <<"ipsetsv4">> ->
-                                                {{ok, Ipsets1}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                {{ok, Ipsets2}, _} = dog_profile:generate_ipv4_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                {ok, Diff} = diff:diff_git(Ipsets1, Ipsets2),
-                                                Diff;
-                                            <<"ipsetsv6">> ->
-                                                {{ok, Ipsets1}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                {{ok, Ipsets2}, _} = dog_profile:generate_ipv6_iptables_ruleset_by_id(
-                                                    Id
-                                                ),
-                                                {_, Diff} = diff:diff_git(Ipsets1, Ipsets2),
-                                                Diff
                                         end
                                 end
                         end;
