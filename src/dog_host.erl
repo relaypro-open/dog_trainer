@@ -160,64 +160,70 @@ hash_check(Host) ->
     HostId = maps:get(<<"id">>, Host),
     HostName = maps:get(<<"name">>, Host),
     GroupName = maps:get(<<"group">>, Host),
-    {ok, Group} = dog_group:get_by_name(GroupName),
+    ?LOG_DEBUG("GroupName: ~p",[GroupName]),
+    case dog_group:get_by_name(GroupName) of
     %Iptables
-    HostHash4Ipsets = maps:get(<<"hash4_ipsets">>, Host),
-    HostHash6Ipsets = maps:get(<<"hash6_ipsets">>, Host),
-    HostHash4Iptables = maps:get(<<"hash4_iptables">>, Host),
-    HostHash6Iptables = maps:get(<<"hash6_iptables">>, Host),
-    GroupHash4Ipsets = maps:get(<<"hash4_ipsets">>, Group),
-    GroupHash6Ipsets = maps:get(<<"hash6_ipsets">>, Group),
-    GroupHash4Iptables = maps:get(<<"hash4_iptables">>, Group),
-    GroupHash6Iptables = maps:get(<<"hash6_iptables">>, Group),
-    Match4IpsetsCheck = (HostHash4Ipsets == GroupHash4Ipsets),
-    Match6IpsetsCheck = (HostHash6Ipsets == GroupHash6Ipsets),
-    Match4IptablesCheck = (HostHash4Iptables == GroupHash4Iptables),
-    Match6IptablesCheck = (HostHash6Iptables == GroupHash6Iptables),
-    IptablesHashCheck = iptables_hash_logic(
-        Match4IpsetsCheck, Match6IpsetsCheck, Match4IptablesCheck, Match6IptablesCheck
-    ),
-    %Ipset
-    HostIpsetHash = maps:get(<<"ipset_hash">>, Host),
-    IpsetHashCheck = dog_ipset:hash_check(HostIpsetHash),
+        {error, notfound} ->
+            ?LOG_INFO("Group not found: ~p",[GroupName]),
+            {error, notfound};
+        {ok, Group} ->
+            HostHash4Ipsets = maps:get(<<"hash4_ipsets">>, Host),
+            HostHash6Ipsets = maps:get(<<"hash6_ipsets">>, Host),
+            HostHash4Iptables = maps:get(<<"hash4_iptables">>, Host),
+            HostHash6Iptables = maps:get(<<"hash6_iptables">>, Host),
+            GroupHash4Ipsets = maps:get(<<"hash4_ipsets">>, Group),
+            GroupHash6Ipsets = maps:get(<<"hash6_ipsets">>, Group),
+            GroupHash4Iptables = maps:get(<<"hash4_iptables">>, Group),
+            GroupHash6Iptables = maps:get(<<"hash6_iptables">>, Group),
+            Match4IpsetsCheck = (HostHash4Ipsets == GroupHash4Ipsets),
+            Match6IpsetsCheck = (HostHash6Ipsets == GroupHash6Ipsets),
+            Match4IptablesCheck = (HostHash4Iptables == GroupHash4Iptables),
+            Match6IptablesCheck = (HostHash6Iptables == GroupHash6Iptables),
+            IptablesHashCheck = iptables_hash_logic(
+                Match4IpsetsCheck, Match6IpsetsCheck, Match4IptablesCheck, Match6IptablesCheck
+            ),
+            %Ipset
+            HostIpsetHash = maps:get(<<"ipset_hash">>, Host),
+            IpsetHashCheck = dog_ipset:hash_check(HostIpsetHash),
 
-    IptablesHashAgeCheck = iptables_hash_age_check(HostId),
-    Now = dog_time:timestamp(),
-    IpsetHashAgeCheck = ipset_hash_age_check(HostId),
-    HashStatus = #{
-        <<"name">> => HostName,
-        <<"id">> => HostId,
-        <<"hash4_ipsets">> => Match4IpsetsCheck,
-        <<"hash6_ipsets">> => Match6IpsetsCheck,
-        <<"hash4_iptables">> => Match4IptablesCheck,
-        <<"hash6_iptables">> => Match6IptablesCheck,
-        <<"ipset_hash">> => IpsetHashCheck,
-        <<"ipset_hash_age_check">> => IpsetHashAgeCheck,
-        <<"iptables_hash_age_check">> => IptablesHashCheck
-    },
-    ?LOG_DEBUG("HashStatus: ~p", [HashStatus]),
-    ?LOG_DEBUG("IptablesHashCheck,IpsetHashCheck: ~p, ~p", [IptablesHashCheck, IpsetHashCheck]),
-    ?LOG_DEBUG("IptablesHashAgeCheck: ~s,  IpsetHashAgeCheck: ~s", [
-        IptablesHashAgeCheck, IpsetHashAgeCheck
-    ]),
-    case {IptablesHashCheck, IpsetHashCheck} of
-        {true, true} ->
-            iptables_hash_age_update(HostId, Now),
-            ipset_hash_age_update(HostId, Now),
-            hash_fail_count_update(HostId, 0),
-            {pass, HashStatus};
-        {false, true} ->
-            ipset_hash_age_update(HostId, Now),
-            hash_fail_count_check(HostId, IptablesHashAgeCheck, HashStatus);
-        {true, false} ->
-            iptables_hash_age_update(HostId, Now),
-            hash_fail_count_check(HostId, IpsetHashAgeCheck, HashStatus);
-        {false, false} ->
-            case {IptablesHashAgeCheck, IpsetHashAgeCheck} of
+            IptablesHashAgeCheck = iptables_hash_age_check(HostId),
+            Now = dog_time:timestamp(),
+            IpsetHashAgeCheck = ipset_hash_age_check(HostId),
+            HashStatus = #{
+                <<"name">> => HostName,
+                <<"id">> => HostId,
+                <<"hash4_ipsets">> => Match4IpsetsCheck,
+                <<"hash6_ipsets">> => Match6IpsetsCheck,
+                <<"hash4_iptables">> => Match4IptablesCheck,
+                <<"hash6_iptables">> => Match6IptablesCheck,
+                <<"ipset_hash">> => IpsetHashCheck,
+                <<"ipset_hash_age_check">> => IpsetHashAgeCheck,
+                <<"iptables_hash_age_check">> => IptablesHashCheck
+            },
+            ?LOG_DEBUG("HashStatus: ~p", [HashStatus]),
+            ?LOG_DEBUG("IptablesHashCheck,IpsetHashCheck: ~p, ~p", [IptablesHashCheck, IpsetHashCheck]),
+            ?LOG_DEBUG("IptablesHashAgeCheck: ~s,  IpsetHashAgeCheck: ~s", [
+                IptablesHashAgeCheck, IpsetHashAgeCheck
+            ]),
+            case {IptablesHashCheck, IpsetHashCheck} of
                 {true, true} ->
+                    iptables_hash_age_update(HostId, Now),
+                    ipset_hash_age_update(HostId, Now),
+                    hash_fail_count_update(HostId, 0),
                     {pass, HashStatus};
-                {_, _} ->
-                    {fail, HashStatus}
+                {false, true} ->
+                    ipset_hash_age_update(HostId, Now),
+                    hash_fail_count_check(HostId, IptablesHashAgeCheck, HashStatus);
+                {true, false} ->
+                    iptables_hash_age_update(HostId, Now),
+                    hash_fail_count_check(HostId, IpsetHashAgeCheck, HashStatus);
+                {false, false} ->
+                    case {IptablesHashAgeCheck, IpsetHashAgeCheck} of
+                        {true, true} ->
+                            {pass, HashStatus};
+                        {_, _} ->
+                            {fail, HashStatus}
+                    end
             end
     end.
 

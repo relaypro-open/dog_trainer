@@ -10,23 +10,27 @@
 
 -spec publish_host_config(Hostkey :: binary()) -> any().
 publish_host_config(Hostkey) ->
-    {ok, ConfigMap} = dog_host:get_by_hostkey(Hostkey),
-    ?LOG_INFO("ConfigMap: ~p~n", [ConfigMap]),
-    UserData = #{config => ConfigMap},
-    Count = 1,
-    Pid = erlang:self(),
-    Message = term_to_binary([
-        {count, Count}, {local_time, calendar:local_time()}, {pid, Pid}, {user_data, UserData}
-    ]),
-    Response = turtle:publish(
-        config_publisher,
-        <<"config">>,
-        Hostkey,
-        <<"text/json">>,
-        Message,
-        #{delivery_mode => persistent}
-    ),
-    Response.
+    case dog_host:get_by_hostkey(Hostkey) of
+        {ok, ConfigMap} ->
+            ?LOG_INFO("ConfigMap: ~p~n", [ConfigMap]),
+            UserData = #{config => ConfigMap},
+            Count = 1,
+            Pid = erlang:self(),
+            Message = term_to_binary([
+                {count, Count}, {local_time, calendar:local_time()}, {pid, Pid}, {user_data, UserData}
+            ]),
+            Response = turtle:publish(
+                config_publisher,
+                <<"config">>,
+                Hostkey,
+                <<"text/json">>,
+                Message,
+                #{delivery_mode => persistent}
+            ),
+            Response;
+        {error, Error} ->
+            {error, Error}
+    end.
 
 -spec update_host_keepalive(Hostkey :: binary()) -> ok.
 update_host_keepalive(Hostkey) ->

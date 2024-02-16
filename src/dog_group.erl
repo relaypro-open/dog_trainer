@@ -1230,7 +1230,7 @@ all_ec2_sg_mappings() ->
         fun(X) -> element(2, X) =/= [] end,
         ([
             {G, dog_group:get_ec2_security_group_ids_from_members(G)}
-         || G <- dog_group:get_group_names(), G =/= <<"all-active">>
+         || G <- get_group_names(), G =/= <<"all-active">>
         ])
     ).
 

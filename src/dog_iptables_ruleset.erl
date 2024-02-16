@@ -1409,23 +1409,39 @@ write_iptables_ruleset_unset_v6_to_file(IptablesRuleset, GroupName) ->
 -spec read_iptables_ruleset_set_v4_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_set_v4_from_file(GroupName) ->
     FileName = ?RUNDIR ++ "/iptables_ruleset4_ipsets." ++ binary_to_list(GroupName) ++ ".txt",
-    {ok, IptablesRuleset} = dog_file:read_file(FileName),
-    {ok, IptablesRuleset}.
+     case dog_file:read_file(FileName) of
+        {ok, IptablesRuleset} ->
+            {ok, IptablesRuleset};
+         {error, Error} ->
+             ?LOG_ERROR("Error: ~p",[Error])
+     end.
 -spec read_iptables_ruleset_set_v6_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_set_v6_from_file(GroupName) ->
     FileName = ?RUNDIR ++ "/iptables_ruleset6_ipsets." ++ binary_to_list(GroupName) ++ ".txt",
-    {ok, IptablesRuleset} = dog_file:read_file(FileName),
-    {ok, IptablesRuleset}.
+     case dog_file:read_file(FileName) of
+        {ok, IptablesRuleset} ->
+            {ok, IptablesRuleset};
+         {error, Error} ->
+             ?LOG_ERROR("Error: ~p",[Error])
+     end.
 -spec read_iptables_ruleset_unset_v4_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_unset_v4_from_file(GroupName) ->
     FileName = ?RUNDIR ++ "/iptables_ruleset4_iptables." ++ binary_to_list(GroupName) ++ ".txt",
-    {ok, IptablesRuleset} = dog_file:read_file(FileName),
-    {ok, IptablesRuleset}.
+     case dog_file:read_file(FileName) of
+        {ok, IptablesRuleset} ->
+            {ok, IptablesRuleset};
+         {error, Error} ->
+             ?LOG_ERROR("Error: ~p",[Error])
+     end.
 -spec read_iptables_ruleset_unset_v6_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_unset_v6_from_file(GroupName) ->
     FileName = ?RUNDIR ++ "/iptables_ruleset6_iptables." ++ binary_to_list(GroupName) ++ ".txt",
-    {ok, IptablesRuleset} = dog_file:read_file(FileName),
-    {ok, IptablesRuleset}.
+     case dog_file:read_file(FileName) of
+        {ok, IptablesRuleset} ->
+            {ok, IptablesRuleset};
+         {error, Error} ->
+             ?LOG_ERROR("Error: ~p",[Error])
+     end.
 
 %%%--------------------------------------------------------------------
 %%% @spec cidr_netmask(Bits :: integer()) -> ipv4()

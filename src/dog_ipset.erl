@@ -569,15 +569,12 @@ force_update_ipsets() ->
 -spec persist_ipset() -> ok | {error, list()}.
 persist_ipset() ->
     PersistCmd = "sudo /sbin/ipset save | sudo tee /etc/iptables/rules.ipset",
-    ?LOG_INFO("PersistCmd: ~p", [PersistCmd]),
-    case exec:run(PersistCmd, [sync, stderr]) of
-        {error, [{PersistError, PersistCode}, {stderr, CmdError}]} ->
-            ?LOG_ERROR("PersistCmd: ~p", [PersistCmd]),
-            ?LOG_ERROR("Error, Code, CmdError: ~p, ~p", [PersistError, PersistCode, CmdError]),
-            {error, [{PersistError, PersistCode}, {stderr, CmdError}]};
-        {ok, PersistCmdResult} ->
-            ?LOG_INFO("PersistCmdResult: ~p", [PersistCmdResult]),
-            ok
+    case os:cmd(PersistCmd) of
+        [] ->
+            ok;
+        Result ->
+            ?LOG_ERROR("PersistCmd Error: ~p", [Result]),
+            {error, Result}
     end.
 
 %-spec read_current_ipset() -> list() | {error,list(),{stderr,iolist()}}.

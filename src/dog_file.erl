@@ -12,7 +12,7 @@ read_file(FileName) ->
             {ok, IptablesRuleset} ->
                 {ok, IptablesRuleset};
             {error, Reason} ->
-                ?LOG_ERROR("file error: ~p, ~p", [Reason, FileName]),
+                %?LOG_ERROR("file error: ~p, ~p", [Reason, FileName]),
                 {error, Reason}
         end
     of

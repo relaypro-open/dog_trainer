@@ -78,6 +78,8 @@ loop(_RoutingKey, _CType, Payload, State) ->
                 Host = maps:merge(HostExists, Config),
                 %Host = dog_state:to_map(dog_state:from_map(UpdatedHost)),
                 case dog_host:hash_check(Host) of
+                    {error, notfound} ->
+                        notfound;
                     {pass, HashStatus} ->
                         dog_host:state_event(Host, pass_hashcheck, HashStatus);
                     {fail, HashStatus} ->
