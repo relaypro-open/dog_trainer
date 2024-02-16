@@ -45,24 +45,6 @@ create(Group@0) when is_map(Group@0) ->
         {error, notfound} ->
             Timestamp = dog_time:timestamp(),
             Group@1 = maps:put(<<"created">>, Timestamp, Group@0),
-            %            ProfileIdValidated =
-            %                case maps:get(<<"profile_id">>, Group@0, <<"">>) of
-            %                    <<"">> ->
-            %                        <<"">>;
-            %                    ProfileId ->
-            %                        case dog_profile:get_by_id(ProfileId) of
-            %                            {error, notfound} ->
-            %                                <<"">>;
-            %                            {ok, Profile} ->
-            %                                case maps:find(<<"id">>, Profile) of
-            %                                    error ->
-            %                                        <<"">>;
-            %                                    {ok, Id} ->
-            %                                        Id
-            %                                end
-            %                        end
-            %                end,
-            %            Group@2 = maps:put(<<"profile_id">>, ProfileIdValidated, Group@1),
             NewMap = maps:merge(DefaultMap, Group@1),
             ?LOG_DEBUG("NewMap: ~p", [NewMap]),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewMap) of

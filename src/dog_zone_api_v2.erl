@@ -19,22 +19,28 @@
 -spec create(Zone :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(ZoneMap@0) ->
     {ok, ZoneMap@1} = dog_zone:cleanup(ZoneMap@0),
-    Name = maps:get(<<"name">>, ZoneMap@1),
-    {ok, ExistingZones} = get_all(),
-    ExistingNames = [maps:get(<<"name">>, Zone) || Zone <- ExistingZones],
-    case lists:member(Name, ExistingNames) of
-        false ->
-            {ok, R} = dog_rethink:run(
-                fun(X) ->
-                    reql:db(X, dog),
-                    reql:table(X, ?TYPE_TABLE),
-                    reql:insert(X, ZoneMap@1, #{return_changes => always})
-                end
-            ),
-            NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
-            {ok, NewVal};
-        true ->
-            {error, name_exists}
+    case dog_json_schema:validate(?VALIDATION_TYPE, ZoneMap@1) of
+        ok ->
+            Name = maps:get(<<"name">>, ZoneMap@1),
+            {ok, ExistingZones} = get_all(),
+            ExistingNames = [maps:get(<<"name">>, Zone) || Zone <- ExistingZones],
+            case lists:member(Name, ExistingNames) of
+                false ->
+                    {ok, R} = dog_rethink:run(
+                        fun(X) ->
+                            reql:db(X, dog),
+                            reql:table(X, ?TYPE_TABLE),
+                            reql:insert(X, ZoneMap@1, #{return_changes => always})
+                        end
+                    ),
+                    NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                    {ok, NewVal};
+                true ->
+                    {error, name_exists}
+            end;
+        {error, Error} ->
+            Response = dog_parse:validation_error(Error),
+            {validation_error, Response}
     end.
 
 -spec delete(ZoneId :: binary()) -> ok | {error, Error :: map()}.

@@ -41,49 +41,55 @@ get_by_name(Name) ->
         _ -> {ok, hd(Result)}
     end.
 
--spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists}.
+-spec create(Host :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(HostMap@0) ->
-    Hostkey = maps:get(<<"hostkey">>, HostMap@0, notfound),
-    case Hostkey of
-        notfound ->
-            ?LOG_DEBUG("No hostkey found"),
-            {error, no_hostkey};
-        _ ->
-            ?LOG_DEBUG("HostMap@0: ~p", [HostMap@0]),
-            case dog_host:get_by_hostkey(Hostkey) of
-                {ok, _ExistingHost} ->
-                    {error, exists};
-                {error, notfound} ->
-                    {ok, ExistingHosts} = get_all(),
-                    ExistingHostkeys = [maps:get(<<"hostkey">>, Host) || Host <- ExistingHosts],
-                    DefaultValuesHostMap = #{
-                        <<"active">> => <<"new">>,
-                        <<"environment">> => <<"*">>,
-                        <<"hash_alert_sent">> => <<"">>,
-                        <<"hash_fail_count">> => 0,
-                        <<"hostkey">> => <<"">>,
-                        <<"ipset_hash_timestamp">> => <<"">>,
-                        <<"iptables_hash_timestamp">> => <<"">>,
-                        <<"keepalive_alert_sent">> => <<"">>,
-                        <<"keepalive_timestamp">> => <<"">>,
-                        <<"location">> => <<"*">>
-                    },
-                    MergedHostMap = maps:merge(DefaultValuesHostMap, HostMap@0),
-                    case lists:member(Hostkey, ExistingHostkeys) of
-                        false ->
-                            {ok, R} = dog_rethink:run(
-                                fun(X) ->
-                                    reql:db(X, dog),
-                                    reql:table(X, ?TYPE_TABLE),
-                                    reql:insert(X, MergedHostMap, #{return_changes => always})
-                                end
-                            ),
-                            NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
-                            {ok, NewVal};
-                        true ->
-                            {error, name_exists}
+    case dog_json_schema:validate(?VALIDATION_TYPE, HostMap@0) of
+        ok ->
+            Hostkey = maps:get(<<"hostkey">>, HostMap@0, notfound),
+            case Hostkey of
+                notfound ->
+                    ?LOG_DEBUG("No hostkey found"),
+                    {error, no_hostkey};
+                _ ->
+                    ?LOG_DEBUG("HostMap@0: ~p", [HostMap@0]),
+                    case dog_host:get_by_hostkey(Hostkey) of
+                        {ok, _ExistingHost} ->
+                            {error, exists};
+                        {error, notfound} ->
+                            {ok, ExistingHosts} = get_all(),
+                            ExistingHostkeys = [maps:get(<<"hostkey">>, Host) || Host <- ExistingHosts],
+                            DefaultValuesHostMap = #{
+                                                     <<"active">> => <<"new">>,
+                                                     <<"environment">> => <<"*">>,
+                                                     <<"hash_alert_sent">> => <<"">>,
+                                                     <<"hash_fail_count">> => 0,
+                                                     <<"hostkey">> => <<"">>,
+                                                     <<"ipset_hash_timestamp">> => <<"">>,
+                                                     <<"iptables_hash_timestamp">> => <<"">>,
+                                                     <<"keepalive_alert_sent">> => <<"">>,
+                                                     <<"keepalive_timestamp">> => <<"">>,
+                                                     <<"location">> => <<"*">>
+                                                    },
+                            MergedHostMap = maps:merge(DefaultValuesHostMap, HostMap@0),
+                            case lists:member(Hostkey, ExistingHostkeys) of
+                                false ->
+                                    {ok, R} = dog_rethink:run(
+                                                fun(X) ->
+                                                        reql:db(X, dog),
+                                                        reql:table(X, ?TYPE_TABLE),
+                                                        reql:insert(X, MergedHostMap, #{return_changes => always})
+                                                end
+                                               ),
+                                    NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                                    {ok, NewVal};
+                                true ->
+                                    {error, name_exists}
+                            end
                     end
-            end
+            end;
+        {error, Error} ->
+            Response = dog_parse:validation_error(Error),
+            {validation_error, Response}
     end.
 
 -spec get_all() -> {ok, list()}.

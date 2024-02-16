@@ -23,33 +23,39 @@
 
 -spec create(External :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(ExternalMap@0) ->
-    Name = maps:get(<<"name">>, ExternalMap@0),
-    {ok, ExistingExternals} = get_all(),
-    ExistingNames =
-        case ExistingExternals of
-            [] ->
-                [];
-            EE ->
-                [maps:get(<<"name">>, External) || External <- EE]
-        end,
-    DefaultValuesExternalMap = #{
-        <<"state">> => <<"active">>
-    },
-    MergedExternalMap = maps:merge(DefaultValuesExternalMap, ExternalMap@0),
-    MergedExternalMap2 = dog_time:merge_timestamp(MergedExternalMap),
-    case lists:member(Name, ExistingNames) of
-        false ->
-            {ok, R} = dog_rethink:run(
-                fun(X) ->
-                    reql:db(X, dog),
-                    reql:table(X, ?TYPE_TABLE),
-                    reql:insert(X, MergedExternalMap2, #{return_changes => always})
-                end
-            ),
-            NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
-            {ok, NewVal};
-        true ->
-            {error, name_exists}
+    case dog_json_schema:validate(?VALIDATION_TYPE, ExternalMap@0) of
+        ok ->
+            Name = maps:get(<<"name">>, ExternalMap@0),
+            {ok, ExistingExternals} = get_all(),
+            ExistingNames =
+                case ExistingExternals of
+                    [] ->
+                        [];
+                    EE ->
+                        [maps:get(<<"name">>, External) || External <- EE]
+                end,
+            DefaultValuesExternalMap = #{
+                <<"state">> => <<"active">>
+            },
+            MergedExternalMap = maps:merge(DefaultValuesExternalMap, ExternalMap@0),
+            MergedExternalMap2 = dog_time:merge_timestamp(MergedExternalMap),
+            case lists:member(Name, ExistingNames) of
+                false ->
+                    {ok, R} = dog_rethink:run(
+                        fun(X) ->
+                            reql:db(X, dog),
+                            reql:table(X, ?TYPE_TABLE),
+                            reql:insert(X, MergedExternalMap2, #{return_changes => always})
+                        end
+                    ),
+                    NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                    {ok, NewVal};
+                true ->
+                    {error, name_exists}
+            end;
+        {error, Error} ->
+            Response = dog_parse:validation_error(Error),
+            {validation_error, Response}
     end.
 
 -spec delete(EnvName :: binary()) -> ok | error.
