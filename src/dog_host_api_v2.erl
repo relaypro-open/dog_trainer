@@ -147,7 +147,7 @@ delete(Id) ->
 update(Id, UpdateMap) ->
     case dog_host:get_by_id(Id) of
         {ok, OldHost} ->
-            NewHost = maps:merge(OldHost, UpdateMap),
+            NewHost = maps:merge(maps:remove(<<"vars">>,OldHost), UpdateMap),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewHost) of
                 ok ->
                     {ok, R} = dog_rethink:run(

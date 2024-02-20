@@ -169,7 +169,7 @@ replace_profile_by_profile_id(OldId, NewId, ProfileName) ->
 update(Id, UpdateMap) ->
     case get_by_id(Id) of
         {ok, OldGroup} ->
-            NewGroup = maps:merge(OldGroup, UpdateMap),
+            NewGroup = maps:merge(maps:remove(<<"vars">>,OldGroup), UpdateMap),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewGroup) of
                 ok ->
                     {ok, R} = dog_rethink:run(
