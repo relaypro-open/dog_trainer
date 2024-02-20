@@ -1,1 +1,1 @@
-{"name":"ssh","services":[{"ports":["22"],"protocol":"tcp"}],"version":1}
+{"name":"test-ssh","services":[{"ports":["22"],"protocol":"tcp"}],"version":1}

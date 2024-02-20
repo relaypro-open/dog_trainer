@@ -29,7 +29,7 @@
         "log": false,
         "log_prefix": "",
         "order": 2,
-        "service": "ssh",
+        "service": "test-ssh",
         "states": [],
         "type": "BASIC"
       },
@@ -59,7 +59,7 @@
         "log": false,
         "log_prefix": "",
         "order": 3,
-        "service": "ssh",
+        "service": "test-ssh",
         "states": [],
         "type": "BASIC"
       },
@@ -91,7 +91,7 @@
         "log": false,
         "log_prefix": "",
         "order": 1,
-        "service": "ssh",
+        "service": "test-ssh",
         "states": [],
         "type": "BASIC"
       },
