@@ -1,5 +1,8 @@
 #!/bin/bash
 
+mkdir -p /etc/dog_trainer/private/
+mkdir -p /etc/dog_trainer/certs/
+
 HTTPD=`curl -A "Web Check" -sL --connect-timeout 3 -w "%{http_code}\n" "http://csc:9000/csc/register" -o /dev/null`
 until [ "$HTTPD" == "200" ]; do
     printf '.'
