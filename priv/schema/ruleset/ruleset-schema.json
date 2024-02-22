@@ -116,7 +116,7 @@
 					"type": "string",
 					"enum": [
 						"ANY",
-                        "GROUP",
+						"GROUP",
 						"ROLE",
 						"ZONE"
 					]

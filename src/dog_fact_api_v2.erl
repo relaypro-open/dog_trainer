@@ -89,7 +89,10 @@ get_by_name(Name) ->
 update(Id, UpdateMap@0) ->
     case get_by_id(Id) of
         {ok, OldFact} ->
-            NewFact = maps:merge(OldFact, UpdateMap@0),
+            %Fun = fun(K,V1) when is_map(K) -> map:remove(<<"vars">>,V1) end,
+            %NoVarsFact = maps:map(Fun,OldFact),
+            NoVarsFact = nested:remove([<<"groups">>,<<"all">>,<<"vars">>],OldFact),
+            NewFact = maps:merge(NoVarsFact, UpdateMap@0),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewFact) of
                 ok ->
                     {ok, R} = dog_rethink:run(

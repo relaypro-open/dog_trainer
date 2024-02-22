@@ -4,10 +4,6 @@
   { 
      "all":
      {
-     	"vars": {
-        	"key":"value",
-          	"key3": "value3"
-        },
      	"hosts": {
           "host1": {
             "key": "value",
@@ -33,7 +29,7 @@
         "children": [
             "test2"
         ]
-     }
+    }
   }
 }
 
