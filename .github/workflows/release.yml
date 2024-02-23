@@ -39,18 +39,15 @@ jobs:
             ci-${{runner.os}}-${{env.cache-name}}-otp_${{matrix.otp}}-rebar_${{matrix.rebar3}}
             ci-${{runner.os}}-${{env.cache-name}}-otp_${{matrix.otp}}
 
-      - name: Compile
-        run: rebar3 do clean, compile as public
-      
       - name: Release 
-        run: rebar3 do tar as public
+        run: rebar3 as public tar
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GH_TOKEN }}
           file: _build/default/rel/dog_trainer/dog_trainer-${{ github.sha }}.tar.gz
-          asset_name: dog_trainer_release_${{ runner.os }}_${{ env.RELEASE_VERSION }}.tar.gz
+          asset_name: dog_trainer_release_ubuntu-${{ runner.arch }}_${{ env.RELEASE_VERSION }}.tar.gz
           tag: ${{ github.ref }}
           overwrite: true
           body: "dog_trainer Erlang release"
