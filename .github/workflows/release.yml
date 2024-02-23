@@ -19,6 +19,9 @@ jobs:
         with:
           ref: feature/ansible_connection
 
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}
