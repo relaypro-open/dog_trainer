@@ -11,18 +11,18 @@ jobs:
     name: Erlang ${{matrix.otp}} / rebar ${{matrix.rebar3}}
     strategy:
       matrix:
-        otp: ['24']
-        rebar3: ['3']
+        otp: ['24.3.4.8']
+        rebar3: ['3.18']
     steps:
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}
           rebar3-version: ${{matrix.rebar3}}
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v4
         env:
           cache-name: rebar3
         with:
@@ -39,3 +39,13 @@ jobs:
       
       - name: Release 
         run: rebar3 do tar as public
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GH_TOKEN }}
+          file: _build/default/rel/dog_trainer/dog_trainer-$GITHUB_SHA.tar.gz
+          asset_name: dog_trainer_release 
+          tag: ${{ github.ref }}
+          overwrite: true
+          body: "dog_trainer Erlang release"
