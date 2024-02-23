@@ -47,7 +47,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GH_TOKEN }}
           file: _build/default/rel/dog_trainer/dog_trainer-${{ github.sha }}.tar.gz
-          asset_name: dog_trainer_release 
+          asset_name: dog_trainer_release_${{ runner.os }}_${{ env.RELEASE_VERSION }}.tar.gz
           tag: ${{ github.ref }}
           overwrite: true
           body: "dog_trainer Erlang release"
