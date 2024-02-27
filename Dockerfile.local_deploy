@@ -33,19 +33,22 @@ COPY rebar3 .
 
 RUN ./rebar3 --version
 
-RUN ./rebar3 compile
+RUN ./rebar3 get-deps
 
 FROM base as compile
 WORKDIR /data
-COPY --from=base /data/_build .
+COPY --from=base /data/_build _build/
+COPY .git .git/
 COPY src src/
 COPY priv priv/
 COPY config config/
 RUN mkdir -p /etc/dog_trainer
-COPY config/sys.config.src config/sys.config.src
+#COPY config/sys.config.src config/sys.config.src
 COPY include include/
 COPY scripts scripts/
 
+ARG cachebust
+RUN find /data/_build
 #Build the release
 RUN ./rebar3 release as local_docker
 
