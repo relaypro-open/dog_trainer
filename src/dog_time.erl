@@ -1,12 +1,11 @@
 -module(dog_time).
 
--include("dog_trainer.hrl"). 
-
+-include("dog_trainer.hrl").
 
 -export([
-         merge_timestamp/1,
-         timestamp/0
-        ]).
+    merge_timestamp/1,
+    timestamp/0
+]).
 
 -spec timestamp() -> number().
 timestamp() ->
@@ -15,5 +14,5 @@ timestamp() ->
 -spec merge_timestamp(Map :: map()) -> map().
 merge_timestamp(Map) ->
     Timestamp = dog_time:timestamp(),
-    MergedMap  = maps:merge(Map ,#{<<"timestamp">> => Timestamp}),
+    MergedMap = maps:merge(Map, #{<<"timestamp">> => Timestamp}),
     MergedMap.

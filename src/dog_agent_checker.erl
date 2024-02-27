@@ -10,30 +10,33 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/0,
-         check/0
-        ]).
+-export([
+    start_link/0,
+    check/0
+]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
 %% ------------------------------------------------------------------
 
--export([init/1,
-         handle_call/3,
-         handle_cast/2,
-         handle_info/2,
-         terminate/2,
-         code_change/3
-        ]).
+-export([
+    init/1,
+    handle_call/3,
+    handle_cast/2,
+    handle_info/2,
+    terminate/2,
+    code_change/3
+]).
 
 %% ------------------------------------------------------------------
 %% test Function Exports
 %% ------------------------------------------------------------------
--export([go/0,
-         periodic_reset/0,
-         stop/0,
-         value/0]).
-
+-export([
+    go/0,
+    periodic_reset/0,
+    stop/0,
+    value/0
+]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -81,8 +84,12 @@ value() ->
 
 -spec init(_) -> {'ok', []}.
 init(_Args) ->
-    LastAgentUpdateCheckIntervalSeconds = application:get_env(dog_trainer,last_agent_update_check_interval_seconds,60),
-    _PublishTimer = erlang:send_after(LastAgentUpdateCheckIntervalSeconds * 1000, self(), periodic_reset),
+    LastAgentUpdateCheckIntervalSeconds = application:get_env(
+        dog_trainer, last_agent_update_check_interval_seconds, 60
+    ),
+    _PublishTimer = erlang:send_after(
+        LastAgentUpdateCheckIntervalSeconds * 1000, self(), periodic_reset
+    ),
     State = 0,
     {ok, State}.
 
@@ -97,12 +104,14 @@ init(_Args) ->
 %%----------------------------------------------------------------------
 -spec handle_call(term(), {pid(), term()}, boolean()) -> {reply, ok, boolean()}.
 handle_call(check, _from, State) ->
-    MaxIntervalSinceLastAgentUpdate = application:get_env(dog_trainer,max_interval_since_last_agent_update,2),
+    MaxIntervalSinceLastAgentUpdate = application:get_env(
+        dog_trainer, max_interval_since_last_agent_update, 2
+    ),
     case State of
-        _ when State >= MaxIntervalSinceLastAgentUpdate  -> 
+        _ when State >= MaxIntervalSinceLastAgentUpdate ->
             imetrics:set_gauge(no_agent_updates_received, 1),
             {reply, false, State};
-        _ when State < MaxIntervalSinceLastAgentUpdate -> 
+        _ when State < MaxIntervalSinceLastAgentUpdate ->
             imetrics:set_gauge(no_agent_updates_received, 0),
             {reply, true, State}
     end;
@@ -111,7 +120,7 @@ handle_call(go, _from, _State) ->
     imetrics:set_gauge(interval_since_last_agent_update, NewState),
     {reply, ok, NewState};
 handle_call(stop, _from, _State) ->
-    NewState = application:get_env(dog_trainer,max_interval_since_last_agent_update,2),
+    NewState = application:get_env(dog_trainer, max_interval_since_last_agent_update, 2),
     imetrics:set_gauge(interval_since_last_agent_update, NewState),
     {reply, ok, NewState};
 handle_call(value, _from, State) ->
@@ -125,11 +134,11 @@ handle_call(_Request, _From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State} (terminate/2 is called)
 %%----------------------------------------------------------------------
--spec handle_cast(_,_) -> {'noreply',_}.
+-spec handle_cast(_, _) -> {'noreply', _}.
 handle_cast(stop, State) ->
     {stop, normal, State};
 handle_cast(Msg, State) ->
-    logger:error("unknown_message: Msg: ~p, State: ~p",[Msg, State]),
+    ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -139,15 +148,17 @@ handle_cast(Msg, State) ->
 %%          {stop, Reason, State} (terminate/2 is called)
 %%----------------------------------------------------------------------
 % TODO: be more specific about Info in spec
--spec handle_info(_,_) -> {'noreply',_}.
+-spec handle_info(_, _) -> {'noreply', _}.
 handle_info(periodic_reset, State) ->
-    LastAgentUpdateCheckIntervalSeconds = application:get_env(dog_trainer,last_agent_update_check_interval_seconds,60),
+    LastAgentUpdateCheckIntervalSeconds = application:get_env(
+        dog_trainer, last_agent_update_check_interval_seconds, 60
+    ),
     erlang:send_after(LastAgentUpdateCheckIntervalSeconds * 1000, self(), periodic_reset),
     NewState = State + 1,
     imetrics:set_gauge(interval_since_last_agent_update, NewState),
     {noreply, NewState};
 handle_info(Info, State) ->
-    logger:error("unknown_message: Info: ~p, State: ~p",[Info, State]),
+    ?LOG_ERROR("unknown_message: Info: ~p, State: ~p", [Info, State]),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -157,10 +168,10 @@ handle_info(Info, State) ->
 %%----------------------------------------------------------------------
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    logger:info("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
     {close}.
 
--spec code_change(_, State::ips_state(), _) -> {ok, State::ips_state()}.
+-spec code_change(_, State :: ips_state(), _) -> {ok, State :: ips_state()}.
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 

@@ -7,156 +7,152 @@
 
 %API
 -export([
-         create/1,
-         delete/1,
-         delete_related_external/1,
-         dump_all/0,
-         get_by_id/1,
-         get_by_name/1, 
-         get_all/0,
-         get_schema/0,
-         update/2
-        ]).
+    create/1,
+    delete/1,
+    delete_related_external/1,
+    dump_all/0,
+    get_by_id/1,
+    get_by_name/1,
+    get_all/0,
+    get_schema/0,
+    update/2
+]).
 
 -export([
-        get/1, 
-        get_id_by_name/1,
-        get_name_by_id/1,
-        get_all_active/0,
-        get_all_active_outbound/0,
-        init/0,
-        is_enabled/1
-        ]).
+    get/1,
+    get_id_by_name/1,
+    get_name_by_id/1,
+    get_all_active/0,
+    get_all_active_outbound/0,
+    init/0,
+    is_enabled/1
+]).
 
--spec init() -> any(). 
+-spec init() -> any().
 init() ->
-  pass.
+    pass.
 
 -spec get(Name :: binary()) -> [map()].
 get(Name) ->
-   {ok, LinkDefinition} = get_by_name(Name),
-   logger:debug("LinkDefinition: ~p",[LinkDefinition]),
-   Link = maps:get(<<"links">>,LinkDefinition),
-   Link.
+    {ok, LinkDefinition} = get_by_name(Name),
+    ?LOG_DEBUG("LinkDefinition: ~p", [LinkDefinition]),
+    Link = maps:get(<<"links">>, LinkDefinition),
+    Link.
 
 -spec get_name_by_id(Id :: binary()) -> Name :: binary() | {error, Error :: atom()}.
 get_name_by_id(Id) ->
-   logger:debug("Id: ~p",[Id]),
-   case get_by_id(Id) of
-       {ok, LinkDefinition} -> 
-           logger:debug("LinkDefinition: ~p",[LinkDefinition]),
-           Name = maps:get(<<"name">>,LinkDefinition),
-           Name;
-       {error, Error} ->
-            logger:error("error, link id not found: ~p, ~p",[Id, Error]),
+    ?LOG_DEBUG("Id: ~p", [Id]),
+    case get_by_id(Id) of
+        {ok, LinkDefinition} ->
+            ?LOG_DEBUG("LinkDefinition: ~p", [LinkDefinition]),
+            Name = maps:get(<<"name">>, LinkDefinition),
+            Name;
+        {error, Error} ->
+            ?LOG_ERROR("error, link id not found: ~p, ~p", [Id, Error]),
             {error, Error}
-   end.
+    end.
 
 -spec get_id_by_name(Name :: binary()) -> [iolist()].
 get_id_by_name(Name) ->
-   {ok, LinkDefinition} = get_by_name(Name),
-   logger:debug("LinkDefinition: ~p",[LinkDefinition]),
-   Id = maps:get(<<"id">>,LinkDefinition),
-   Id.
+    {ok, LinkDefinition} = get_by_name(Name),
+    ?LOG_DEBUG("LinkDefinition: ~p", [LinkDefinition]),
+    Id = maps:get(<<"id">>, LinkDefinition),
+    Id.
 
 -spec get_by_name(Name :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_name(Name) ->
-    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, R} = dog_rethink:run(
-                               fun(X) -> 
-                                       reql:db(X, dog), 
-                                       reql:table(X, ?TYPE_TABLE),
-                                       reql:get_all(X, Name, #{index => <<"name">>})
-                              end),
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get_all(X, Name, #{index => <<"name">>})
+        end
+    ),
     {ok, R3} = rethink_cursor:all(R),
     Result = lists:flatten(R3),
     case Result of
-        [] -> 
-            logger:error("error, link name not found: ~p",[Name]),
+        [] ->
+            ?LOG_ERROR("error, link name not found: ~p", [Name]),
             {error, notfound};
-            %throw(link_not_found);
-        _ -> 
-          Link = hd(Result),
-          {ok, Link}
+        _ ->
+            Link = hd(Result),
+            {ok, Link}
     end.
 
 -spec get_by_id(Id :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_id(Id) ->
-  %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-  %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-  {ok, R} = dog_rethink:run(
-  fun(X) -> 
-      reql:db(X, dog), 
-      reql:table(X, ?TYPE_TABLE),
-      reql:get(X, Id)
-  end),
-  case R of
-     null -> 
-          {error, notfound};
-          %throw(link_not_found);
-     _ -> 
-      Link = R,
-      {ok, Link}
-  end.
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:get(X, Id)
+        end
+    ),
+    case R of
+        null ->
+            {error, notfound};
+        _ ->
+            Link = R,
+            {ok, Link}
+    end.
 
 -spec is_enabled(Id :: binary()) -> boolean().
 is_enabled(Id) ->
     {ok, Link} = get_by_id(Id),
-    maps:get(<<"enabled">>,Link).
+    maps:get(<<"enabled">>, Link).
 
--spec delete(Id :: binary()) -> ok | {error, Error :: map() }.
+-spec delete(Id :: binary()) -> ok | {error, Error :: map()}.
 delete(Id) ->
     case is_enabled(Id) of
         true ->
-            logger:info("link ~p not deleted, is enabled~n",[Id]),
-            {error,#{<<"errors">> => #{<<"unable to delete">> => <<"link enabled">>}}};
-        false -> 
+            ?LOG_INFO("link ~p not deleted, is enabled~n", [Id]),
+            {error, #{<<"errors">> => #{<<"unable to delete">> => <<"link enabled">>}}};
+        false ->
             delete_related_external(Id),
             {ok, R} = dog_rethink:run(
-                                      fun(X) -> 
-                                              reql:db(X, dog),
-                                              reql:table(X, ?TYPE_TABLE),
-                                              reql:get(X, Id),
-                                              reql:delete(X)
-                                      end),
-            logger:debug("delete R: ~p~n",[R]),
+                fun(X) ->
+                    reql:db(X, dog),
+                    reql:table(X, ?TYPE_TABLE),
+                    reql:get(X, Id),
+                    reql:delete(X)
+                end
+            ),
+            ?LOG_DEBUG("delete R: ~p~n", [R]),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 -> ok;
-                _ -> {error,#{<<"error">> => <<"error">>}}
+                _ -> {error, #{<<"error">> => <<"error">>}}
             end
     end.
 
 -spec delete_related_external(Id :: binary()) -> (ok | error).
 delete_related_external(Id) ->
-    logger:debug("Id: ~p",[Id]),
+    ?LOG_DEBUG("Id: ~p", [Id]),
     {ok, Link} = get_by_id(Id),
-    LinkName = maps:get(<<"name">>,Link),
+    LinkName = maps:get(<<"name">>, Link),
     dog_external:delete(LinkName).
 
--spec update(Id :: binary(), UpdateMap :: map()) -> {atom(), any()} .
+-spec update(Id :: binary(), UpdateMap :: map()) -> {atom(), any()}.
 update(Id, UpdateMap) ->
     case get_by_id(Id) of
         {ok, OldLink} ->
-            NewLink = maps:merge(OldLink,UpdateMap),
-            case dog_json_schema:validate(?VALIDATION_TYPE,NewLink) of
+            NewLink = maps:merge(OldLink, UpdateMap),
+            case dog_json_schema:validate(?VALIDATION_TYPE, NewLink) of
                 ok ->
-                    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-                    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
                     {ok, R} = dog_rethink:run(
-                          fun(X) -> 
-                                  reql:db(X, dog),
-                                  reql:table(X, ?TYPE_TABLE),
-                                  reql:get(X, Id),
-                                  reql:update(X,UpdateMap)
-                          end),
-                    logger:debug("update R: ~p~n", [R]),
+                        fun(X) ->
+                            reql:db(X, dog),
+                            reql:table(X, ?TYPE_TABLE),
+                            reql:get(X, Id),
+                            reql:update(X, UpdateMap)
+                        end
+                    ),
+                    ?LOG_DEBUG("update R: ~p~n", [R]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
-                    case {Replaced,Unchanged} of
-                        {1,0} -> {true,Id};
-                        {0,1} -> {false,Id};
+                    case {Replaced, Unchanged} of
+                        {1, 0} -> {true, Id};
+                        {0, 1} -> {false, Id};
                         _ -> {false, no_update}
                     end;
                 {error, Error} ->
@@ -165,28 +161,26 @@ update(Id, UpdateMap) ->
             end;
         {error, Error} ->
             {false, Error}
-    end.            
+    end.
 
-
--spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists }.
+-spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(LinkMap@0) ->
     Name = maps:get(<<"name">>, LinkMap@0),
     {ok, ExistingLinks} = get_all(),
-    ExistingNames = [maps:get(<<"name">>,Link) || Link <- ExistingLinks],
+    ExistingNames = [maps:get(<<"name">>, Link) || Link <- ExistingLinks],
     case lists:member(Name, ExistingNames) of
-        false -> 
-            case dog_json_schema:validate(?VALIDATION_TYPE,LinkMap@0) of
+        false ->
+            case dog_json_schema:validate(?VALIDATION_TYPE, LinkMap@0) of
                 ok ->
-                    %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-                    %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
                     {ok, R} = dog_rethink:run(
-                          fun(X) -> 
-                                  reql:db(X, dog),
-                                  reql:table(X, ?TYPE_TABLE),
-                                  reql:insert(X, LinkMap@0)
-                          end),
-                    Key = hd(maps:get(<<"generated_keys">>,R)),
-                    logger:debug("create R: ~p~n", [R]),
+                        fun(X) ->
+                            reql:db(X, dog),
+                            reql:table(X, ?TYPE_TABLE),
+                            reql:insert(X, LinkMap@0)
+                        end
+                    ),
+                    Key = hd(maps:get(<<"generated_keys">>, R)),
+                    ?LOG_DEBUG("create R: ~p~n", [R]),
                     create_empty_external(Name),
                     {ok, Key};
                 {error, Error} ->
@@ -198,98 +192,92 @@ create(LinkMap@0) ->
     end.
 
 create_empty_external(EnvName) ->
-  ExternalMap = dog_external:empty_external(EnvName),
-  dog_external:create(ExternalMap).
+    ExternalMap = dog_external:empty_external(EnvName),
+    dog_external:create(ExternalMap).
 
 -spec get_all() -> {ok, list()}.
 get_all() ->
     {ok, R} = dog_rethink:run(
-                              fun(X) -> 
-                                      reql:db(X, dog), 
-                                      reql:table(X, ?TYPE_TABLE),
-                                      reql:pluck(X,[<<"name">>,<<"id">>])
-                              end),
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:pluck(X, [<<"name">>, <<"id">>])
+        end
+    ),
     {ok, Result} = rethink_cursor:all(R),
-    Links = case lists:flatten(Result) of
-                [] -> 
-                  [];
-                Else -> 
-                  Else
-            end,
+    Links =
+        case lists:flatten(Result) of
+            [] ->
+                [];
+            Else ->
+                Else
+        end,
     {ok, Links}.
 
 -spec dump_all() -> {ok, list()}.
 dump_all() ->
     {ok, R} = dog_rethink:run(
-                              fun(X) -> 
-                                      reql:db(X, dog), 
-                                      reql:table(X, link)
-                              end),
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, link)
+        end
+    ),
     {ok, Result} = rethink_cursor:all(R),
-    Links = case lists:flatten(Result) of
-                [] -> 
-                  [];
-                Else -> 
-                  Else
-            end,
+    Links =
+        case lists:flatten(Result) of
+            [] ->
+                [];
+            Else ->
+                Else
+        end,
     {ok, Links}.
 
 -spec get_all_active() -> {ok, list()} | error.
-get_all_active() -> 
-  %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-  %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-  {ok, R} = dog_rethink:run(
-                           fun(X) ->
-                               reql:db(X, dog),
-                               reql:table(X, ?TYPE_TABLE),
-                               reql:filter(X,#{<<"enabled">> => true})
-                           end),
-  {ok, Result} = rethink_cursor:all(R),
-  logger:debug("Result: ~p",[Result]),
-  Links = hd(hd((Result))),
-  logger:debug("Links: ~p",[Links]),
-  case Links of
-    [] ->
-      {ok, []};
-    _ ->
-      {ok, Links}
-  end.
-      %ObfuscatedLinks = [obfuscate_password(Link) || Link <- Links],
-      
+get_all_active() ->
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:filter(X, #{<<"enabled">> => true})
+        end
+    ),
+    {ok, Result} = rethink_cursor:all(R),
+    ?LOG_DEBUG("Result: ~p", [Result]),
+    Links = hd(hd((Result))),
+    ?LOG_DEBUG("Links: ~p", [Links]),
+    case Links of
+        [] ->
+            {ok, []};
+        _ ->
+            {ok, Links}
+    end.
+
 -spec get_all_active_outbound() -> {ok, list()} | error.
 get_all_active_outbound() ->
-  %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
-  %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
-  {ok, R} = dog_rethink:run(
-                           fun(X) ->
-                               reql:db(X, dog),
-                               reql:table(X, ?TYPE_TABLE),
-                               reql:filter(X,#{<<"enabled">> => true})
-                           end),
-  {ok, Result} = rethink_cursor:all(R),
-  logger:debug("Result: ~p",[Result]),
-  Links = hd(hd((Result))),
-  logger:debug("Links: ~p",[Links]),
-  case Links of
-    {ok, []} ->
-      {ok, []};
-    Else ->
-      OutboundLinks = [Link || Link <- Else, 
-                               (maps:get(<<"direction">>,Link) == <<"outbound">>) or
-                               (maps:get(<<"direction">>,Link) == <<"bidirectional">>)],
-      {ok, OutboundLinks}
-  end.
-
-
-%-spec obfuscate_password(Link :: map()) -> {ok, Link :: map()}.
-%obfuscate_password(Link) ->
-%  case nested:get([<<"connection">>,<<"password">>],Link,not_found) of
-%    not_found ->
-%      Link;
-%    _ ->
-%      nested:update([<<"connection">>,<<"password">>],<<"******">>,Link)
-%  end.
+    {ok, R} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:filter(X, #{<<"enabled">> => true})
+        end
+    ),
+    {ok, Result} = rethink_cursor:all(R),
+    ?LOG_DEBUG("Result: ~p", [Result]),
+    Links = hd(hd((Result))),
+    ?LOG_DEBUG("Links: ~p", [Links]),
+    case Links of
+        {ok, []} ->
+            {ok, []};
+        Else ->
+            OutboundLinks = [
+                Link
+             || Link <- Else,
+                (maps:get(<<"direction">>, Link) == <<"outbound">>) or
+                    (maps:get(<<"direction">>, Link) == <<"bidirectional">>)
+            ],
+            {ok, OutboundLinks}
+    end.
 
 -spec get_schema() -> binary().
 get_schema() ->
-  dog_json_schema:get_file(?VALIDATION_TYPE).
+    dog_json_schema:get_file(?VALIDATION_TYPE).

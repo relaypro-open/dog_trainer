@@ -2,8 +2,7 @@
 -module(dog_api_sup).
 -behaviour(supervisor).
 
--include("dog_trainer.hrl"). 
-
+-include("dog_trainer.hrl").
 
 %% API.
 -export([start_link/0]).
@@ -20,5 +19,5 @@ start_link() ->
 %% supervisor.
 
 init([]) ->
-	Procs = [],
-	{ok, {{one_for_one, 10, 10}, Procs}}.
+    Procs = [],
+    {ok, {{one_for_one, 10, 10}, Procs}}.

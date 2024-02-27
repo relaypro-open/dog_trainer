@@ -1,0 +1,64 @@
+{
+  "name" : "mob_qa",
+  "groups": 
+  {
+     "all": {
+     	"vars": {
+        	"key":"value",
+          	"key2": "value2"
+        },
+     	"hosts": {
+          "host1": {
+            "key": "value",
+            "key2": "value2"
+          },
+          "host2": {
+            "key2": "value2"
+          }
+        },
+        "children": [
+            "test",
+            "test_group"
+        ]
+     },
+     "test_group": {
+     	"vars": {
+        	"key":"value"
+        },
+     	"hosts": {
+          "host1": {
+            "key": "value"
+          }
+        },
+        "children": [
+            "test2"
+        ]
+     },
+     "test":
+     {
+     	"vars": {
+        	"test_key":"test_value"
+        },
+     	"hosts": {
+          "test_host": {
+            "test_host_key": "test_host_value"
+          }
+        },
+        "children": [
+        ]
+     },
+     "test2":
+     {
+     	"vars": {
+        	"test2_key":"test2_value"
+        },
+     	"hosts": {
+          "test2_host": {
+            "test2_host_key": "test2_host_value"
+          }
+        },
+        "children": [
+        ]
+     }
+  }
+}

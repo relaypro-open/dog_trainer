@@ -7,8 +7,7 @@
 
 -behaviour(supervisor).
 
--include("dog_trainer.hrl"). 
-
+-include("dog_trainer.hrl").
 
 %% API
 -export([start_link/0]).
@@ -29,34 +28,18 @@ start_link() ->
 
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
-    {ok, {{one_for_one, 5, 60},
-       [
-	{profile_update_agent,
-            {dog_profile_update_agent, start_link, []},
-            permanent,
-            5000,
-            worker,
-            [dog_profile_update_agent]},
-	{ipset_update_agent,
-            {dog_ipset_update_agent, start_link, []},
-            permanent,
-            5000,
-            worker,
-            [dog_ipset_update_agent]},
-	{dog_agent_checker,
-            {dog_agent_checker, start_link, []},
-            permanent,
-            5000,
-            worker,
-            [dog_agent_checker]},
-	{dog_ec2_update_agent,
-            {dog_ec2_update_agent, start_link, []},
-            permanent,
-            5000,
-            worker,
-            [dog_ec2_update_agent]}
-	]	
-	}}.
+    {ok,
+        {{one_for_one, 5, 60}, [
+            {profile_update_agent, {dog_profile_update_agent, start_link, []}, permanent, 5000,
+                worker, [dog_profile_update_agent]},
+            {ipset_update_agent, {dog_ipset_update_agent, start_link, []}, permanent, 5000, worker,
+                [dog_ipset_update_agent]},
+            {dog_agent_checker, {dog_agent_checker, start_link, []}, permanent, 5000, worker, [
+                dog_agent_checker
+            ]},
+            {dog_ec2_update_agent, {dog_ec2_update_agent, start_link, []}, permanent, 5000, worker,
+                [dog_ec2_update_agent]}
+        ]}}.
 
 %%====================================================================
 %% Internal functions

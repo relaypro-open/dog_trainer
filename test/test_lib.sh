@@ -5,7 +5,6 @@ IFS=$'\n\t'
 
 echo $PASS > /tmp/pass.txt
 echo $FAIL > /tmp/fail.txt
-BASEURL=http://localhost:7070/api/V2
 OPTS=""
 #BASEURL=https://dog-ubuntu-server.lxd:8443/api
 #OPTS=( --key /opt/dog_trainer/client.key.pem --cert /opt/dog_trainer/client.cert.pem --cacert /tmp/consul/ca/consul-root.cer )

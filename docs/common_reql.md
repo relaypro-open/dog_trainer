@@ -211,3 +211,101 @@ r.db('dog').table('group').withFields(['profile_id']).innerJoin(
     return rule('group_type').eq('ROLE')
   }).getField('group').distinct().setDifference(r.db('dog').table('group')('id').distinct())
 ```
+
+list non-existent zones in profiles (pathological case) (ignore 'cpz_any'):
+```
+  r.db('dog').table('profile')('rules')('inbound')              
+  .concatMap(function(rule) {                                                                  
+    return rule                                           
+  })
+    .filter(function(rule) {
+      return rule('group_type').eq('ZONE')
+    })
+    .getField('group').distinct().setDifference(r.db('dog').table('zone')('id').distinct())
+```
+
+list non-existent services in active profiles (pathological case) (ignore 'any'):
+```
+r.db('dog').table('group').withFields(['profile_id']).innerJoin(                            
+  r.db('dog').table('profile'),                                                             
+  function(serviceRow, profileRow) {                                                          
+    return serviceRow('profile_id').eq(profileRow('id'))})('right')('rules')('inbound')       
+  .concatMap(function(rule) {                                                               
+    return rule.pluck(["service"])                                               
+  })                        
+  .getField('service').distinct().setDifference(r.db('dog').table('service')('id').distinct())
+```
+
+query by ec2 tags:
+```
+r.db('dog').table('host')
+  .filter(
+      {'ec2_instance_tags': 
+        {
+          'environment':'qa',
+          'cluster':'x'
+        }
+      }
+    )
+  .filter( 
+    r.row("active").eq("active")
+   )
+  .count()
+```
+
+group by ec2 tags:
+```
+r.db('dog').table('host')
+    .filter( 
+    r.row("active").eq("active")
+  )
+  .hasFields({ ec2_instance_tags: 'role' })('ec2_instance_tags')
+  .group('environment','cluster').count()
+```
+
+hosts without field
+```
+r.db('dog').table('host')
+  .filter(
+    {active:"active"}
+    )
+  .filter( 
+     r.row.hasFields('ec2_instance_tags').not()
+  )('name')
+```
+
+hosts by OS and version
+```
+r.db('dog').table('host')
+  .filter( 
+    r.row("active").eq("active")
+  ).group("os_version","os_distribution").count()
+```
+
+migrate rules from profile to ruleset tables:
+```
+r.db('dog').table('profile').forEach(function(profile) {
+  return r.db('dog').table('ruleset').insert(
+    {"name": profile("name"), "rules": profile("rules"), "profile_id": profile("id")})
+})
+
+r.db('dog').table('profile').replace(function(elem) {
+  return elem.without('rules')
+})
+```
+
+roll back rules from ruleset back to profile:
+```
+r.db('dog').table('ruleset').forEach(function(ruleset) {
+  return r.db('dog').table('profile').get(ruleset('profile_id')).update(
+    {"rules": ruleset("rules")})
+})
+```
+
+find IP in zones:
+```
+r.db('dog').table('zone')
+  .filter(
+    r.row("ipv4_addresses").toJSON().match("1.1.1.1")
+  )
+```

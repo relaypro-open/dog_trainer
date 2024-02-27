@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-04/schema#",
   "description": "",
   "type": "object",
   "properties": {
@@ -18,8 +18,8 @@
     },
     "hostkey": {
       "type": "string",
-      "minLength": 1,
-      "pattern": "^((?!localhost).)*$"
+      "minLength": 10,
+      "pattern": "^[A-Za-z0-9+%_.-](.*)$"
     },
     "location": {
       "type": "string",

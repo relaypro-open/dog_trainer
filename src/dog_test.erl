@@ -1,12 +1,11 @@
 -module(dog_test).
 
--include("dog_trainer.hrl"). 
+-include("dog_trainer.hrl").
 
-
--export([ setup/0, cleanup/1]).
+-export([setup/0, cleanup/1]).
 
 setup() ->
-    logger:info("dog_test:setup()"),
+    ?LOG_INFO("dog_test:setup()"),
     application:start(sasl),
     application:start(asn1),
     application:start(crypto),
@@ -14,7 +13,7 @@ setup() ->
     application:start(ssl),
     application:start(inets),
     application:start(ibrowse),
-    ok. 
+    ok.
 
 cleanup(_Ok) ->
     application:stop(ibrowse),
@@ -26,4 +25,3 @@ cleanup(_Ok) ->
     application:stop(asn1),
     application:stop(sasl),
     ok.
-

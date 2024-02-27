@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    name: Erlang ${{matrix.otp}} / rebar ${{matrix.rebar3}}
+    strategy:
+      matrix:
+        otp: ['24.3.4.8']
+        rebar3: ['3.18']
+    steps:
+
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/ansible_connection
+
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{matrix.otp}}
+          rebar3-version: ${{matrix.rebar3}}
+
+      - uses: actions/cache@v4
+        env:
+          cache-name: rebar3
+        with:
+          path: |
+            ~/.cache/rebar3
+            _build
+          key: ci-${{runner.os}}-${{env.cache-name}}-otp_${{matrix.otp}}-rebar_${{matrix.rebar3}}-${{hashFiles('rebar.lock')}}
+          restore-keys: |
+            ci-${{runner.os}}-${{env.cache-name}}-otp_${{matrix.otp}}-rebar_${{matrix.rebar3}}
+            ci-${{runner.os}}-${{env.cache-name}}-otp_${{matrix.otp}}
+
+      - name: Release 
+        run: rebar3 as public tar
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GH_TOKEN }}
+          file: _build/public/rel/dog_trainer/dog_trainer-${{ github.sha }}.tar.gz
+          asset_name: dog_trainer_release_ubuntu-${{ runner.arch }}_${{ env.RELEASE_VERSION }}.tar.gz
+          tag: ${{ github.ref }}
+          overwrite: true
+          body: "dog_trainer Erlang release"

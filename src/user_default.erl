@@ -5,4 +5,4 @@
 -include_lib("erlcloud/include/erlcloud_aws.hrl").
 -include_lib("erlcloud/include/erlcloud_ec2.hrl").
 
--compile (export_all).
+-compile(export_all).
