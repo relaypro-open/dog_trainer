@@ -1,6 +1,7 @@
 [
     {dog_trainer, [
         {env, "t1"},
+        {auto_register_hosts, true},
         {aws_key,""},
         {aws_secret,""},
         {command_execution_timeout_ms,10000},

@@ -103,10 +103,16 @@ loop(_RoutingKey, _CType, Payload, State) ->
             {error, Reason} ->
                 case UpdateType of
                     force ->
-                        ?LOG_INFO("New host reporting: ~p", [Hostkey]),
-                        dog_host:create(Config);
+                        case application:get_env(dog_trainer, auto_register_hosts, true) of
+                            true ->
+                                ?LOG_INFO("New host reporting: ~p", [Hostkey]),
+                                dog_host:create(Config);
+                            false ->
+                                ?LOG_ERROR("Auto Host registration disabled - Unknown host reporting: ~p", [Hostkey])
+                        end;
                     _ ->
-                        ?LOG_ERROR("Host update for unknown host: ~p, Reason: ~p", [Hostkey, Reason])
+                        ?LOG_INFO("Host update for unknown host: ~p, Reason: ~p", [Hostkey,
+                                                                                   Reason])
                 end
         end,
         dog_agent_checker:go()
@@ -168,10 +174,16 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
             {error, Reason} ->
                 case UpdateType of
                     force ->
-                        ?LOG_INFO("New host reporting: ~p", [Hostkey]),
-                        dog_host:create(Config);
+                        case application:get_env(dog_trainer, auto_register_hosts, true) of
+                            true ->
+                                ?LOG_INFO("New host reporting: ~p", [Hostkey]),
+                                dog_host:create(Config);
+                            false ->
+                                ?LOG_ERROR("Auto Host registration disabled - Unknown host reporting: ~p", [Hostkey])
+                        end;
                     _ ->
-                        ?LOG_INFO("Host update for unknown host: ~p, Reason: ~p", [Hostkey, Reason])
+                        ?LOG_INFO("Host update for unknown host: ~p, Reason: ~p", [Hostkey,
+                                                                                   Reason])
                 end
         end,
         dog_agent_checker:go()
@@ -179,10 +191,10 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
         Exception:ExceptionReason:Stacktrace ->
             imetrics:add_m(ips_update, "exception"),
             ?LOG_ERROR(#{
-                exception => Exception,
-                exceptionreason => ExceptionReason,
-                stacktrace => Stacktrace
-            })
+                         exception => Exception,
+                         exceptionreason => ExceptionReason,
+                         stacktrace => Stacktrace
+                        })
     end,
     ack.
 
