@@ -2,7 +2,7 @@ HOSTNAME=github.com
 NAMESPACE=relaypro-open
 NAME=dog_trainer
 BINARY=${NAME}
-VERSION=v1.4.0
+VERSION=v1.4.1
 OS_ARCH=linux_amd64
 
 default: install
