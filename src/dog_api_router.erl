@@ -75,6 +75,7 @@ start_link() ->
             {"/api/rulesets/:sub", plural_api_handler, #{}},
             {"/api/V2/ruleset", api_handler_v2, #{}},
             {"/api/V2/ruleset/:id", api_handler_v2, #{}},
+            {"/api/V2/ruleset/:id/:sub", api_handler_v2, #{}},
             {"/api/V2/rulesets", plural_api_handler_v2, #{}},
             {"/api/V2/rulesets/:sub", plural_api_handler_v2, #{}},
             {"/api/publish", publish_api_handler, #{}},

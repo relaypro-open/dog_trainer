@@ -267,48 +267,67 @@ to_json(Req, State) ->
     Id@0 = cowboy_req:binding(id, Req),
     Sub = cowboy_req:binding(sub, Req),
     Object = maps:get(<<"object">>, State),
+    Path = cowboy_req:path(Req),
+    HandlerPath = get_handler_path(Path),
     Json =
-        case Id@0 of
-            undefined ->
-                jsx:encode(Object);
-            Id ->
-                case Sub of
+        case HandlerPath of
+            "group" ->
+                case Id@0 of
                     undefined ->
                         jsx:encode(Object);
-                    <<"ips">> ->
-                        {ok, ObjectIps} = dog_group:get_all_ips_by_id(Id),
-                        jsx:encode(ObjectIps);
-                    <<"ipv4s">> ->
-                        {ok, ObjectIps} = dog_group:get_all_ipv4s_by_id(Id),
-                        jsx:encode(ObjectIps);
-                    <<"ipv6s">> ->
-                        {ok, ObjectIps} = dog_group:get_all_ipv6s_by_id(Id),
-                        jsx:encode(ObjectIps);
-                    <<"internal_ips">> ->
-                        {ok, ObjectIps} = dog_group:get_internal_ips_by_id(Id),
-                        jsx:encode(ObjectIps);
-                    <<"internal_ipv4s">> ->
-                        {ok, ObjectIps} = dog_group:get_internal_ipv4s_by_id(Id),
-                        jsx:encode(ObjectIps);
-                    <<"internal_ipv6s">> ->
-                        {ok, ObjectIps} = dog_group:get_internal_ipv6s_by_id(Id),
-                        jsx:encode(ObjectIps);
-                    <<"external_ips">> ->
-                        {ok, ObjectIps} = dog_group:get_external_ips_by_id(Id),
-                        jsx:encode(ObjectIps);
-                    <<"external_ipv4s">> ->
-                        {ok, ObjectIps} = dog_group:get_external_ipv4s_by_id(Id),
-                        jsx:encode(ObjectIps);
-                    <<"external_ipv6s">> ->
-                        {ok, ObjectIps} = dog_group:get_external_ipv6s_by_id(Id),
-                        jsx:encode(ObjectIps);
-                    <<"hosts">> ->
-                        {ok, ObjectHosts} = dog_group:get_hosts_by_id(Id),
-                        jsx:encode(ObjectHosts);
-                    <<"ec2_security_group_ids">> ->
-                        ObjectHosts = dog_group:get_internal_ec2_security_group_ids_by_id(Id),
-                        jsx:encode(ObjectHosts)
-                end
+                    Id ->
+                        case Sub of
+                            undefined ->
+                                jsx:encode(Object);
+                            <<"ips">> ->
+                                {ok, ObjectIps} = dog_group:get_all_ips_by_id(Id),
+                                jsx:encode(ObjectIps);
+                            <<"ipv4s">> ->
+                                {ok, ObjectIps} = dog_group:get_all_ipv4s_by_id(Id),
+                                jsx:encode(ObjectIps);
+                            <<"ipv6s">> ->
+                                {ok, ObjectIps} = dog_group:get_all_ipv6s_by_id(Id),
+                                jsx:encode(ObjectIps);
+                            <<"internal_ips">> ->
+                                {ok, ObjectIps} = dog_group:get_internal_ips_by_id(Id),
+                                jsx:encode(ObjectIps);
+                            <<"internal_ipv4s">> ->
+                                {ok, ObjectIps} = dog_group:get_internal_ipv4s_by_id(Id),
+                                jsx:encode(ObjectIps);
+                            <<"internal_ipv6s">> ->
+                                {ok, ObjectIps} = dog_group:get_internal_ipv6s_by_id(Id),
+                                jsx:encode(ObjectIps);
+                            <<"external_ips">> ->
+                                {ok, ObjectIps} = dog_group:get_external_ips_by_id(Id),
+                                jsx:encode(ObjectIps);
+                            <<"external_ipv4s">> ->
+                                {ok, ObjectIps} = dog_group:get_external_ipv4s_by_id(Id),
+                                jsx:encode(ObjectIps);
+                            <<"external_ipv6s">> ->
+                                {ok, ObjectIps} = dog_group:get_external_ipv6s_by_id(Id),
+                                jsx:encode(ObjectIps);
+                            <<"hosts">> ->
+                                {ok, ObjectHosts} = dog_group:get_hosts_by_id(Id),
+                                jsx:encode(ObjectHosts);
+                            <<"ec2_security_group_ids">> ->
+                                ObjectHosts = dog_group:get_internal_ec2_security_group_ids_by_id(Id),
+                                jsx:encode(ObjectHosts)
+                        end
+                end;
+            "ruleset" ->
+                case Id@0 of
+                    undefined ->
+                        jsx:encode(Object);
+                    Id ->
+                        case Sub of
+                            undefined ->
+                                jsx:encode(Object);
+                            <<"hcl">> ->
+                                dog_ruleset_api_v2:to_hcl_by_id(Id)
+                        end
+                end;
+            _ ->
+                jsx:encode(Object)
         end,
     {Json, Req, State}.
 
@@ -323,11 +342,12 @@ to_text(Req, State) ->
                 error;
             Id ->
                 case HandlerPath of
-                    "profile" ->
+                    <<"ruleset">> ->
                         case Sub of
                             undefined ->
                                 case cowboy_req:match_qs([{diff, [], plain}], Req) of
                                     #{diff := plain} ->
+
                                         case dog_profile:get_by_id(Id) of
                                             {ok, Profile} ->
                                                 {ok, T} = dog_profile:to_text(Profile),
