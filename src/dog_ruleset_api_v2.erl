@@ -26,7 +26,9 @@
     rule_names_to_ids/4,
     ids_to_names/1,
     nti/1,
-    names_to_ids/1
+    names_to_ids/1,
+    to_hcl/1,
+    to_hcl_by_id/1
 ]).
 
 -spec init() -> any().
@@ -484,3 +486,114 @@ rule_names_to_ids(Rules, ServicesByName, ZonesByName, GroupsByName) ->
         end,
         Rules
     ).
+
+-spec to_terraform_name(Name :: iolist()) -> iolist().
+to_terraform_name(Name) ->
+    NoDots = string:replace(Name, ".", "_", all),
+    NoOpenParenthesis = string:replace(NoDots, "(", "_", all),
+    NoCloseParenthesis = string:replace(NoOpenParenthesis, ")", "_", all),
+    NoForwardSlash = string:replace(NoCloseParenthesis, "/", "_", all),
+    NoSpaces = string:replace(NoForwardSlash, " ", "_", all),
+    NoColons = string:replace(NoSpaces, ":", "_", all),
+    NoColons.
+
+-spec to_hcl_by_id(RulesetId :: iolist()) -> iolist().
+to_hcl_by_id(RulesetId) ->
+    {ok, RulesetWithIds} = get_by_id(RulesetId),
+    to_hcl(RulesetWithIds). 
+
+-spec to_hcl(Ruleset :: map()) -> binary().
+to_hcl(RulesetWithIds) ->
+    Ruleset = ids_to_names(RulesetWithIds),
+    InboundRules = rules_to_hcl(nested:get([<<"rules">>,<<"inbound">>],Ruleset)),
+    OutboundRules = rules_to_hcl(nested:get([<<"rules">>,<<"outbound">>],Ruleset)),
+    Bindings = #{
+                 'TerraformName' => to_terraform_name(maps:get(<<"name">>, Ruleset)), 
+                 'Name' => maps:get(<<"name">>, Ruleset), 
+                 'Environment' => <<"qa">>,
+                 'InboundRules' => InboundRules,
+                 'OutboundRules' => OutboundRules
+                },
+    {ok, Snapshot} = eel:compile(<<
+        "resource \"dog_ruleset\" \"<%= TerraformName .%>\"\n"
+        "  name = \"<%= Name .%>\"\n"
+        "  profile_id = dog_profile.<%= Name .%>.id\n"
+        "  rules = {\n"
+        "    inbound = [\n"
+        "<%= InboundRules .%>"
+        "    ]\n"
+        "    outbound = [\n"
+        "<%= OutboundRules .%>"
+        "    ]\n"
+        "  }\n"
+        "  provider = dog.<%= Environment .%>\n"
+        "}\n"
+    >>),
+    {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+    {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+    erlang:iolist_to_binary(IoData).
+
+-spec rules_to_hcl(Rules :: map()) -> binary().
+rules_to_hcl(Rules) ->
+    lists:map(fun(Rule) ->
+                      Group = case maps:get(<<"group">>,Rule) of
+                                  <<"any">> ->
+                                      <<"\"any\"">>;
+                                  <<"all-active">> ->
+                                      <<"\"all-active\"">>;
+                                  OtherGroup ->
+                                      case maps:get(<<"group_type">>,Rule) of
+                                          <<"ZONE">> ->
+                                              erlang:iolist_to_binary([
+                                                                       <<"dog_zone">>,<<".">>,OtherGroup,<<".id">>
+                                                                      ]);
+                                          _Other ->
+                                              erlang:iolist_to_binary([
+                                                                       <<"dog_group">>,<<".">>,OtherGroup,<<".id">>
+                                                                      ])
+                                      end
+                              end,
+                      Service = case maps:get(<<"service">>, Rule) of
+                                    <<"any">> ->
+                                        <<"any">>;
+                                        OtherService ->
+                                          erlang:iolist_to_binary([
+                                            <<"dog_service">>,<<".">>,OtherService,<<".id">>
+                                                                  ])
+                                end,
+                      Bindings = #{
+                                   'Action' => maps:get(<<"action">>,Rule),
+                                   'Active' => maps:get(<<"active">>,Rule),
+                                   'Comment' => maps:get(<<"comment">>,Rule),
+                                   'Environments' =>
+                                   io_lib:format("~p",[maps:get(<<"environments">>,Rule)]),
+                                   'Group' => Group,
+                                   'GroupType' => maps:get(<<"group_type">>,Rule),
+                                   'Interface' => maps:get(<<"interface">>,Rule),
+                                   'Log' => maps:get(<<"log">>,Rule),
+                                   'LogPrefix' => maps:get(<<"log_prefix">>,Rule),
+                                   'Service' => Service,
+                                   'States' =>
+                                   io_lib:format("~p",[maps:get(<<"states">>,Rule)]),
+                                   'Type' => maps:get(<<"type">>,Rule)
+                                  },
+                      {ok, Snapshot} = eel:compile(<<
+                                                     "      {\n"
+                                                     "        action       = \"<%= Action .%>\"\n"
+                                                     "        active       = \"<%= Active .%>\"\n"
+                                                     "        comment      = \"<%= Comment .%>\"\n"
+                                                     "        environments = <%= Environments .%>\n"
+                                                     "        group        = <%= Group .%>\n"
+                                                     "        group_type   = \"<%= GroupType .%>\"\n"
+                                                     "        interface    = \"<%= Interface .%>\"\n"
+                                                     "        log          = \"<%= Log .%>\"\n"
+                                                     "        log_prefix   = \"<%= LogPrefix .%>\"\n"
+                                                     "        service      = <%= Service .%>\n"
+                                                     "        states       = <%= States .%>\n"
+                                                     "        type         = \"<%= Type .%>\"\n"
+                                                     "      },\n"
+                                                   >>),
+      {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+      {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+      erlang:iolist_to_binary(IoData)
+end, Rules).

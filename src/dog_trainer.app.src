@@ -33,7 +33,8 @@
         erlcloud,
         erlsom,
         cache_tab,
-        flatlog
+        flatlog,
+        eel
     ]},
     {env, []},
     {modules, []},
