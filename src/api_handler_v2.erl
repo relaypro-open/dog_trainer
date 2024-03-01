@@ -269,6 +269,7 @@ to_json(Req, State) ->
     Object = maps:get(<<"object">>, State),
     Path = cowboy_req:path(Req),
     HandlerPath = get_handler_path(Path),
+    Handler = get_handler_module(Path),
     Json =
         case HandlerPath of
             "group" ->
@@ -311,10 +312,12 @@ to_json(Req, State) ->
                                 jsx:encode(ObjectHosts);
                             <<"ec2_security_group_ids">> ->
                                 ObjectHosts = dog_group:get_internal_ec2_security_group_ids_by_id(Id),
-                                jsx:encode(ObjectHosts)
+                                jsx:encode(ObjectHosts);
+                            <<"hcl">> ->
+                                Handler:to_hcl_by_id(Id)
                         end
                 end;
-            "ruleset" ->
+            _ ->
                 case Id@0 of
                     undefined ->
                         jsx:encode(Object);
@@ -323,11 +326,9 @@ to_json(Req, State) ->
                             undefined ->
                                 jsx:encode(Object);
                             <<"hcl">> ->
-                                dog_ruleset_api_v2:to_hcl_by_id(Id)
+                                Handler:to_hcl_by_id(Id)
                         end
-                end;
-            _ ->
-                jsx:encode(Object)
+                end
         end,
     {Json, Req, State}.
 

@@ -15,6 +15,8 @@
     replace/2,
     replace_profile_by_profile_id/2,
     replace_profile_by_profile_id/3,
+    to_hcl/1,
+    to_hcl_by_id/1,
     update/2
 ]).
 
@@ -200,3 +202,70 @@ update(Id, UpdateMap) ->
         {error, Error} ->
             {false, Error}
     end.
+
+-spec to_hcl_by_id(GroupId :: iolist()) -> iolist().
+to_hcl_by_id(GroupId) ->
+    {ok, Group} = get_by_id(GroupId),
+    to_hcl(Group). 
+
+-spec to_hcl(Group :: map()) -> binary().
+to_hcl(Group) ->
+    ProfileVersion = case maps:get(<<"profile_version">>,Group) of
+                         <<"latest">> ->
+                            <<"latest">>;
+                         V ->
+                            V
+                     end,
+    Bindings = #{
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Group)), 
+                 'Name' => maps:get(<<"name">>, Group), 
+                 'Environment' => <<"qa">>,
+                 'ProfileName' => maps:get(<<"profile_name">>, Group), 
+                 'ProfileVersion' => ProfileVersion,
+                 'Vars' => dog_common:format_vars(maps:get(<<"vars">>, Group,[])), 
+                 'Ec2SecurityGroupIds' => regionsgid_output(maps:get(<<"ec2_security_group_ids">>,
+                                                                     Group))
+                },
+    {ok, Snapshot} = eel:compile(<<
+        "resource \"dog_group\" \"<%= TerraformName .%>\" {\n"
+        "  name                   = \"<%= Name .%>\"\n"
+        "  profile_name           = dog_profile.<%= ProfileName .%>.name\n"
+        "  profile_id             = dog_profile.<%= ProfileName .%>.id\n"
+        "  profile_version        = \"<%= ProfileVersion .%>\"\n"
+        "  ec2_security_group_ids = [\n"
+        "<%= Ec2SecurityGroupIds .%>"
+        "  ]\n"
+        "  provider = dog.<%= Environment .%> \n"
+        "<%= case Vars of %>"
+        "<% [] -> <<>> ; %>"
+        "<% _ ->  %>"
+		"  vars = jsonencode({\n"
+        "<%= lists:map(fun({Key,Value}) -> %>"
+        %"<% Value2 = dog_group_api_v2:format_var(Value) %>"
+        %"<% Value2 = string:replace(string:replace(io_lib:format(\"~p\",[Value]),\"<<\",\"\"),\">>\",\"\"), %>"
+        "    <%= Key .%> = <%= Value .%> \n"
+        "<% end, maps:to_list(Vars)) .%>"
+        "  })\n"
+        "<% end .%>"
+        "}\n"
+    >>),
+    {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+    {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+    erlang:iolist_to_binary(IoData).
+
+regionsgid_output(Ec2SecurityGroupIds) ->
+    lists:map(fun(RegionSgid) ->
+                      Bindings = #{
+                                   'Region' => maps:get(<<"region">>, RegionSgid), 
+                                   'SgId' => maps:get(<<"sgid">>, RegionSgid)
+                                  },
+                      {ok, Snapshot} = eel:compile(<<
+                                                     "      {\n"
+                                                     "        region = \"<%= Region .%>\"\n"
+                                                     "        sgid   = \"<%= SgId .%>\"\n"
+                                                     "      },\n"
+                                                   >>),
+                      {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+                      {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+                      erlang:iolist_to_binary(IoData)
+              end, Ec2SecurityGroupIds).

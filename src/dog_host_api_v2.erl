@@ -14,6 +14,8 @@
     get_by_hostkey/1,
     get_by_id/1,
     get_by_name/1,
+    to_hcl/1,
+    to_hcl_by_id/1,
     update/2,
     update_by_hostkey/2
 ]).
@@ -187,4 +189,55 @@ update_by_hostkey(HostKey, UpdateMap) ->
         {error, Reason} ->
             ?LOG_INFO("Update for unknown host: ~p, Reason: ~p", [HostKey, Reason]),
             create(UpdateMap)
+    end.
+
+-spec to_hcl_by_id(HostId :: iolist()) -> iolist().
+to_hcl_by_id(HostId) ->
+    {ok, Host} = get_by_id(HostId),
+    to_hcl(Host). 
+
+-spec to_hcl(Host :: map()) -> binary().
+to_hcl(Host) ->
+    Bindings = #{
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Host)), 
+                 'Name' => maps:get(<<"name">>, Host), 
+                 'Environment' => <<"qa">>,
+                 'Group' => maps:get(<<"group">>, Host), 
+                 'HostKey' => maps:get(<<"hostkey">>, Host), 
+                 'Location' => maps:get(<<"location">>, Host), 
+                 'Vars' => maps:get(<<"vars">>, Host,[]), 
+                 'Provider' => <<"dog">>
+                },
+    {ok, Snapshot} = eel:compile(<<
+        "resource \"dog_host\" \"<%= TerraformName .%>\" {\n"
+        "  environment = \"<%= Environment .%>\"\n"
+        "  group       = dog_group.<%= Group .%>.name\n"
+        "  hostkey     = \"<%= HostKey .%>\"\n"
+        "  location    = \"<%= Location .%>\"\n"
+        "  name        = \"<%= Name .%>\"\n"
+        "  provider    = dog.<%= Environment .%> \n"
+        "<%= case Vars of %>"
+        "<% [] -> <<>> ; %>"
+        "<% _ ->  %>"
+		"  vars = jsonencode({\n"
+        "<%= lists:map(fun({Key,Value}) -> %>"
+        "<% Value2 = format_var(Value) %>"
+        "    <%= Key .%> = <%= Value2 .%> \n"
+        "<% end, maps:to_list(Vars)) .%>"
+        "  })\n"
+        "<% end .%>"
+        "}\n"
+    >>),
+    {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+    {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+    erlang:iolist_to_binary(IoData).
+
+format_var(Var) ->
+    case is_list(Var) of
+        false ->
+            string:replace(string:replace(io_lib:format("~p",[Var]),"<<",""),">>","");
+        true ->
+            lists:map(fun(L) ->
+                              string:replace(string:replace(io_lib:format("~p",[L]),"<<",""),">>","")
+                      end, Var)
     end.

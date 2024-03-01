@@ -487,16 +487,6 @@ rule_names_to_ids(Rules, ServicesByName, ZonesByName, GroupsByName) ->
         Rules
     ).
 
--spec to_terraform_name(Name :: iolist()) -> iolist().
-to_terraform_name(Name) ->
-    NoDots = string:replace(Name, ".", "_", all),
-    NoOpenParenthesis = string:replace(NoDots, "(", "_", all),
-    NoCloseParenthesis = string:replace(NoOpenParenthesis, ")", "_", all),
-    NoForwardSlash = string:replace(NoCloseParenthesis, "/", "_", all),
-    NoSpaces = string:replace(NoForwardSlash, " ", "_", all),
-    NoColons = string:replace(NoSpaces, ":", "_", all),
-    NoColons.
-
 -spec to_hcl_by_id(RulesetId :: iolist()) -> iolist().
 to_hcl_by_id(RulesetId) ->
     {ok, RulesetWithIds} = get_by_id(RulesetId),
@@ -508,7 +498,7 @@ to_hcl(RulesetWithIds) ->
     InboundRules = rules_to_hcl(nested:get([<<"rules">>,<<"inbound">>],Ruleset)),
     OutboundRules = rules_to_hcl(nested:get([<<"rules">>,<<"outbound">>],Ruleset)),
     Bindings = #{
-                 'TerraformName' => to_terraform_name(maps:get(<<"name">>, Ruleset)), 
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Ruleset)), 
                  'Name' => maps:get(<<"name">>, Ruleset), 
                  'Environment' => <<"qa">>,
                  'InboundRules' => InboundRules,

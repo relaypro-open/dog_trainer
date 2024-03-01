@@ -5,6 +5,8 @@
 -export([
     inverse_map_of_lists/1,
     create_hash/1,
+    eel_test/0,
+    format_vars/1,
     list_of_maps_to_map/2,
     lmm/2,
     merge_lists_in_tuples/1,
@@ -13,7 +15,8 @@
     rekey_map_of_maps/3,
     rkmm/3,
     to_list/1,
-    tuple_pairs_to_map_of_lists/1
+    tuple_pairs_to_map_of_lists/1,
+    to_terraform_name/1
 ]).
 
 -spec to_list(Item :: iolist() | atom() | tuple() | map() | binary() | integer() | float()) ->
@@ -159,3 +162,63 @@ maps_append(Key, Value, Map) ->
 -spec create_hash(Bytes :: binary()) -> any().
 create_hash(Bytes) ->
     base16:encode(crypto:hash(sha256, Bytes)).
+
+-spec to_terraform_name(Name :: iolist()) -> iolist().
+to_terraform_name(Name) ->
+    NoDots = string:replace(Name, ".", "_", all),
+    NoOpenParenthesis = string:replace(NoDots, "(", "_", all),
+    NoCloseParenthesis = string:replace(NoOpenParenthesis, ")", "_", all),
+    NoForwardSlash = string:replace(NoCloseParenthesis, "/", "_", all),
+    NoSpaces = string:replace(NoForwardSlash, " ", "_", all),
+    NoColons = string:replace(NoSpaces, ":", "_", all),
+    NoColons.
+
+eel_test() ->
+    Bindings = #{
+                 'Title' => <<"title">>,
+                 'List' => ["one","two","three"]
+                },
+    {ok, Snapshot} = eel:compile(<<
+    "<h1><%= Title .%></h1>"
+    "<ul>"
+    "    <%= lists:map(fun(Item) -> %>"
+    "        <li><%= Item .%></li>"
+    "    <% end, List) .%>"
+    "</ul>"
+    "<%= Length = erlang:length(List), %>"
+    "    <div>Item count: <%= Length .%></div>"
+    "    <%= case Length > 0 of true -> %>"
+    "        <ul>"
+    "            <%= lists:map(fun(N) -> %>"
+    "                <li><%= N .%></li>"
+    "            <% end, lists:seq(1, Length)) .%>"
+    "        </ul>"
+    "    <% ; false -> <<>> end .%>"
+    "<%  .%>"
+    >>),
+    {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+    {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+    io:format("~s",[erlang:iolist_to_binary(IoData)]).
+
+format_vars(Vars) ->
+    VarsList = case Vars of
+        [] ->
+            [];
+        _ ->
+            lists:map(fun(Var) ->
+                              format_var(Var)
+                      end, maps:to_list(Vars))
+    end,
+    maps:from_list(VarsList).
+
+format_var({Key,Value}) ->
+    Value2 =case is_list(Value) of
+        false ->
+            string:replace(string:replace(io_lib:format("~p",[Value]),"<<",""),">>","");
+        true ->
+            ListValues = lists:map(fun(L) ->
+                              string:replace(string:replace(io_lib:format("~p",[L]),"<<",""),">>","")
+                      end, Value),
+            "[" ++ lists:join(",",ListValues) ++ "]"
+    end,
+    {Key, Value2}.
