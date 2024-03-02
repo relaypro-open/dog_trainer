@@ -205,7 +205,7 @@ to_hcl(Host) ->
                  'Group' => maps:get(<<"group">>, Host), 
                  'HostKey' => maps:get(<<"hostkey">>, Host), 
                  'Location' => maps:get(<<"location">>, Host), 
-                 'Vars' => maps:get(<<"vars">>, Host,[]), 
+                 'Vars' => dog_common:format_vars(maps:get(<<"vars">>, Host,[])), 
                  'Provider' => <<"dog">>
                 },
     {ok, Snapshot} = eel:compile(<<
@@ -221,8 +221,7 @@ to_hcl(Host) ->
         "<% _ ->  %>"
 		"  vars = jsonencode({\n"
         "<%= lists:map(fun({Key,Value}) -> %>"
-        "<% Value2 = format_var(Value) %>"
-        "    <%= Key .%> = <%= Value2 .%> \n"
+        "    <%= Key .%> = <%= Value .%> \n"
         "<% end, maps:to_list(Vars)) .%>"
         "  })\n"
         "<% end .%>"
@@ -231,13 +230,3 @@ to_hcl(Host) ->
     {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
     {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
     erlang:iolist_to_binary(IoData).
-
-format_var(Var) ->
-    case is_list(Var) of
-        false ->
-            string:replace(string:replace(io_lib:format("~p",[Var]),"<<",""),">>","");
-        true ->
-            lists:map(fun(L) ->
-                              string:replace(string:replace(io_lib:format("~p",[L]),"<<",""),">>","")
-                      end, Var)
-    end.

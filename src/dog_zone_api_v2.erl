@@ -13,6 +13,8 @@
     get_by_id/1,
     get_by_name/1,
     get_schema/0,
+    to_hcl/1,
+    to_hcl_by_id/1,
     update/2
 ]).
 
@@ -125,3 +127,32 @@ update(Id, UpdateMap@0) ->
 -spec get_schema() -> binary().
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
+
+-spec to_hcl_by_id(ZoneId :: iolist()) -> iolist().
+to_hcl_by_id(ZoneId) ->
+    {ok, Zone} = get_by_id(ZoneId),
+    to_hcl(Zone). 
+
+-spec to_hcl(Zone :: map()) -> binary().
+to_hcl(Zone) ->
+    Bindings = #{
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Zone)), 
+                 'Name' => maps:get(<<"name">>, Zone), 
+                 'Environment' => <<"qa">>,
+                 'IPv4Addresses' =>
+                     dog_common:format_value(maps:get(<<"ipv4_addresses">>,Zone)),
+                 'IPv6Addresses' =>
+                     dog_common:format_value(maps:get(<<"ipv6_addresses">>,Zone))
+                },
+    {ok, Snapshot} = eel:compile(<<
+        "resource \"dog_zone\" \"<%= TerraformName .%>\" {\n"
+        "  name = \"<%= Name .%>\"\n"
+		"  ipv4_addresses = <%= IPv4Addresses .%>\n"
+		"  ipv6_addresses = <%= IPv6Addresses .%>\n"
+        "  provider = dog.<%= Environment .%>\n"
+        "}\n"
+        "\n"
+    >>),
+    {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+    {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+    erlang:iolist_to_binary(IoData).

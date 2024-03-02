@@ -16,6 +16,8 @@
     get_by_name/1,
     update/2,
     update/3,
+    to_hcl/1,
+    to_hcl_by_id/1,
     where_used/1
 ]).
 
@@ -209,3 +211,26 @@ update_in_place(Id, UpdateMap) ->
         {error, Error} ->
             {false, Error}
     end.
+
+-spec to_hcl_by_id(ProfileId :: iolist()) -> iolist().
+to_hcl_by_id(ProfileId) ->
+    {ok, Profile} = get_by_id(ProfileId),
+    to_hcl(Profile). 
+
+-spec to_hcl(Profile :: map()) -> binary().
+to_hcl(Profile) ->
+    Bindings = #{
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Profile)), 
+                 'Name' => maps:get(<<"name">>, Profile), 
+                 'Environment' => <<"qa">>
+                },
+    {ok, Snapshot} = eel:compile(<<
+        "resource \"dog_profile\" \"<%= TerraformName .%>\" {\n"
+        "  name = \"<%= Name .%>\"\n"
+        "  provider = dog.<%= Environment .%>\n"
+        "}\n"
+        "\n"
+    >>),
+    {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+    {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+    erlang:iolist_to_binary(IoData).

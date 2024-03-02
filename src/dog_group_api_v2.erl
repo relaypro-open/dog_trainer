@@ -241,8 +241,6 @@ to_hcl(Group) ->
         "<% _ ->  %>"
 		"  vars = jsonencode({\n"
         "<%= lists:map(fun({Key,Value}) -> %>"
-        %"<% Value2 = dog_group_api_v2:format_var(Value) %>"
-        %"<% Value2 = string:replace(string:replace(io_lib:format(\"~p\",[Value]),\"<<\",\"\"),\">>\",\"\"), %>"
         "    <%= Key .%> = <%= Value .%> \n"
         "<% end, maps:to_list(Vars)) .%>"
         "  })\n"

@@ -13,6 +13,8 @@
     get_all/0,
     get_by_id/1,
     get_by_name/1,
+    to_hcl/1,
+    to_hcl_by_id/1,
     update/2
 ]).
 
@@ -176,3 +178,64 @@ update(Id, UpdateMap) ->
         {error, Error} ->
             {false, Error}
     end.
+
+-spec to_hcl_by_id(LinkId :: iolist()) -> iolist().
+to_hcl_by_id(LinkId) ->
+    {ok, Link} = get_by_id(LinkId),
+    to_hcl(Link). 
+
+-spec to_hcl(Link :: map()) -> binary().
+to_hcl(Link) ->
+    DogConnection = maps:get(<<"connection">>,Link),
+    SSLOptions = maps:get(<<"ssl_options">>,DogConnection),
+    Bindings = #{
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Link)), 
+                 'Environment' => <<"qa">>,
+                 'AddressHandling' => maps:get(<<"address_handling">>,Link),
+                 'ConnectionApiPort' => maps:get(<<"api_port">>,DogConnection),
+                 'ConnectionHost' => maps:get(<<"host">>,DogConnection),
+                 'ConnectionPassword' => maps:get(<<"password">>,DogConnection),
+                 'ConnectionPort' => maps:get(<<"port">>,DogConnection),
+                 'ConnectionSSLOptionsCaCertFile' => maps:get(<<"cacertfile">>,SSLOptions),
+                 'ConnectionSSLOptionsCertFile' => maps:get(<<"certfile">>,SSLOptions),
+                 'ConnectionSSLOptionsFailIfNoPeerCert' => maps:get(<<"fail_if_no_peer_cert">>,SSLOptions),
+                 'ConnectionSSLOptionsKeyFile' => maps:get(<<"keyfile">>,SSLOptions),
+                 'ConnectionSSLOptionsServerNameIndication' => maps:get(<<"server_name_indication">>,SSLOptions),
+                 'ConnectionSSLOptionsVerify' => maps:get(<<"verify">>,SSLOptions),
+                 'ConnectionUser' => maps:get(<<"user">>,DogConnection),
+                 'ConnectionVirtualHost' => maps:get(<<"virtual_host">>,DogConnection),
+                 'ConnectionType' => maps:get(<<"connection_type">>,Link),
+                 'Direction' => maps:get(<<"direction">>,Link),
+                 'Enabled' => maps:get(<<"enabled">>,Link),
+                 'Name' => maps:get(<<"name">>,Link)
+                },
+    {ok, Snapshot} = eel:compile(<<
+        "resource \"dog_link\" \"<%= TerraformName .%>\" {\n"
+        "  address_handling = \"<%= AddressHandling .%>\"\n" 
+        "  dog_connection = {\n"
+        "    api_port = <%= ConnectionApiPort .%>\n" 
+        "    host = \"<%= ConnectionHost  .%>\"\n" 
+        "    password = \"<%= ConnectionPassword .%>\"\n" 
+        "    port = <%= ConnectionPort .%>\n" 
+        "    ssl_options = {\n" 
+        "        cacertfile = \"<%= ConnectionSSLOptionsCaCertFile .%>\"\n" 
+        "        certfile = \"<%= ConnectionSSLOptionsCertFile .%>\"\n" 
+        "        fail_if_no_peer_cert = <%= ConnectionSSLOptionsFailIfNoPeerCert .%>\n" 
+        "        keyfile = \"<%= ConnectionSSLOptionsKeyFile .%>\"\n" 
+        "        server_name_indication = \"<%= ConnectionSSLOptionsServerNameIndication .%>\"\n" 
+        "        verify = \"<%= ConnectionSSLOptionsVerify .%>\"\n" 
+        "      }\n" 
+        "    user = \"<%= ConnectionUser .%>\"\n" 
+        "    virtual_host = \"<%= ConnectionVirtualHost .%>\"\n" 
+        "  }\n" 
+        "  connection_type = \"<%= ConnectionType .%>\"\n" 
+        "  direction = \"<%= Direction .%>\"\n" 
+        "  enabled = <%= Enabled .%>\n" 
+        "  name = \"<%= Name .%>\"\n" 
+        "  provider = dog.<%= Environment .%>\n" 
+        "}\n"
+        "\n"
+    >>),
+    {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+    {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+    erlang:iolist_to_binary(IoData).

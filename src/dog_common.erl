@@ -6,6 +6,8 @@
     inverse_map_of_lists/1,
     create_hash/1,
     eel_test/0,
+    format_value/1,
+    format_var/1,
     format_vars/1,
     list_of_maps_to_map/2,
     lmm/2,
@@ -212,7 +214,10 @@ format_vars(Vars) ->
     maps:from_list(VarsList).
 
 format_var({Key,Value}) ->
-    Value2 =case is_list(Value) of
+    {Key, format_value(Value)}.
+
+format_value(Value) ->
+    case is_list(Value) of
         false ->
             string:replace(string:replace(io_lib:format("~p",[Value]),"<<",""),">>","");
         true ->
@@ -220,5 +225,4 @@ format_var({Key,Value}) ->
                               string:replace(string:replace(io_lib:format("~p",[L]),"<<",""),">>","")
                       end, Value),
             "[" ++ lists:join(",",ListValues) ++ "]"
-    end,
-    {Key, Value2}.
+    end.
