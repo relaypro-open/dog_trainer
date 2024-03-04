@@ -14,6 +14,8 @@
     get_by_id/1,
     get_by_name/1,
     get_schema/0,
+    to_hcl/1,
+    to_hcl_by_id/1,
     update/2
 ]).
 
@@ -127,3 +129,60 @@ update(Id, UpdateMap@0) ->
 -spec get_schema() -> binary().
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
+
+-spec to_hcl_by_id(FactId :: iolist()) -> iolist().
+to_hcl_by_id(FactId) ->
+    {ok, Fact} = get_by_id(FactId),
+    to_hcl(Fact). 
+
+-spec to_hcl(Fact :: map()) -> binary().
+to_hcl(Fact) ->
+    Bindings = #{
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Fact)), 
+                 'Name' => maps:get(<<"name">>, Fact), 
+                 'Environment' => <<"qa">>,
+                 'Groups' => to_hcl_group(maps:get(<<"groups">>, Fact))
+                },
+    {ok, Snapshot} = eel:compile(<<
+        "resource \"dog_fact\" \"<%= TerraformName .%>\n"
+        "    name = <%= Name .%>\n"
+        "    groups = {\n"
+        "<%= Groups .%>"
+        "}\n"
+    >>),
+    {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+    {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+    erlang:iolist_to_binary(IoData).
+
+-spec to_hcl_group(Group :: map()) -> binary().
+to_hcl_group(Group) ->
+    All = maps:get(<<"all">>, Group),
+    Bindings = #{
+                 'Children' => dog_common:format_value(maps:get(<<"children">>, All)), 
+                 'Hosts' => dog_common:format_vars(maps:get(<<"hosts">>, All)),
+                 'Vars' => dog_common:format_vars(maps:get(<<"vars">>, All, []))
+                },
+    {ok, Snapshot} = eel:compile(<<
+        "      all = {\n"
+        "        children = <%= Children .%>\n"
+        "        hosts = {\n"
+        "<%= case Hosts of %>"
+        "<% [] -> <<>> ; %>"
+        "<% _ ->  %>"
+        "      }\n"
+        "    }\n"
+        "<% end .%>"
+        "<%= case Vars of %>"
+        "<% [] -> <<>> ; %>"
+        "<% _ ->  %>"
+		"    vars = jsonencode({\n"
+        "<%= lists:map(fun({Key,Value}) -> %>"
+        "      <%= Key .%> = <%= Value .%> \n"
+        "<% end, maps:to_list(Vars)) .%>"
+        "    })\n"
+        "<% end .%>"
+        "  }\n"
+    >>),
+    {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+    {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+    erlang:iolist_to_binary(IoData).

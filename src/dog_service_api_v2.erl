@@ -12,6 +12,8 @@
     get_all/0,
     get_by_id/1,
     get_by_name/1,
+    to_hcl/1,
+    to_hcl_by_id/1,
     update/2
 ]).
 
@@ -131,3 +133,55 @@ update(Id, UpdateMap) ->
         {error, Error} ->
             {false, Error}
     end.
+
+-spec to_hcl_by_id(ServiceId :: iolist()) -> iolist().
+to_hcl_by_id(ServiceId) ->
+    {ok, Service} = get_by_id(ServiceId),
+    to_hcl(Service). 
+
+-spec to_hcl(Service :: map()) -> binary().
+to_hcl(Service) ->
+    Bindings = #{
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Service)), 
+                 'Name' => maps:get(<<"name">>, Service), 
+                 'Version' => maps:get(<<"version">>, Service), 
+                 'Environment' => <<"qa">>,
+                 'PortProtocols' => portprotocols_output(maps:get(<<"services">>, Service))
+                },
+    {ok, Snapshot} = eel:compile(<<
+        "resource \"dog_service\" \"<%= TerraformName .%>\" {\n"
+        "  name = \"<%= Name .%>\"\n"
+        "  version = \"<%= Version .%>\"\n"
+        "  services = [\n"
+        "<%= PortProtocols .%>"
+        "  ]\n"
+        "  provider = dog.<%= Environment .%>\n"
+        "}\n"
+        "\n"
+    >>),
+    {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+    {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+    erlang:iolist_to_binary(IoData).
+
+-spec portprotocols_output(PortProtocol :: map()) -> binary().
+portprotocols_output(PortProtocols) ->
+    PPs = lists:map(fun(PP) -> 
+        Ports = maps:get(<<"ports">>, PP), 
+        Protocol = io_lib:format("\"~s\"",[maps:get(<<"protocol">>, PP)]), 
+        PortsString = dog_common:quoted_comma_delimited(Ports),
+        {Protocol, PortsString}
+    end, PortProtocols),
+    Bindings = #{
+                 'PortProtocols' => PPs 
+                },
+    {ok, Snapshot} = eel:compile(<<
+        "<%= lists:map(fun({Protocol,Ports}) -> %>"
+        "    {\n"
+        "      protocol = <%= Protocol .%>\n"
+		"      ports    = [<%= Ports .%>]\n"
+        "    },\n"
+        "<% end, PortProtocols) .%>"
+    >>),
+    {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+    {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+    erlang:iolist_to_binary(IoData).

@@ -13,6 +13,7 @@
     lmm/2,
     merge_lists_in_tuples/1,
     merge_maps_of_lists/1,
+    quoted_comma_delimited/1,
     re_filter/2,
     rekey_map_of_maps/3,
     rkmm/3,
@@ -226,3 +227,7 @@ format_value(Value) ->
                       end, Value),
             "[" ++ lists:join(",",ListValues) ++ "]"
     end.
+
+-spec quoted_comma_delimited(List :: list()) -> iolist().
+quoted_comma_delimited(List) ->
+    string:join([io_lib:format("\"~s\"",[X]) || X <- List],",").
