@@ -15,9 +15,12 @@ jobs:
         rebar3: ['3.18']
     steps:
 
-      - uses: actions/checkout@v4
+      - name: Get tag name
+        id: get_tag_name
+        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      - uses: actions/checkout@v1
         with:
-          ref: main
+          ref: ${{ steps.get_tag_name.outputs.VERSION }}
 
       - name: Set env
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
