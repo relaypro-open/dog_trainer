@@ -490,11 +490,11 @@ rule_names_to_ids(Rules, ServicesByName, ZonesByName, GroupsByName) ->
 -spec to_hcl_by_id(RulesetId :: iolist()) -> iolist().
 to_hcl_by_id(RulesetId) ->
     {ok, RulesetWithIds} = get_by_id(RulesetId),
-    to_hcl(RulesetWithIds). 
+    Ruleset = ids_to_names(RulesetWithIds),
+    to_hcl(Ruleset). 
 
 -spec to_hcl(Ruleset :: map()) -> binary().
-to_hcl(RulesetWithIds) ->
-    Ruleset = ids_to_names(RulesetWithIds),
+to_hcl(Ruleset) ->
     InboundRules = rules_to_hcl(nested:get([<<"rules">>,<<"inbound">>],Ruleset)),
     OutboundRules = rules_to_hcl(nested:get([<<"rules">>,<<"outbound">>],Ruleset)),
     Bindings = #{
