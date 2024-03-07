@@ -115,7 +115,9 @@ start_link() ->
             {"/api/V2/fact/:id", api_handler_v2, #{}},
             {"/api/V2/fact/:id/:sub", api_handler_v2, #{}},
             {"/api/V2/facts", plural_api_handler_v2, #{}},
-            {"/api/V2/facts/:sub", plural_api_handler_v2, #{}}
+            {"/api/V2/facts/:sub", plural_api_handler_v2, #{}},
+            {"/api/hcl/:sub", hcl_api_handler, #{}},
+            {"/api/V2/hcl/:sub", hcl_api_handler_v2, #{}}
         ]}
     ]),
     {ok, _} = cowboy:start_clear(
