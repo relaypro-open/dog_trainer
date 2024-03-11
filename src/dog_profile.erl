@@ -36,6 +36,8 @@
     get_role_groups_in_profile/1,
     get_zone_groups_in_profile/1,
     init/0,
+    to_hcl/1,
+    to_hcl_by_id/1,
     to_text/1,
     where_used/1
 ]).
@@ -1291,3 +1293,12 @@ split(String, Delimiter, all) ->
     split(String, Delimiter).
 split(String, Delimiter) ->
     re:split(String, Delimiter, [{return, list}]).
+
+-spec to_hcl_by_id(ProfileId :: iolist()) -> iolist().
+to_hcl_by_id(ProfileId) ->
+    RulesetId = dog_ruleset:get_id_by_profile_id(ProfileId),
+    dog_ruleset_api_v2:to_hcl_by_id(RulesetId).
+
+-spec to_hcl(Profile :: map()) -> binary().
+to_hcl(Profile) ->
+    dog_profile_api_v2:to_hcl(Profile).
