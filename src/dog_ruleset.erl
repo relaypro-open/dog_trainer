@@ -23,6 +23,8 @@
     all/0,
     all_active/0,
     init/0,
+    to_hcl/1,
+    to_hcl_by_id/1,
     to_text/1,
     where_used/1
 ]).
@@ -317,3 +319,11 @@ get_id_by_profile_id(ProfileId) ->
 -spec get_schema() -> binary().
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
+
+-spec to_hcl_by_id(RulesetId :: iolist()) -> iolist().
+to_hcl_by_id(RulesetId) ->
+    dog_ruleset_api_v2:to_hcl_by_id(RulesetId).
+
+-spec to_hcl(Ruleset :: map()) -> binary().
+to_hcl(Ruleset) ->
+    dog_ruleset_api_v2:to_hcl(Ruleset).
