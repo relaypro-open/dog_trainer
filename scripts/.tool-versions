@@ -1,0 +1,6 @@
+direnv 2.32.1
+terraform 1.4.6
+awscli 2.11.26
+aws-vault 6.6.2
+erlang 25.3.2.11
+elixir 1.14.3-otp-25
