@@ -375,97 +375,115 @@ iptables_hash_logic(HashCheck4Ipsets, HashCheck6Ipsets, HashCheck4Iptables, Hash
 
 -spec send_retirement_alert(Host :: binary()) -> ok.
 send_retirement_alert(Host) ->
-    ?LOG_INFO("Host: ~p", [Host]),
-    HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
-    HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
-    ?LOG_INFO("Retirement alert sent: ~p, ~p", [HostName, HostKey]),
-    {ok, SmtpRelay} = application:get_env(dog_trainer, smtp_relay),
-    {ok, SmtpUsername} = application:get_env(dog_trainer, smtp_username),
-    {ok, SmtpPassword} = application:get_env(dog_trainer, smtp_password),
-    Subject = io_lib:format("Dog Agent Retired: ~p", [HostName]),
-    {ok, From} = application:get_env(dog_trainer, smtp_from),
-    {ok, Addresses} = application:get_env(dog_trainer, smtp_to),
-    To = string:join(Addresses, ","),
-    KeepAliveAlertSeconds = application:get_env(dog_trainer, retirement_alert_seconds, 86400),
-    Body = io_lib:format(
-        "Hosts that haven't communicated in last ~p seconds: ~nHostName: ~p~nHostKey: ~p~n", [
-            KeepAliveAlertSeconds, HostName, HostKey
-        ]
-    ),
-    Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s", [Subject, From, To, Body]),
-    gen_smtp_client:send(
-        {From, Addresses, Email},
-        [
-            {relay, SmtpRelay},
-            {username, SmtpUsername},
-            {password, SmtpPassword},
-            {tls, always}
-        ]
-    ),
-    imetrics:add_m(alert, "retirement"),
-    ok.
+    RetirementAlertEnabled = application:get_env(dog_trainer, retirement_alert_enabled, true),
+    case RetirementAlertEnabled of
+        true ->
+            ?LOG_INFO("Host: ~p", [Host]),
+            HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
+            HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
+            ?LOG_INFO("Retirement alert sent: ~p, ~p", [HostName, HostKey]),
+            {ok, SmtpRelay} = application:get_env(dog_trainer, smtp_relay),
+            {ok, SmtpUsername} = application:get_env(dog_trainer, smtp_username),
+            {ok, SmtpPassword} = application:get_env(dog_trainer, smtp_password),
+            Subject = io_lib:format("Dog Agent Retired: ~p", [HostName]),
+            {ok, From} = application:get_env(dog_trainer, smtp_from),
+            {ok, Addresses} = application:get_env(dog_trainer, smtp_to),
+            To = string:join(Addresses, ","),
+            KeepAliveAlertSeconds = application:get_env(dog_trainer, retirement_alert_seconds, 86400),
+            Body = io_lib:format(
+                "Hosts that haven't communicated in last ~p seconds: ~nHostName: ~p~nHostKey: ~p~n", [
+                    KeepAliveAlertSeconds, HostName, HostKey
+                ]
+            ),
+            Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s", [Subject, From, To, Body]),
+            gen_smtp_client:send(
+                {From, Addresses, Email},
+                [
+                    {relay, SmtpRelay},
+                    {username, SmtpUsername},
+                    {password, SmtpPassword},
+                    {tls, always}
+                ]
+            ),
+            imetrics:add_m(alert, "retirement"),
+            ok;
+        false ->
+            ok
+    end.
 
 -spec send_keepalive_alert(Host :: binary()) -> ok.
 send_keepalive_alert(Host) ->
-    ?LOG_INFO("Host: ~p", [Host]),
-    HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
-    HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
-    ?LOG_INFO("Keepalive disconnect alert sent: ~p, ~p", [HostName, HostKey]),
-    {ok, SmtpRelay} = application:get_env(dog_trainer, smtp_relay),
-    {ok, SmtpUsername} = application:get_env(dog_trainer, smtp_username),
-    {ok, SmtpPassword} = application:get_env(dog_trainer, smtp_password),
-    Subject = io_lib:format("Dog Agents Disconnected: ~p", [HostName]),
-    {ok, From} = application:get_env(dog_trainer, smtp_from),
-    {ok, Addresses} = application:get_env(dog_trainer, smtp_to),
-    To = string:join(Addresses, ","),
-    {ok, KeepAliveAlertSeconds} = application:get_env(dog_trainer, keepalive_alert_seconds),
-    Body = io_lib:format(
-        "Hosts that haven't communicated in last ~p seconds: ~nHostName: ~p~nHostKey: ~p~n", [
-            KeepAliveAlertSeconds, HostName, HostKey
-        ]
-    ),
-    Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s", [Subject, From, To, Body]),
-    gen_smtp_client:send(
-        {From, Addresses, Email},
-        [
-            {relay, SmtpRelay},
-            {username, SmtpUsername},
-            {password, SmtpPassword},
-            {tls, always}
-        ]
-    ),
-    imetrics:add_m(alert, "keepalive_fail"),
-    ok.
+    KeepaliveAlertEnabled = application:get_env(dog_trainer, keepalive_alert_enabled, true),
+    case KeepaliveAlertEnabled of
+        true ->
+            ?LOG_INFO("Host: ~p", [Host]),
+            HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
+            HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
+            ?LOG_INFO("Keepalive disconnect alert sent: ~p, ~p", [HostName, HostKey]),
+            {ok, SmtpRelay} = application:get_env(dog_trainer, smtp_relay),
+            {ok, SmtpUsername} = application:get_env(dog_trainer, smtp_username),
+            {ok, SmtpPassword} = application:get_env(dog_trainer, smtp_password),
+            Subject = io_lib:format("Dog Agents Disconnected: ~p", [HostName]),
+            {ok, From} = application:get_env(dog_trainer, smtp_from),
+            {ok, Addresses} = application:get_env(dog_trainer, smtp_to),
+            To = string:join(Addresses, ","),
+            {ok, KeepAliveAlertSeconds} = application:get_env(dog_trainer, keepalive_alert_seconds),
+            Body = io_lib:format(
+                "Hosts that haven't communicated in last ~p seconds: ~nHostName: ~p~nHostKey: ~p~n", [
+                    KeepAliveAlertSeconds, HostName, HostKey
+                ]
+            ),
+            Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s", [Subject, From, To, Body]),
+            gen_smtp_client:send(
+                {From, Addresses, Email},
+                [
+                    {relay, SmtpRelay},
+                    {username, SmtpUsername},
+                    {password, SmtpPassword},
+                    {tls, always}
+                ]
+            ),
+            imetrics:add_m(alert, "keepalive_fail"),
+            ok;
+        false ->
+            ok
+    end.
 
 -spec send_keepalive_recover(Host :: map()) -> ok.
 send_keepalive_recover(Host) ->
-    ?LOG_INFO("Host: ~p", [Host]),
-    HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
-    HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
-    ?LOG_INFO("Keepalive recover alert sent: ~p, ~p", [HostName, HostKey]),
-    {ok, SmtpRelay} = application:get_env(dog_trainer, smtp_relay),
-    {ok, SmtpUsername} = application:get_env(dog_trainer, smtp_username),
-    {ok, SmtpPassword} = application:get_env(dog_trainer, smtp_password),
-    Subject = io_lib:format("Dog Agents Reconnected: ~p", [HostName]),
-    {ok, From} = application:get_env(dog_trainer, smtp_from),
-    {ok, Addresses} = application:get_env(dog_trainer, smtp_to),
-    To = string:join(Addresses, ","),
-    {ok, KeepAliveAlertSeconds} = application:get_env(dog_trainer, keepalive_alert_seconds),
-    Body = io_lib:format("Host reconnected in last ~p seconds: ~nHostName: ~s~nHostKey: ~s~n", [
-        KeepAliveAlertSeconds, HostName, HostKey
-    ]),
-    Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s", [Subject, From, To, Body]),
-    gen_smtp_client:send(
-        {From, Addresses, Email},
-        [
-            {relay, SmtpRelay},
-            {username, SmtpUsername},
-            {password, SmtpPassword},
-            {tls, always}
-        ]
-    ),
-    imetrics:add_m(alert, "keepalive_recover"),
-    ok.
+    KeepaliveAlertEnabled = application:get_env(dog_trainer, keepalive_alert_enabled, true),
+    case KeepaliveAlertEnabled of
+        true ->
+            ?LOG_INFO("Host: ~p", [Host]),
+            HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
+            HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
+            ?LOG_INFO("Keepalive recover alert sent: ~p, ~p", [HostName, HostKey]),
+            {ok, SmtpRelay} = application:get_env(dog_trainer, smtp_relay),
+            {ok, SmtpUsername} = application:get_env(dog_trainer, smtp_username),
+            {ok, SmtpPassword} = application:get_env(dog_trainer, smtp_password),
+            Subject = io_lib:format("Dog Agents Reconnected: ~p", [HostName]),
+            {ok, From} = application:get_env(dog_trainer, smtp_from),
+            {ok, Addresses} = application:get_env(dog_trainer, smtp_to),
+            To = string:join(Addresses, ","),
+            {ok, KeepAliveAlertSeconds} = application:get_env(dog_trainer, keepalive_alert_seconds),
+            Body = io_lib:format("Host reconnected in last ~p seconds: ~nHostName: ~s~nHostKey: ~s~n", [
+                KeepAliveAlertSeconds, HostName, HostKey
+            ]),
+            Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s", [Subject, From, To, Body]),
+            gen_smtp_client:send(
+                {From, Addresses, Email},
+                [
+                    {relay, SmtpRelay},
+                    {username, SmtpUsername},
+                    {password, SmtpPassword},
+                    {tls, always}
+                ]
+            ),
+            imetrics:add_m(alert, "keepalive_recover"),
+            ok;
+        false ->
+            ok
+    end.
 
 -spec send_hash_alert(Host :: binary(), HashStatus :: map()) -> ok.
 send_hash_alert(Host, HashStatus) ->
