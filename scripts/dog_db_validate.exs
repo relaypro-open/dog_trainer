@@ -1,10 +1,17 @@
 #!/usr/bin/env -S ERL_FLAGS=+B elixir
+elixir_version_required="~> 1.14"
+
 Mix.install([
       {:rethinkdb, git: "https://github.com/point/rethinkdb-elixir.git"},
       {:ex_json_schema, "~> 0.10.2"},
       {:jason, "~> 1.4"},
       {:tesla, "~> 1.9"}
 ])
+
+if not Version.match?(Version.parse!(System.version), Version.parse_requirement!(elixir_version_required)) do
+  IO.write("Elixir version doesn't match requirement: #{elixir_version_required}") 
+  System.halt(0)
+end
 
 if System.get_env("DEPS_ONLY") == "true" do
   System.halt(0)
