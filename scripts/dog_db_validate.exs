@@ -43,8 +43,8 @@ defmodule DogDbValidate do
   end
 
   defp check do
-    #["host","group","zone","profile","link","service","ruleset"]
-    ["host","group","zone","profile","link","service"]
+    ["host","group","zone","profile","link","service","ruleset"]
+    #["host","group","zone","profile","link","service"]
     |> Enum.map(fn type ->
       {type, check(type)}
     end)
