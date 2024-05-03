@@ -309,3 +309,11 @@ r.db('dog').table('zone')
     r.row("ipv4_addresses").toJSON().match("1.1.1.1")
   )
 ```
+
+Active ruleset IDs:
+```
+r.db('dog').table('group').withFields(['profile_id']).innerJoin(
+  r.db('dog').table('ruleset').hasFields(['profile_id']),
+  function(groupRow, rulesetRow) {
+    return groupRow('profile_id').eq(rulesetRow('profile_id'))})('right')('id')
+```

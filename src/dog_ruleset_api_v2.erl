@@ -1,5 +1,4 @@
 -module(dog_ruleset_api_v2).
-
 -include_lib("kernel/include/logger.hrl").
 
 -define(VALIDATION_TYPE, <<"ruleset">>).
@@ -11,6 +10,8 @@
     delete/1,
     get_all/0,
     get_all_names/0,
+    get_all_active/0,
+    get_all_active_names/0,
     get_by_id/1,
     get_by_name/1,
     get_schema/0,
@@ -99,6 +100,7 @@ get_all_names() ->
         Rules
     ),
     {ok, RulesReplaced}.
+
 
 -spec get_by_name(Name :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_name(Name) ->
@@ -325,8 +327,16 @@ where_used(RulesId) ->
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec ids_to_names(Profile :: map()) -> Profile :: {ok | error, map()}.
-ids_to_names(Profile) ->
+-spec ids_to_names(Rulesets :: list()) -> {'ok', Rulesests :: list()}.
+ids_to_names(Rulesets) when is_list(Rulesets)->
+    RulesReplaced = lists:map(
+        fun(Ruleset) ->
+            ids_to_names(Ruleset)
+        end,
+        Rulesets
+    ),
+    {ok, RulesReplaced};
+ids_to_names(Profile) when is_map(Profile) ->
     ?LOG_DEBUG("Profile: ~p",[Profile]),
     case Profile of
         _ when not is_map(Profile) ->
@@ -587,3 +597,39 @@ rules_to_hcl(Rules) ->
       {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
       erlang:iolist_to_binary(IoData)
 end, Rules).
+
+-spec get_all_active_names() -> {ok, list()}.
+get_all_active_names() ->
+    {ok, AllActive} = get_all_active(),
+    ids_to_names(AllActive).
+
+-spec get_all_active() -> {ok, list()}.
+get_all_active() ->
+    {ok, Result} = dog_rethink:run( fun(X) ->
+     reql:db(X, dog),
+     reql:table(X, group),
+     reql:has_fields(X, [<<"profile_id">>]),
+     reql:get_field(X, <<"profile_id">>)
+    end),
+    {ok, All} = rethink_cursor:all(Result),
+    ActiveGroupProfileIds = lists:flatten(All),
+
+    {ok, Result2} = dog_rethink:run( fun(X) ->
+     reql:db(X, dog),
+     reql:table(X, ruleset),
+     reql:has_fields(X, [<<"profile_id">>])
+    end),
+    {ok, All2} = rethink_cursor:all(Result2),
+    ActiveRulesets = lists:flatten(All2),
+
+    ProfileToRulesetList = lists:map(fun(Ruleset) ->
+                      {
+                      maps:get(<<"profile_id">>,Ruleset),
+                      Ruleset
+                      }
+      end, ActiveRulesets),
+    ProfileToRulesetMap = maps:from_list(ProfileToRulesetList),
+
+    Rulesets = lists:map(fun(GroupProfileId) -> maps:get(GroupProfileId, ProfileToRulesetMap)
+                 end, ActiveGroupProfileIds),
+    {ok, Rulesets}.
