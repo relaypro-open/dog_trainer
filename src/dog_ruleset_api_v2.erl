@@ -630,6 +630,9 @@ get_all_active() ->
       end, ActiveRulesets),
     ProfileToRulesetMap = maps:from_list(ProfileToRulesetList),
 
-    Rulesets = lists:map(fun(GroupProfileId) -> maps:get(GroupProfileId, ProfileToRulesetMap)
-                 end, ActiveGroupProfileIds),
+    Rulesets = lists:flatten(
+                 lists:map(fun(GroupProfileId) -> 
+                          maps:get(GroupProfileId, ProfileToRulesetMap,[])
+                 end, ActiveGroupProfileIds)
+                ),
     {ok, Rulesets}.
