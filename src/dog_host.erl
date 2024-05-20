@@ -30,8 +30,24 @@
     keepalive_age_check/0, keepalive_age_check/1,
     keepalive_check/0, keepalive_check/1,
     retirement_check/0, retirement_check/1,
-    state_event/3
+    state_event/3,
+    get_all_joined_with_group/0,
+    get_all_alert_enabled/0
 ]).
+
+-spec get_all_joined_with_group() -> HostsGroups :: map().
+get_all_joined_with_group() ->
+    dog_common:eq_join(<<"host">>, <<"group">>, <<"name">>, <<"group">>).
+
+-spec filter_alert_enabled(HostsGroups :: list(map()) ) -> AlertHosts :: list(map()).
+filter_alert_enabled(Hosts) ->
+    DefaultAlertEnable = application:get_env(dog_trainer, default_alert_enable, true),
+    lists:filter(fun(Host) ->
+                         maps:get(<<"alert_enable">>,Host, DefaultAlertEnable) == true
+                 end, Hosts).
+
+get_all_alert_enabled() ->
+    filter_alert_enabled(get_all_joined_with_group()).
 
 -spec keepalive_check() -> {ok, Unalive :: list()}.
 keepalive_check() ->
@@ -44,16 +60,7 @@ keepalive_check() ->
 
 -spec keepalive_check(TimeCutoff :: number()) -> {ok, list()}.
 keepalive_check(TimeCutoff) ->
-    {ok, R} = dog_rethink:run(
-        fun(X) ->
-            reql:db(X, dog),
-            reql:table(X, ?TYPE_TABLE),
-            reql:pluck(X, [<<"id">>, <<"name">>, <<"keepalive_timestamp">>])
-        end
-    ),
-    {ok, ResultTime} = rethink_cursor:all(R),
-    ?LOG_DEBUG("ResultTime: ~p", [ResultTime]),
-    R1 = lists:flatten(ResultTime),
+    R1 = get_all_alert_enabled(),
     Ids = [maps:get(<<"id">>, X) || X <- R1],
     Names = [maps:get(<<"name">>, X) || X <- R1],
     Timestamps = [maps:get(<<"keepalive_timestamp">>, X) || X <- R1],
@@ -76,17 +83,7 @@ retirement_check() ->
 
 -spec retirement_check(TimeCutoff :: number()) -> {ok, list()}.
 retirement_check(TimeCutoff) ->
-    {ok, R} = dog_rethink:run(
-        fun(X) ->
-            reql:db(X, dog),
-            reql:table(X, ?TYPE_TABLE),
-            reql:filter(X, #{<<"active">> => <<"inactive">>}),
-            reql:pluck(X, [<<"id">>, <<"name">>, <<"keepalive_timestamp">>])
-        end
-    ),
-    {ok, ResultTime} = rethink_cursor:all(R),
-    ?LOG_DEBUG("ResultTime: ~p", [ResultTime]),
-    R1 = lists:flatten(ResultTime),
+    R1 = get_all_alert_enabled(),
     Ids = [maps:get(<<"id">>, X) || X <- R1],
     Names = [maps:get(<<"name">>, X) || X <- R1],
     Timestamps = [maps:get(<<"keepalive_timestamp">>, X) || X <- R1],
@@ -336,17 +333,7 @@ keepalive_age_check() ->
 
 -spec keepalive_age_check(TimeCutoff :: number()) -> {ok, list()}.
 keepalive_age_check(TimeCutoff) ->
-    {ok, R} = dog_rethink:run(
-        fun(X) ->
-            reql:db(X, dog),
-            reql:table(X, ?TYPE_TABLE),
-            reql:filter(X, #{<<"active">> => <<"active">>}),
-            reql:pluck(X, [<<"id">>, <<"name">>, <<"keepalive_timestamp">>])
-        end
-    ),
-    {ok, ResultTime} = rethink_cursor:all(R),
-    ?LOG_INFO("ResultTime: ~p", [ResultTime]),
-    R1 = lists:flatten(ResultTime),
+    R1 = get_all_alert_enabled(),
     Ids = [maps:get(<<"id">>, X) || X <- R1],
     Names = [maps:get(<<"name">>, X) || X <- R1],
     Timestamps = [maps:get(<<"keepalive_timestamp">>, X) || X <- R1],

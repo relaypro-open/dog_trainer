@@ -19,7 +19,8 @@
     rkmm/3,
     to_list/1,
     tuple_pairs_to_map_of_lists/1,
-    to_terraform_name/1
+    to_terraform_name/1,
+    eq_join/4
 ]).
 
 -spec to_list(Item :: iolist() | atom() | tuple() | map() | binary() | integer() | float()) ->
@@ -178,56 +179,93 @@ to_terraform_name(Name) ->
 
 eel_test() ->
     Bindings = #{
-                 'Title' => <<"title">>,
-                 'List' => ["one","two","three"]
-                },
+        'Title' => <<"title">>,
+        'List' => ["one", "two", "three"]
+    },
     {ok, Snapshot} = eel:compile(<<
-    "<h1><%= Title .%></h1>"
-    "<ul>"
-    "    <%= lists:map(fun(Item) -> %>"
-    "        <li><%= Item .%></li>"
-    "    <% end, List) .%>"
-    "</ul>"
-    "<%= Length = erlang:length(List), %>"
-    "    <div>Item count: <%= Length .%></div>"
-    "    <%= case Length > 0 of true -> %>"
-    "        <ul>"
-    "            <%= lists:map(fun(N) -> %>"
-    "                <li><%= N .%></li>"
-    "            <% end, lists:seq(1, Length)) .%>"
-    "        </ul>"
-    "    <% ; false -> <<>> end .%>"
-    "<%  .%>"
+        "<h1><%= Title .%></h1>"
+        "<ul>"
+        "    <%= lists:map(fun(Item) -> %>"
+        "        <li><%= Item .%></li>"
+        "    <% end, List) .%>"
+        "</ul>"
+        "<%= Length = erlang:length(List), %>"
+        "    <div>Item count: <%= Length .%></div>"
+        "    <%= case Length > 0 of true -> %>"
+        "        <ul>"
+        "            <%= lists:map(fun(N) -> %>"
+        "                <li><%= N .%></li>"
+        "            <% end, lists:seq(1, Length)) .%>"
+        "        </ul>"
+        "    <% ; false -> <<>> end .%>"
+        "<%  .%>"
     >>),
     {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
     {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
-    io:format("~s",[erlang:iolist_to_binary(IoData)]).
+    io:format("~s", [erlang:iolist_to_binary(IoData)]).
 
 format_vars(Vars) ->
-    VarsList = case Vars of
-        [] ->
-            [];
-        _ ->
-            lists:map(fun(Var) ->
-                              format_var(Var)
-                      end, maps:to_list(Vars))
-    end,
+    VarsList =
+        case Vars of
+            [] ->
+                [];
+            _ ->
+                lists:map(
+                    fun(Var) ->
+                        format_var(Var)
+                    end,
+                    maps:to_list(Vars)
+                )
+        end,
     maps:from_list(VarsList).
 
-format_var({Key,Value}) ->
+format_var({Key, Value}) ->
     {Key, format_value(Value)}.
 
 format_value(Value) ->
     case is_list(Value) of
         false ->
-            string:replace(string:replace(io_lib:format("~p",[Value]),"<<",""),">>","");
+            string:replace(string:replace(io_lib:format("~p", [Value]), "<<", ""), ">>", "");
         true ->
-            ListValues = lists:map(fun(L) ->
-                              string:replace(string:replace(io_lib:format("~p",[L]),"<<",""),">>","")
-                      end, Value),
-            "[" ++ lists:join(",",ListValues) ++ "]"
+            ListValues = lists:map(
+                fun(L) ->
+                    string:replace(string:replace(io_lib:format("~p", [L]), "<<", ""), ">>", "")
+                end,
+                Value
+            ),
+            "[" ++ lists:join(",", ListValues) ++ "]"
     end.
 
 -spec quoted_comma_delimited(List :: list()) -> iolist().
 quoted_comma_delimited(List) ->
-    string:join([io_lib:format("\"~s\"",[X]) || X <- List],",").
+    string:join([io_lib:format("\"~s\"", [X]) || X <- List], ",").
+
+-spec eq_join(Table1Name :: string(), Table2Name :: string(), Key1 :: string(), Key2 :: string()) ->
+    JoinTable :: list().
+eq_join(Table1Name, Table2Name, Key1, Key2) ->
+    {ok, OneR} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, Table1Name)
+        end
+    ),
+    {ok, OneR2} = rethink_cursor:all(OneR),
+    OneResult = lists:flatten(OneR2),
+    {ok, TwoR} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, Table2Name)
+        end
+    ),
+    {ok, TwoR2} = rethink_cursor:all(TwoR),
+    TwoResult = lists:flatten(TwoR2),
+    TwoMap = dog_common:list_of_maps_to_map(TwoResult, Key1),
+    JoinedResult = lists:map(
+        fun(One) ->
+            TwoName = maps:get(Key2, One),
+            Two = maps:get(TwoName, TwoMap, #{}),
+            maps:merge(Two, One)
+        end,
+        OneResult
+    ),
+    JoinedResult.
