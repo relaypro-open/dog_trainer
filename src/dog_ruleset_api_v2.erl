@@ -635,4 +635,5 @@ get_all_active() ->
                           maps:get(GroupProfileId, ProfileToRulesetMap,[])
                  end, ActiveGroupProfileIds)
                 ),
-    {ok, Rulesets}.
+    RulesetsUnique = sets:to_list(sets:from_list(Rulesets)),
+    {ok, RulesetsUnique}.
