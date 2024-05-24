@@ -45,6 +45,25 @@ to_json(Req, State) ->
             Json = jsx:encode(Services),
             Sub = cowboy_req:binding(sub, Req),
             case Handler of
+                dog_profile_api_v2 ->
+                    #{active := Active} =
+                        cowboy_req:match_qs(
+                            [
+                                {active, [], undefined}
+                            ],
+                            Req
+                        ),
+                    case Active of
+                        <<"true">> ->
+                            {ok, ProfilesActive} = dog_profile_api_v2:get_all_active(),
+                            {jsx:encode(ProfilesActive), Req, State};
+                        <<"false">> ->
+                            {ok, Profiles} = dog_profile_api_v2:get_all(),
+                            {jsx:encode(Profiles), Req, State};
+                        undefined ->
+                            {ok, Profiles} = dog_profile_api_v2:get_all(),
+                            {jsx:encode(Profiles), Req, State}
+                    end;
                 dog_ruleset_api_v2 ->
                     #{names := Names,
                      active := Active} =
