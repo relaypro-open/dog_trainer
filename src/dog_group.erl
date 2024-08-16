@@ -586,7 +586,9 @@ replace(Id, ReplaceMap) ->
 update(Id, UpdateMap) ->
     case get_by_id(Id) of
         {ok, OldGroup} ->
-            NewGroup = maps:merge(OldGroup, UpdateMap),
+            OldGroup1 = maps:remove(<<"vars">>,OldGroup),
+            OldGroup2 = maps:remove(<<"ec2_security_group_ids">>, OldGroup1),
+            NewGroup = maps:merge(OldGroup2, UpdateMap),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewGroup) of
                 ok ->
                     {ok, R} = dog_rethink:run(
