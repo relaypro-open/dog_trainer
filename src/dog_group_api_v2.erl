@@ -171,11 +171,9 @@ replace_profile_by_profile_id(OldId, NewId, ProfileName) ->
 update(Id, UpdateMap) ->
     case get_by_id(Id) of
         {ok, OldGroup} ->
-            ?LOG_DEBUG("OldGroup R: ~p~n", [OldGroup]),
             OldGroup1 = maps:remove(<<"vars">>,OldGroup),
             OldGroup2 = maps:remove(<<"ec2_security_group_ids">>, OldGroup1),
             NewGroup = maps:merge(OldGroup2, UpdateMap),
-            %NewGroup = UpdateMap,
             case dog_json_schema:validate(?VALIDATION_TYPE, NewGroup) of
                 ok ->
                     {ok, R} = dog_rethink:run(
