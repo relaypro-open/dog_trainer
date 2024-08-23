@@ -24,6 +24,7 @@
     get_all_active_interfaces/0,
     get_hostkeys_by_ips/0,
     get_names_by_ips/0,
+    filter_out_retired_hosts/1,
     hash_check/1,
     init/0,
     interfaces_to_ips/1,
