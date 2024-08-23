@@ -46,6 +46,12 @@ filter_alert_enabled(Hosts) ->
                          maps:get(<<"alert_enable">>,Host, DefaultAlertEnable) == true
                  end, Hosts).
 
+-spec filter_out_retired_hosts(HostsGroups :: list(map()) ) -> AlertHosts :: list(map()).
+filter_out_retired_hosts(Hosts) ->
+    lists:filter(fun(Host) ->
+                         maps:get(<<"active">>,Host) =/= <<"retired">>
+                 end, Hosts).
+
 get_all_alert_enabled() ->
     filter_alert_enabled(get_all_joined_with_group()).
 
@@ -60,7 +66,9 @@ keepalive_check() ->
 
 -spec keepalive_check(TimeCutoff :: number()) -> {ok, list()}.
 keepalive_check(TimeCutoff) ->
-    R1 = get_all_alert_enabled(),
+    R = get_all_joined_with_group(),
+    R0 = filter_out_retired_hosts(R),
+    R1 = filter_alert_enabled(R0),
     Ids = [maps:get(<<"id">>, X) || X <- R1],
     Names = [maps:get(<<"name">>, X) || X <- R1],
     Timestamps = [maps:get(<<"keepalive_timestamp">>, X) || X <- R1],
