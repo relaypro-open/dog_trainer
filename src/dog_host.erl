@@ -935,8 +935,11 @@ new_state(HostMap, <<"inactive">>, fail_hashcheck, HashStatus) ->
     send_hash_alert(HostMap, HashStatus),
     <<"active_hashfail">>;
 new_state(HostMap, <<"inactive">>, retirement_timeout, _HashStatus) ->
-    send_retirement_alert(HostMap),
+    send_keepalive_recover(HostMap),
     <<"retired">>;
+new_state(HostMap, <<"inactive">>, keepalive, _HashStatus) ->
+    send_keepalive_recover(HostMap),
+    <<"active">>;
 new_state(_HostMap, <<"inactive_hashfail">>, fail_hashcheck, _HashStatus) ->
     <<"active_hashfail">>;
 new_state(HostMap, <<"inactive_hashfail">>, pass_hashcheck, HashStatus) ->
@@ -952,6 +955,10 @@ new_state(HostMap, <<"retired">>, fail_hashcheck, _HashStatus) ->
     send_keepalive_recover(HostMap),
     <<"active">>;
 new_state(HostMap, <<"retired">>, pass_hashcheck, _HashStatus) ->
+    imetrics:set_gauge_m(<<"host_keepalive">>, <<"recovery">>, 0),
+    send_keepalive_recover(HostMap),
+    <<"active">>;
+new_state(HostMap, <<"retired">>, keepalive, _HashStatus) ->
     imetrics:set_gauge_m(<<"host_keepalive">>, <<"recovery">>, 0),
     send_keepalive_recover(HostMap),
     <<"active">>;
