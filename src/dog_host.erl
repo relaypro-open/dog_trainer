@@ -91,7 +91,9 @@ retirement_check() ->
 
 -spec retirement_check(TimeCutoff :: number()) -> {ok, list()}.
 retirement_check(TimeCutoff) ->
-    R1 = get_all_alert_enabled(),
+    R = get_all_joined_with_group(),
+    R0 = filter_out_retired_hosts(R),
+    R1 = filter_alert_enabled(R0),
     Ids = [maps:get(<<"id">>, X) || X <- R1],
     Names = [maps:get(<<"name">>, X) || X <- R1],
     Timestamps = [maps:get(<<"keepalive_timestamp">>, X) || X <- R1],
