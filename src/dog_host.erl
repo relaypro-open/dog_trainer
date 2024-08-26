@@ -49,7 +49,8 @@ keepalive_check() ->
 
 -spec keepalive_check(TimeCutoff :: number()) -> {ok, list()}.
 keepalive_check(TimeCutoff) ->
-    R1 = get_all_joined_with_group(),
+    R0 = get_all_joined_with_group(),
+    R1 = filter_out_retired_hosts(R0),
     Ids = [maps:get(<<"id">>, X) || X <- R1],
     Names = [maps:get(<<"name">>, X) || X <- R1],
     Timestamps = [maps:get(<<"keepalive_timestamp">>, X) || X <- R1],
@@ -60,6 +61,12 @@ keepalive_check(TimeCutoff) ->
     ],
     ?LOG_INFO("OldAgents: ~p", [OldAgents]),
     {ok, OldAgents}.
+
+-spec filter_out_retired_hosts(HostsGroups :: list(map()) ) -> AlertHosts :: list(map()).
+filter_out_retired_hosts(Hosts) ->
+    lists:filter(fun(Host) ->
+                         maps:get(<<"active">>,Host) =/= <<"retired">>
+                 end, Hosts).
 
 -spec retirement_check() -> {ok, Unalive :: list()}.
 retirement_check() ->
@@ -72,7 +79,8 @@ retirement_check() ->
 
 -spec retirement_check(TimeCutoff :: number()) -> {ok, list()}.
 retirement_check(TimeCutoff) ->
-    R1 = get_all_joined_with_group(),
+    R0 = get_all_joined_with_group(),
+    R1 = filter_out_retired_hosts(R0),
     Ids = [maps:get(<<"id">>, X) || X <- R1],
     Names = [maps:get(<<"name">>, X) || X <- R1],
     Timestamps = [maps:get(<<"keepalive_timestamp">>, X) || X <- R1],
@@ -322,7 +330,8 @@ keepalive_age_check() ->
 
 -spec keepalive_age_check(TimeCutoff :: number()) -> {ok, list()}.
 keepalive_age_check(TimeCutoff) ->
-    R1 = get_all_joined_with_group(),
+    R0 = get_all_joined_with_group(),
+    R1 = filter_out_retired_hosts(R0),
     Ids = [maps:get(<<"id">>, X) || X <- R1],
     Names = [maps:get(<<"name">>, X) || X <- R1],
     Timestamps = [maps:get(<<"keepalive_timestamp">>, X) || X <- R1],
