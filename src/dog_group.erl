@@ -46,6 +46,7 @@
     get_ppps_outbound_ec2/2,
     get_profile_by_id/1,
     get_profile_by_name/1,
+    group_alert_active/1,
     in_active_profile/1,
     in_profile/1,
     init/0,
@@ -1330,3 +1331,12 @@ update_group_ec2_security_groups(GroupZoneIdentifier, GroupType) ->
         GroupsWithEc2SgIds
     ),
     ok.
+
+
+-spec group_alert_active(GroupName :: string()) -> boolean.
+group_alert_active(GroupName) ->
+    GroupMap = get_by_name(GroupName),
+    case maps:get(<<"alert_enable">>, GroupMap, true) of
+        true -> true;
+        false -> false
+    end.

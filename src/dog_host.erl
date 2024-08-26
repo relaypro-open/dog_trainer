@@ -24,7 +24,6 @@
     get_all_active_interfaces/0,
     get_hostkeys_by_ips/0,
     get_names_by_ips/0,
-    filter_out_retired_hosts/1,
     hash_check/1,
     init/0,
     interfaces_to_ips/1,
@@ -32,29 +31,12 @@
     keepalive_check/0, keepalive_check/1,
     retirement_check/0, retirement_check/1,
     state_event/3,
-    get_all_joined_with_group/0,
-    get_all_alert_enabled/0
+    get_all_joined_with_group/0
 ]).
 
 -spec get_all_joined_with_group() -> HostsGroups :: map().
 get_all_joined_with_group() ->
     dog_common:eq_join(<<"host">>, <<"group">>, <<"name">>, <<"group">>).
-
--spec filter_alert_enabled(HostsGroups :: list(map()) ) -> AlertHosts :: list(map()).
-filter_alert_enabled(Hosts) ->
-    DefaultAlertEnable = application:get_env(dog_trainer, default_alert_enable, true),
-    lists:filter(fun(Host) ->
-                         maps:get(<<"alert_enable">>,Host, DefaultAlertEnable) == true
-                 end, Hosts).
-
--spec filter_out_retired_hosts(HostsGroups :: list(map()) ) -> AlertHosts :: list(map()).
-filter_out_retired_hosts(Hosts) ->
-    lists:filter(fun(Host) ->
-                         maps:get(<<"active">>,Host) =/= <<"retired">>
-                 end, Hosts).
-
-get_all_alert_enabled() ->
-    filter_alert_enabled(get_all_joined_with_group()).
 
 -spec keepalive_check() -> {ok, Unalive :: list()}.
 keepalive_check() ->
@@ -67,9 +49,7 @@ keepalive_check() ->
 
 -spec keepalive_check(TimeCutoff :: number()) -> {ok, list()}.
 keepalive_check(TimeCutoff) ->
-    R = get_all_joined_with_group(),
-    R0 = filter_out_retired_hosts(R),
-    R1 = filter_alert_enabled(R0),
+    R1 = get_all_joined_with_group(),
     Ids = [maps:get(<<"id">>, X) || X <- R1],
     Names = [maps:get(<<"name">>, X) || X <- R1],
     Timestamps = [maps:get(<<"keepalive_timestamp">>, X) || X <- R1],
@@ -92,9 +72,7 @@ retirement_check() ->
 
 -spec retirement_check(TimeCutoff :: number()) -> {ok, list()}.
 retirement_check(TimeCutoff) ->
-    R = get_all_joined_with_group(),
-    R0 = filter_out_retired_hosts(R),
-    R1 = filter_alert_enabled(R0),
+    R1 = get_all_joined_with_group(),
     Ids = [maps:get(<<"id">>, X) || X <- R1],
     Names = [maps:get(<<"name">>, X) || X <- R1],
     Timestamps = [maps:get(<<"keepalive_timestamp">>, X) || X <- R1],
@@ -344,9 +322,7 @@ keepalive_age_check() ->
 
 -spec keepalive_age_check(TimeCutoff :: number()) -> {ok, list()}.
 keepalive_age_check(TimeCutoff) ->
-    R = get_all_joined_with_group(),
-    R0 = filter_out_retired_hosts(R),
-    R1 = filter_alert_enabled(R0),
+    R1 = get_all_joined_with_group(),
     Ids = [maps:get(<<"id">>, X) || X <- R1],
     Names = [maps:get(<<"name">>, X) || X <- R1],
     Timestamps = [maps:get(<<"keepalive_timestamp">>, X) || X <- R1],
@@ -376,7 +352,15 @@ iptables_hash_logic(HashCheck4Ipsets, HashCheck6Ipsets, HashCheck4Iptables, Hash
 -spec send_retirement_alert(Host :: binary()) -> ok.
 send_retirement_alert(Host) ->
     RetirementAlertEnabled = application:get_env(dog_trainer, retirement_alert_enabled, true),
-    case RetirementAlertEnabled of
+    HostAlertActive = host_alert_active(Host),
+    GroupName = maps:get(<<"group_name">>, Host, <<"">>),
+    GroupAlertActive = case GroupName =/= <<"">> of
+                           true ->
+                               dog_group:group_alert_active(GroupName);
+                           false ->
+                               false
+                       end,
+    case RetirementAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
             ?LOG_INFO("Host: ~p", [Host]),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
@@ -414,7 +398,15 @@ send_retirement_alert(Host) ->
 -spec send_keepalive_alert(Host :: binary()) -> ok.
 send_keepalive_alert(Host) ->
     KeepaliveAlertEnabled = application:get_env(dog_trainer, keepalive_alert_enabled, true),
-    case KeepaliveAlertEnabled of
+    HostAlertActive = host_alert_active(Host),
+    GroupName = maps:get(<<"group_name">>, Host, <<"">>),
+    GroupAlertActive = case GroupName =/= <<"">> of
+                           true ->
+                               dog_group:group_alert_active(GroupName);
+                           false ->
+                               false
+                       end,
+    case KeepaliveAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
             ?LOG_INFO("Host: ~p", [Host]),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
@@ -452,7 +444,15 @@ send_keepalive_alert(Host) ->
 -spec send_keepalive_recover(Host :: map()) -> ok.
 send_keepalive_recover(Host) ->
     KeepaliveAlertEnabled = application:get_env(dog_trainer, keepalive_alert_enabled, true),
-    case KeepaliveAlertEnabled of
+    HostAlertActive = host_alert_active(Host),
+    GroupName = maps:get(<<"group_name">>, Host, <<"">>),
+    GroupAlertActive = case GroupName =/= <<"">> of
+                           true ->
+                               dog_group:group_alert_active(GroupName);
+                           false ->
+                               false
+                       end,
+    case KeepaliveAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
             ?LOG_INFO("Host: ~p", [Host]),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
@@ -485,15 +485,30 @@ send_keepalive_recover(Host) ->
             ok
     end.
 
+-spec host_alert_active(HostMap :: map()) -> boolean.
+host_alert_active(HostMap) ->
+    case maps:get(<<"alert_enable">>,HostMap, true) of
+        true -> true;
+        false -> false
+    end.
+
+
 -spec send_hash_alert(Host :: binary(), HashStatus :: map()) -> ok.
 send_hash_alert(Host, HashStatus) ->
     HashAlertEnabled = application:get_env(dog_trainer, hash_alert_enabled, true),
-    case HashAlertEnabled of
+    HostAlertActive = host_alert_active(Host),
+    GroupName = maps:get(<<"group_name">>, Host, <<"">>),
+    GroupAlertActive = case GroupName =/= <<"">> of
+                           true ->
+                               dog_group:group_alert_active(GroupName);
+                           false ->
+                               false
+                       end,
+    case HashAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
             ?LOG_INFO("Host: ~p", [Host]),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
             HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
-            GroupName = maps:get(<<"group">>, Host),
             {ok, IpsetHashes} = dog_ipset:latest_hash(),
             {ok, Group} = dog_group:get_by_name(GroupName),
             ?LOG_INFO("Hash alert sent: ~p", [Host]),
@@ -528,6 +543,7 @@ send_hash_alert(Host, HashStatus) ->
 
 -spec send_hash_recover(Host :: binary(), HashStatus :: map()) -> ok.
 send_hash_recover(Host, HashStatus) ->
+    imetrics:add_m(alert, "hash_recover"),
     HashAlertEnabled = application:get_env(dog_trainer, hash_alert_enabled, true),
     case HashAlertEnabled of
         true ->
