@@ -125,6 +125,7 @@ code_change(_OldVsn, State, _Extra) ->
 do_watch_keepalives(_State) ->
     case dog_agent_checker:check() of
         true ->
+            imetrics:set_gauge_m(<<"host_keepalive">>, <<"active">>, 0),
             {ok, HostsRetirementCheck} = dog_host:retirement_check(),
             RetiredHostIds = [maps:get(<<"id">>, H) || H <- HostsRetirementCheck],
             ?LOG_DEBUG("RetiredHostIds: ~p", [RetiredHostIds]),
@@ -169,6 +170,7 @@ do_watch_keepalives(_State) ->
 
             ok;
         false ->
+            imetrics:set_gauge_m(<<"host_keepalive">>, <<"active">>, 1),
             imetrics:set_gauge_m(<<"host_keepalive">>, <<"retirement">>, 0),
             imetrics:set_gauge_m(<<"host_keepalive">>, <<"inactive">>, 0),
             ?LOG_INFO("Skipping, dog_agent_checker:check() false"),

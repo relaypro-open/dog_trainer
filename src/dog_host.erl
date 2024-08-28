@@ -552,7 +552,6 @@ send_hash_alert(Host, HashStatus) ->
 
 -spec send_hash_recover(Host :: binary(), HashStatus :: map()) -> ok.
 send_hash_recover(Host, HashStatus) ->
-    imetrics:add_m(alert, "hash_recover"),
     HashAlertEnabled = application:get_env(dog_trainer, hash_alert_enabled, true),
     case HashAlertEnabled of
         true ->
