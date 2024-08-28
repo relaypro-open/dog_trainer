@@ -145,20 +145,7 @@ do_watch_keepalives(_State) ->
                     )
             end,
 
-            {ok, HostsPassedKeepaliveCheck, HostsFailedKeepaliveCheck} = dog_host:keepalive_age_check(),
-            HostsPassedKeepaliveCheckIds = [
-                maps:get(<<"id">>, H)
-             || H <- HostsPassedKeepaliveCheck
-            ],
-            case HostsPassedKeepaliveCheckIds of
-                [] ->
-                    imetrics:set_gauge_m(<<"host_keepalive">>, <<"active">>, 0),
-                    ok;
-                _ ->
-                    imetrics:set_gauge_m(
-                        <<"host_keepalive">>, <<"active">>, length(HostsPassedKeepaliveCheckIds)
-                    )
-            end,
+            {ok, HostsFailedKeepaliveCheck} = dog_host:keepalive_age_check(),
             HostsFailedKeepaliveCheckIds = [
                 maps:get(<<"id">>, H)
              || H <- HostsFailedKeepaliveCheck
