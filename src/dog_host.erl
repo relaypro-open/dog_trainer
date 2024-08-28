@@ -319,7 +319,7 @@ ipset_hash_age_update(HostId, Timestamp) ->
         _ -> {false, no_updated}
     end.
 
--spec keepalive_age_check() -> {ok, Unalive :: list()}.
+-spec keepalive_age_check() -> {ok, OldAgents :: list(), NewAgents :: list()}.
 keepalive_age_check() ->
     Now = erlang:system_time(second),
     KeepAliveAlertSeconds = application:get_env(dog_trainer, keepalive_alert_seconds, 1800),
@@ -328,7 +328,7 @@ keepalive_age_check() ->
     ?LOG_DEBUG("TimeCutoff: ~p", [calendar:system_time_to_rfc3339(TimeCutoff)]),
     keepalive_age_check(TimeCutoff).
 
--spec keepalive_age_check(TimeCutoff :: number()) -> {ok, list()}.
+-spec keepalive_age_check(TimeCutoff :: number()) -> {ok, NewAgents :: list(), OldAgents :: list()}.
 keepalive_age_check(TimeCutoff) ->
     R0 = get_all_joined_with_group(),
     R1 = filter_out_retired_hosts(R0),
@@ -336,12 +336,15 @@ keepalive_age_check(TimeCutoff) ->
     Names = [maps:get(<<"name">>, X) || X <- R1],
     Timestamps = [maps:get(<<"keepalive_timestamp">>, X) || X <- R1],
     ZippedList = lists:zip3(Ids, Names, Timestamps),
-    OldAgents = [
+    Agents = [
         #{<<"id">> => Id, <<"name">> => Name, <<"keepalive_timestamp">> => TimeStamp}
-     || {Id, Name, TimeStamp} <- ZippedList, TimeStamp < TimeCutoff
+     || {Id, Name, TimeStamp} <- ZippedList
     ],
-    ?LOG_INFO("OldAgents: ~p", [OldAgents]),
-    {ok, OldAgents}.
+    {NewAgents, OldAgents} = lists:splitwith(fun(AgentMap) ->
+                                                     maps:get(<<"keepalive_timestamp">>,AgentMap) > TimeCutoff end, Agents),
+    ?LOG_DEBUG("NewAgents: ~p", [NewAgents]),
+    ?LOG_DEBUG("OldAgents: ~p", [OldAgents]),
+    {ok, NewAgents, OldAgents}.
 
 -spec iptables_hash_logic(
     HashCheck4Ipsets :: boolean(),
