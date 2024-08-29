@@ -9,19 +9,21 @@
 -export([
     create/1,
     delete/1,
+    get_all/0,
+    get_all_active/0,
     get_by_hostkey/1,
     get_by_id/1,
     get_by_name/1,
-    get_all/0,
-    get_all_active/0,
+    get_id_by_hostkey/1,
     get_schema/0,
     update/2,
-    update_by_hostkey/2,
-    get_id_by_hostkey/1
+    update_by_hostkey/2
 ]).
 
 -export([
     get_all_active_interfaces/0,
+    get_all_joined_with_group/0,
+    get_grouped_active_states/0,
     get_hostkeys_by_ips/0,
     get_names_by_ips/0,
     hash_check/1,
@@ -30,8 +32,7 @@
     keepalive_age_check/0, keepalive_age_check/1,
     keepalive_check/0, keepalive_check/1,
     retirement_check/0, retirement_check/1,
-    state_event/3,
-    get_all_joined_with_group/0
+    state_event/3
 ]).
 
 -spec get_all_joined_with_group() -> HostsGroups :: map().
@@ -684,6 +685,18 @@ get_all_active() ->
             Else -> Else
         end,
     {ok, Hosts}.
+
+-spec get_grouped_active_states() -> {ok, {grouped, list() }}.
+get_grouped_active_states() ->
+    {ok, Result} = dog_rethink:run(
+        fun(X) ->
+            reql:db(X, dog),
+            reql:table(X, ?TYPE_TABLE),
+            reql:group(X, <<"active">>),
+            reql:count(X)
+        end
+    ),
+    {ok, Result}.
 
 get_names_by_ips() ->
     get_by_ips(<<"name">>).
