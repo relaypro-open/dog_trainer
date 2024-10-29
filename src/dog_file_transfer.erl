@@ -151,14 +151,21 @@ publish_file_send(
         ] ++ Opts
     ),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    ?LOG_ERROR(#{routing_key => RoutingKey}),
-    Response = turtle:publish(
+    %?LOG_DEBUG(#{routing_key => RoutingKey}),
+    %Response = turtle:publish(
+    %    file_transfer_publisher,
+    %    <<"file_transfer">>,
+    %    RoutingKey,
+    %    <<"text/json">>,
+    %    Message,
+    %    #{delivery_mode => persistent}
+    %),
+    Response = turtle:rpc_sync(
         file_transfer_publisher,
         <<"file_transfer">>,
         RoutingKey,
         <<"text/json">>,
-        Message,
-        #{delivery_mode => persistent}
+        Message
     ),
     Response.
 
