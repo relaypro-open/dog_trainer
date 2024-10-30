@@ -53,35 +53,19 @@ start_link(Args) ->
 
 %-spec periodic_publish() -> OldServer :: ok.
 execute_command(ExecuteCommand, Hostkey, Opts) ->
-    CommandExecutionTimeout = application:get_env(dog_trainer, command_execution_timeout_ms, 30000),
-    [Response, _State] = 
-        poolboy:transaction(?FILE_TRANSFER_POOL, fun(Worker) ->
-            gen_server:call(Worker, {execute_command, ExecuteCommand, Hostkey, Opts}, CommandExecutionTimeout)
-        end),
+    Response = dog_file_transfer:execute_command(ExecuteCommand, Hostkey, Opts),
     Response.
 
 delete_file(FilePath, Hostkey, Opts) ->
-    DeleteFileTimeout = application:get_env(dog_trainer, delete_file_timeout_ms, 30000),
-    [Response, _State] = 
-        poolboy:transaction(?FILE_TRANSFER_POOL, fun(Worker) ->
-            gen_server:call(Worker, {delete_file, FilePath, Hostkey, Opts}, DeleteFileTimeout)
-        end),
+    Response = dog_file_transfer:delete_file(FilePath, Hostkey, Opts),
     Response.
 
 fetch_file(FilePath, Hostkey, Opts) ->
-    FetchFileTimeout = application:get_env(dog_trainer, fetch_file_timeout_ms, 30000),
-    [Response, _State] = 
-        poolboy:transaction(?FILE_TRANSFER_POOL, fun(Worker) ->
-            gen_server:call(Worker, {fetch_file, FilePath, Hostkey, Opts}, FetchFileTimeout)
-        end),
+    Response = dog_file_transfer:fetch_file(FilePath, Hostkey, Opts),
     Response.
 
 send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
-    SendFileTimeout = application:get_env(dog_trainer, send_file_timeout_ms, 30000),
-    [Response, _State] = 
-        poolboy:transaction(?FILE_TRANSFER_POOL, fun(Worker) ->
-            gen_server:call(Worker, {send_file, LocalFilePath, RemoteFilePath, Hostkey, Opts}, SendFileTimeout)
-        end),
+    Response = dog_file_transfer:send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts),
     Response.
 
 %% ------------------------------------------------------------------
