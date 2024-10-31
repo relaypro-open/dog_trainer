@@ -118,7 +118,7 @@ handle_call(_Request, _From, State) ->
 %%----------------------------------------------------------------------
 -spec handle_cast(_, _) -> {'noreply', _}.
 handle_cast(Msg, State) ->
-    ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
+    ?LOG_ERROR(#{"message" => "unknown_message", "msg" => Msg, "state" => State}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -130,7 +130,7 @@ handle_cast(Msg, State) ->
 % TODO: be more specific about Info in spec
 -spec handle_info(_, _) -> {'noreply', _}.
 handle_info(Info, State) ->
-    ?LOG_ERROR("unknown_message: Info: ~p, State: ~p", [Info, State]),
+    ?LOG_ERROR(#{"message" => "unknown_message", "info" => Info, "state" => State}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -140,7 +140,7 @@ handle_info(Info, State) ->
 %%----------------------------------------------------------------------
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    ?LOG_INFO(#{"message" => "terminate", "reason" => Reason, "state" => State}),
     {close}.
 
 -spec code_change(_, State :: ips_state(), _) -> {ok, State :: ips_state()}.

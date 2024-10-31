@@ -261,7 +261,7 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
                             dog_common:to_list(Filename),
                     filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),
                     ok = file:write_file(LocalFilePath, Response, [raw, write, binary]),
-                    ?LOG_INFO("Response size in bytes: ~p", [erlang:size(Response)]),
+                    ?LOG_INFO(#{response_size_in_bytes => erlang:size(Response)}),
                     Response;
                 <<"text/json">> ->
                     case hd(jsx:decode(Response)) of

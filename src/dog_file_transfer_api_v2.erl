@@ -21,16 +21,18 @@ init(Req, Opts) ->
     {cowboy_rest, Req, Opts}.
 
 from_post_json(Req, State) ->
-    ?LOG_DEBUG("Req: ~p", [Req]),
+    ?LOG_DEBUG(#{req => Req}),
     Hostkey = cowboy_req:binding(id, Req),
     ApiUserName = cowboy_req:header(<<"x-consumer-username">>, Req),
     ConsumerCustomId = cowboy_req:header(<<"x-consumer-custom-id">>, Req),
     ConsumerId = cowboy_req:header(<<"x-consumer-id">>, Req),
     CredentialIdentifier = cowboy_req:header(<<"x-credential-identifier">>, Req),
-    ?LOG_DEBUG("ApiUserName: ~p", [ApiUserName]),
-    ?LOG_DEBUG("ConsumerCustomId: ~p", [ConsumerCustomId]),
-    ?LOG_DEBUG("ConsumerId: ~p", [ConsumerId]),
-    ?LOG_DEBUG("CredentialIdentifier: ~p", [CredentialIdentifier]),
+    ?LOG_DEBUG(#{
+                api_user_name => ApiUserName,
+                consumer_custom_id => ConsumerCustomId,
+                consumer_id => ConsumerId,
+                credential_identifier => CredentialIdentifier
+                }),
     case dog_host:get_by_hostkey(Hostkey) of
         {error, notfound} ->
             Req@2 = cowboy_req:reply(
@@ -42,9 +44,9 @@ from_post_json(Req, State) ->
             {stop, Req@2, State};
         _ ->
             Body = cowboy_req:read_body(Req),
-            ?LOG_DEBUG("Body: ~p", [Body]),
+            ?LOG_DEBUG(#{body => Body}),
             {ok, Content, _} = Body,
-            ?LOG_DEBUG("Content: ~p", [Content]),
+            ?LOG_DEBUG(#{content => Content}),
             Message = jsx:decode(Content, [return_maps]),
             Response = handle_command(Hostkey, Message, ApiUserName),
             case Response of
@@ -80,7 +82,7 @@ from_post_json(Req, State) ->
     end.
 
 handle_command(Hostkey, Message, ApiUserName) ->
-    ?LOG_DEBUG("Message: ~p", [Message]),
+    ?LOG_DEBUG(#{message => Message}),
     Command = maps:get(<<"command">>, Message),
     UseShell = erlang:binary_to_atom(maps:get(<<"use_shell">>, Message, <<"false">>)),
     NewOpts =
@@ -91,7 +93,7 @@ handle_command(Hostkey, Message, ApiUserName) ->
             false ->
                 [{use_shell, UseShell}, {api_user, ApiUserName}]
         end,
-    ?LOG_DEBUG("NewOpts: ~p", [NewOpts]),
+    ?LOG_DEBUG(#{new_opts => NewOpts}),
     %dog_file_transfer_worker:execute_command(Command, Hostkey, NewOpts).
     dog_file_transfer_worker:execute_command(Command, Hostkey, NewOpts).
 
@@ -107,7 +109,7 @@ resource_exists(Req, State) ->
         <<"GET">> ->
             Id = cowboy_req:binding(id, Req),
             ApiUserName = cowboy_req:header(<<"x-consumer-username">>, Req),
-            ?LOG_DEBUG("ApiUserName: ~p", [ApiUserName]),
+            ?LOG_DEBUG(#{api_user_name => ApiUserName}),
             Path =
                 case cowboy_req:match_qs([{path, [], plain}], Req) of
                     #{path := Value} ->
@@ -115,7 +117,7 @@ resource_exists(Req, State) ->
                     _ ->
                         undefined
                 end,
-            ?LOG_DEBUG("ID: ~p, Path:~p", [Id, Path]),
+            ?LOG_DEBUG(#{id => Id, path => Path}),
             Opts = [{api_user, ApiUserName}],
             case dog_file_transfer_worker:fetch_file(Path, Id, Opts) of
                 timeout ->
@@ -149,8 +151,8 @@ from_post_multipart(Req, State) ->
     ApiUserName = cowboy_req:header(<<"x-consumer-username">>, Req),
     Opts = [{api_user, ApiUserName}],
     Hostkey = cowboy_req:binding(id, Req),
-    ?LOG_DEBUG("Hostkey= ~p~n", [Hostkey]),
-    ?LOG_DEBUG("Req= ~p~n", [Req]),
+    ?LOG_DEBUG(#{hostkey => Hostkey}),
+    ?LOG_DEBUG(#{req => Req}),
     case dog_host:get_by_hostkey(Hostkey) of
         {error, notfound} ->
             Req@2 = cowboy_req:reply(
@@ -162,8 +164,8 @@ from_post_multipart(Req, State) ->
             {stop, Req@2, State};
         _ ->
             {Result, Req@2} = acc_multipart(Hostkey, Req, [], Opts),
-            ?LOG_DEBUG("Result= ~p~n", [Result]),
-            ?LOG_DEBUG("Req@2= ~p~n", [Req@2]),
+            ?LOG_DEBUG(#{result => Result}),
+            ?LOG_DEBUG(#{req => Req@2}),
             ParsedResult = jsx:encode(
                 lists:map(
                     fun(X) ->
@@ -172,7 +174,7 @@ from_post_multipart(Req, State) ->
                     Result
                 )
             ),
-            ?LOG_DEBUG("ParsedResult= ~p~n", [ParsedResult]),
+            ?LOG_DEBUG(#{parsed_result => ParsedResult}),
             Req@3 = cowboy_req:reply(
                 200,
                 #{<<"content-type">> => <<"application/json">>},
@@ -191,9 +193,7 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
                         {ok, MyBody, Req3} = cowboy_req:read_part_body(Req2),
                         [Req3, MyBody];
                     {file, _FieldName, RemoteFilePath, CType} ->
-                        ?LOG_DEBUG("stream_file filename=~p content_type=~p~n", [
-                            RemoteFilePath, CType
-                        ]),
+                        ?LOG_DEBUG(#{remote_file_path => RemoteFilePath, content_type => CType}),
                         LocalFilePath =
                             ?FILE_LOCATION_BASE ++ dog_common:to_list(Hostkey) ++ "/send/" ++
                                 dog_common:to_list(RemoteFilePath),
@@ -212,11 +212,11 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
 stream_file(Req, IoDevice) ->
     case cowboy_req:read_part_body(Req) of
         {ok, Body, Req2} ->
-            ?LOG_DEBUG("part_body ok~n", []),
+            ?LOG_DEBUG(<<"part_body ok">>),
             file:write(IoDevice, Body),
             Req2;
         {more, Body, Req2} ->
-            ?LOG_DEBUG("part_body more~n", []),
+            ?LOG_DEBUG(<<"part_body more">>),
             file:write(IoDevice, Body),
             stream_file(Req2, IoDevice)
     end.
@@ -256,7 +256,7 @@ to_file(Req, State) ->
     {State, Req, State}.
 
 to_json(Req, State) ->
-    ?LOG_DEBUG("State: ~p~n", [State]),
+    ?LOG_DEBUG(#{state => State}),
     %Id = cowboy_req:binding(id, Req),
     %Sub = cowboy_req:binding(sub, Req),
     %Object = maps:get(<<"object">>,State),
@@ -273,7 +273,7 @@ delete_resource(Req@0, State) ->
             _ ->
                 undefined
         end,
-    ?LOG_DEBUG("ID: ~p, Path:~p", [Id, Path]),
+    ?LOG_DEBUG(#{id => Id, path => Path}),
     Opts = [{api_user, ApiUserName}],
     {Result, Req@1} =
         case dog_file_transfer_worker:delete_file(Path, Id, Opts) of
