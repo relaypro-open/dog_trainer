@@ -71,6 +71,7 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
                 case decode_payload(Payload) of
                     {<<"error">>, StdErr} ->
                         ?LOG_ERROR(#{stderr => StdErr, routing_key => RoutingKey}),
+                        ?LOG_DEBUG(#{stderr => StdErr, routing_key => RoutingKey}),
                         {error, StdErr};
                     {<<"ok">>, StdOut} ->
                         ?LOG_INFO(#{stdout => StdOut, routing_key => RoutingKey}),
@@ -191,7 +192,8 @@ send_data(IoDevice, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, Cur
                 remotefilepath => RemoteFilePath,
                 maxblocksizebytes => MaxBlockSizeBytes,
                 currentblock => CurrentBlock,
-                total_blocks => TotalBlocks
+                total_blocks => TotalBlocks,
+                hostkey => Hostkey
             }),
             % Write Data to Socket
             NextBlock = CurrentBlock + 1,
