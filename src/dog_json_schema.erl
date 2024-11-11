@@ -24,21 +24,33 @@ validate(Type, Document) ->
     %try
         SchemaContents = get_file(Type),
         SchemaMap = jsx:decode(SchemaContents),
-        %{ok, SchemaMap} = 'Elixir.Jason':decode(SchemaContents),
-        ?LOG_DEBUG("SchemaMap: ~p", [SchemaMap]),
+        %?LOG_DEBUG("SchemaMap: ~p", [SchemaMap]),
         %Schema = 'Elixir.JsonXema':new(SchemaMap),
         %?LOG_DEBUG("Schema: ~p",[Schema]),
         Name = maps:get(<<"name">>, Document, <<"NONE">>),
         Id = maps:get(<<"id">>, Document, <<"NONE">>),
         %Validation = 'Elixir.JsonXema':validate(Schema, Document),
         Validation = jesse:validate_with_schema(SchemaMap, Document),
-        ?LOG_DEBUG("Validation: ~p",[Validation]),
+        ?LOG_DEBUG(#{schema_map => SchemaMap}),
+        ?LOG_DEBUG(#{validation => Validation}),
         case Validation of
             {ok, _Reason} ->
-                ?LOG_INFO("Schema Validation: ~p, ~p, ~p: ~p", [Type, Name, Id, Validation]),
+                ?LOG_INFO(#{
+                    message => "Schema validation",
+                    schema_type => Type,
+                    name => Name,
+                    id => Id,
+                    validation => Validation
+                }),
                 ok;
             {error, Reason} ->
-                ?LOG_ERROR("Schema Validation: ~p, ~p, ~p: ~p", [Type, Name, Id, Validation]),
+                ?LOG_ERROR(#{
+                    message => "Schema validation",
+                    schema_type => Type,
+                    name => Name,
+                    id => Id,
+                    validation => Validation
+                }),
                 {error, Reason}
         end.
     %catch
@@ -90,5 +102,5 @@ validate_all(Type) ->
         errors => ErrorDocuments,
         total_documents => TotalDocuments
     },
-    ?LOG_INFO("Validation Results: ~p", [ResultMap]),
+    ?LOG_INFO(#{validation_results => ResultMap}),
     ResultMap.
