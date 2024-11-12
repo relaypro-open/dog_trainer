@@ -123,7 +123,7 @@ test() ->
   }
 }">>)),
     Groups = maps:get(<<"groups">>, NewFact),
-    ?LOG_DEBUG("Groups: ~p~n", [Groups]),
+    ?LOG_DEBUG(#{"groups" => Groups}),
     GroupsLiteral = maps:map(fun(_Key,Value) -> 
                                      maps:update(<<"vars">>, 
                                                    fun(X) -> reql:literal(X) end, Value)

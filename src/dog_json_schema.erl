@@ -21,48 +21,33 @@ get_file(Type) ->
 
 -spec validate(Type :: binary(), Document :: map()) -> ok | {error, _}.
 validate(Type, Document) ->
-    %try
-        SchemaContents = get_file(Type),
-        SchemaMap = jsx:decode(SchemaContents),
-        %?LOG_DEBUG("SchemaMap: ~p", [SchemaMap]),
-        %Schema = 'Elixir.JsonXema':new(SchemaMap),
-        %?LOG_DEBUG("Schema: ~p",[Schema]),
-        Name = maps:get(<<"name">>, Document, <<"NONE">>),
-        Id = maps:get(<<"id">>, Document, <<"NONE">>),
-        %Validation = 'Elixir.JsonXema':validate(Schema, Document),
-        Validation = jesse:validate_with_schema(SchemaMap, Document),
-        ?LOG_DEBUG(#{schema_map => SchemaMap}),
-        ?LOG_DEBUG(#{validation => Validation}),
-        case Validation of
-            {ok, _Reason} ->
-                ?LOG_INFO(#{
-                    message => "Schema validation",
-                    schema_type => Type,
-                    name => Name,
-                    id => Id,
-                    validation => Validation
-                }),
-                ok;
-            {error, Reason} ->
-                ?LOG_ERROR(#{
-                    message => "Schema validation",
-                    schema_type => Type,
-                    name => Name,
-                    id => Id,
-                    validation => Validation
-                }),
-                {error, Reason}
-        end.
-    %catch
-    %    Exception:ExceptionReason:Stacktrace ->
-    %        ?LOG_ERROR(#{
-    %            schematype => Type,
-    %            exception => Exception,
-    %            exceptionreason => ExceptionReason,
-    %            stacktrace => Stacktrace
-    %        }),
-    %        throw(error)
-    %end.
+    SchemaContents = get_file(Type),
+    SchemaMap = jsx:decode(SchemaContents),
+    Name = maps:get(<<"name">>, Document, <<"NONE">>),
+    Id = maps:get(<<"id">>, Document, <<"NONE">>),
+    Validation = jesse:validate_with_schema(SchemaMap, Document),
+    ?LOG_DEBUG(#{schema_map => SchemaMap}),
+    ?LOG_DEBUG(#{validation => Validation}),
+    case Validation of
+        {ok, _Reason} ->
+            ?LOG_INFO(#{
+                message => "Schema validation",
+                schema_type => Type,
+                name => Name,
+                id => Id,
+                validation => Validation
+            }),
+            ok;
+        {error, Reason} ->
+            ?LOG_ERROR(#{
+                message => "Schema validation",
+                schema_type => Type,
+                name => Name,
+                id => Id,
+                validation => Validation
+            }),
+            {error, Reason}
+    end.
 
 -spec validate_all(Type :: binary()) -> ResultMap :: map().
 validate_all(Type) ->

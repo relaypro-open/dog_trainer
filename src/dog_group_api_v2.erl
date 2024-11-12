@@ -48,7 +48,7 @@ create(Group@0) when is_map(Group@0) ->
             Timestamp = dog_time:timestamp(),
             Group@1 = maps:put(<<"created">>, Timestamp, Group@0),
             NewMap = maps:merge(DefaultMap, Group@1),
-            ?LOG_DEBUG("NewMap: ~p", [NewMap]),
+            ?LOG_DEBUG(#{"new_map" => NewMap}),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewMap) of
                 ok ->
                     {ok, R} = dog_rethink:run(
@@ -78,7 +78,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOG_DEBUG(#{"message" => "delete R", "r" => R}),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -122,7 +122,7 @@ replace(Id, ReplaceMap) ->
                             reql:replace(X, NewItem3, #{return_changes => always})
                         end
                     ),
-                    ?LOG_DEBUG("replaced R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{"message" => "replaced R", "r" => R}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of
@@ -157,7 +157,7 @@ replace_profile_by_profile_id(OldId, NewId) ->
 -spec replace_profile_by_profile_id(OldId :: binary(), NewId :: binary(), ProfileName :: iolist()) ->
     list().
 replace_profile_by_profile_id(OldId, NewId, ProfileName) ->
-    ?LOG_DEBUG("OldId: ~p, NewId: ~p, ProfileName: ~p", [OldId, NewId, ProfileName]),
+    ?LOG_DEBUG(#{"new_id" => NewId, "profile_name" => ProfileName, "old_id" => OldId}),
     GroupIds = dog_group:get_ids_with_profile_id(OldId),
     Results = lists:map(
         fun(GroupId) ->
@@ -184,7 +184,7 @@ update(Id, UpdateMap) ->
                             reql:replace(X, NewGroup, #{return_changes => always})
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{"message" => "update R", "r" => R}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of

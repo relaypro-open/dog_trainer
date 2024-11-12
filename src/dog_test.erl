@@ -5,7 +5,7 @@
 -export([setup/0, cleanup/1]).
 
 setup() ->
-    ?LOG_INFO("dog_test:setup()"),
+    ?LOG_INFO(#{"message" => "dog_test:setup()"}),
     application:start(sasl),
     application:start(asn1),
     application:start(crypto),

@@ -38,7 +38,6 @@ create(ServiceMap@0) ->
                             reql:insert(X, ServiceMap@0, #{return_changes => always})
                         end
                     ),
-                    ?LOG_DEBUG("create R: ~p~n", [R]),
                     NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
                     {ok, NewVal};
                 {error, Error} ->
@@ -59,7 +58,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOG_DEBUG(#{"message" => "delete R", "r" => R}),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -113,7 +112,7 @@ update(Id, UpdateMap) ->
                             reql:update(X, UpdateMap, #{return_changes => always})
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{"message" => "update R", "r" => R}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of

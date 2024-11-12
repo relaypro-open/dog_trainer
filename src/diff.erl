@@ -40,13 +40,13 @@ diff_changes(A, B) ->
     {ok, TempFileB} = write_to_temp_file(B),
     Cmd = io_lib:format("git diff --no-index --numstat ~s ~s", [TempFileA, TempFileB]),
     Result = os:cmd(Cmd),
-    ?LOG_DEBUG("Result: ~p~s", [Result]),
+    ?LOG_DEBUG(#{"message" => "Result ~s", "result" => Result}),
     Matches = re:run(Result, "(\\d+)\\t(\\d+)\\t.*", [global, {capture, all_but_first, list}]),
-    ?LOG_DEBUG("Matches: ~p~s", [Matches]),
+    ?LOG_DEBUG(#{"matches" => Matches}),
     case Matches of
         {match, [[Adds, Subs]]} ->
             Changes = [list_to_binary(Adds), list_to_binary(Subs)],
-            ?LOG_DEBUG("Changes: ~p~s", [Changes]),
+            ?LOG_DEBUG(#{"changes" => Changes}),
             ok = delete_tempfile(TempFileA),
             ok = delete_tempfile(TempFileB),
             {ok, Changes};

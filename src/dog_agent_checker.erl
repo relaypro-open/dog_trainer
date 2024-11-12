@@ -138,7 +138,7 @@ handle_call(_Request, _From, State) ->
 handle_cast(stop, State) ->
     {stop, normal, State};
 handle_cast(Msg, State) ->
-    ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
+    ?LOG_ERROR(#{"message" => "unknown_message msg", "msg" => Msg, "state" => State}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -158,7 +158,7 @@ handle_info(periodic_reset, State) ->
     imetrics:set_gauge(interval_since_last_agent_update, NewState),
     {noreply, NewState};
 handle_info(Info, State) ->
-    ?LOG_ERROR("unknown_message: Info: ~p, State: ~p", [Info, State]),
+    ?LOG_ERROR(#{"info" => Info, "message" => "unknown_message Info", "state" => State}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -168,7 +168,7 @@ handle_info(Info, State) ->
 %%----------------------------------------------------------------------
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    ?LOG_INFO(#{"message" => "terminate", "reason" => Reason, "state" => State}),
     {close}.
 
 -spec code_change(_, State :: ips_state(), _) -> {ok, State :: ips_state()}.

@@ -159,7 +159,7 @@ hash_check(Host) ->
     case dog_group:get_by_name(GroupName) of
     %Iptables
         {error, notfound} ->
-            ?LOG_INFO("Group not found: ~p",[GroupName]),
+            ?LOG_INFO(#{"group_name" => GroupName, "message" => "Group not found"}),
             {error, notfound};
         {ok, Group} ->
             HostHash4Ipsets = maps:get(<<"hash4_ipsets">>, Host),

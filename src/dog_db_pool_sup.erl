@@ -22,7 +22,7 @@ start_link() ->
 %%====================================================================
 init([]) ->
     {ok, Pools} = application:get_env(dog_trainer, rethinkdb_pools),
-    ?LOG_INFO("Pools: ~p", [Pools]),
+    ?LOG_INFO(#{"pools" => Pools}),
     PoolSpecs = lists:map(
         fun({Name, SizeArgs, WorkerArgs}) ->
             PoolArgs =

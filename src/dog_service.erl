@@ -38,7 +38,7 @@ init() ->
 -spec get(Name :: binary()) -> [map()].
 get(Name) ->
     {ok, ServiceDefinition} = get_by_name(Name),
-    ?LOG_DEBUG("ServiceDefinition: ~p", [ServiceDefinition]),
+    ?LOG_DEBUG(#{"service_definition" => ServiceDefinition}),
     S = maps:get(<<"services">>, ServiceDefinition),
     Services = lists:map(fun(Service) -> parse_service(Service) end, S),
     Services.
@@ -47,21 +47,21 @@ get(Name) ->
 get_name_by_id(<<"any">>) ->
     <<"ANY">>;
 get_name_by_id(Id) ->
-    ?LOG_DEBUG("Id: ~p", [Id]),
+    ?LOG_DEBUG(#{"id" => Id}),
     case get_by_id(Id) of
         {ok, ServiceDefinition} ->
-            ?LOG_DEBUG("ServiceDefinition: ~p", [ServiceDefinition]),
+            ?LOG_DEBUG(#{"service_definition" => ServiceDefinition}),
             Name = maps:get(<<"name">>, ServiceDefinition),
             Name;
         {error, Error} ->
-            ?LOG_ERROR("error, service id not found: ~p, ~p", [Id, Error]),
+            ?LOG_ERROR(#{"error" => Error, "id" => Id, "message" => "error, service id not found"}),
             {error, Error}
     end.
 
 -spec get_id_by_name(Name :: binary()) -> [iolist()].
 get_id_by_name(Name) ->
     {ok, ServiceDefinition} = get_by_name(Name),
-    ?LOG_DEBUG("ServiceDefinition: ~p", [ServiceDefinition]),
+    ?LOG_DEBUG(#{"service_definition" => ServiceDefinition}),
     Id = maps:get(<<"id">>, ServiceDefinition),
     Id.
 
@@ -78,7 +78,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, service name not found: ~p", [Name]),
+            ?LOG_ERROR(#{"message" => "error, service name not found", "name" => Name}),
             {error, notfound};
         _ ->
             {ok, hd(Result)}
@@ -152,14 +152,14 @@ delete(ZoneId) ->
                     reql:delete(X)
                 end
             ),
-            ?LOG_DEBUG("delete R: ~p~n", [R]),
+            ?LOG_DEBUG(#{"message" => "delete R", "r" => R}),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 -> ok;
                 _ -> {error, #{<<"error">> => <<"error">>}}
             end;
         {true, Profiles} ->
-            ?LOG_INFO("service ~p not deleted, in profiles: ~p~n", [ZoneId, Profiles]),
+            ?LOG_INFO(#{"profiles" => Profiles, "message" => "service  not deleted, in profiles", "zone_id" => ZoneId}),
             {error, #{<<"errors">> => #{<<"in active profile">> => Profiles}}}
     end.
 
@@ -178,7 +178,7 @@ update(Id, UpdateMap) ->
                             reql:update(X, UpdateMap)
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{"message" => "update R", "r" => R}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of
@@ -211,7 +211,7 @@ create(ServiceMap@0) ->
                         end
                     ),
                     Key = hd(maps:get(<<"generated_keys">>, R)),
-                    ?LOG_DEBUG("create R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{"message" => "create R", "r" => R}),
                     {ok, Key};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
@@ -292,7 +292,7 @@ where_used_inbound(ServiceId) ->
             Else -> Else
         end,
     ProfileIds = [element(2, dog_ruleset:where_used(RulesId)) || RulesId <- RuleIds],
-    ?LOG_INFO("ProfileIds: ~p~n", [R]),
+    ?LOG_INFO(#{"message" => "ProfileIds", "r" => R}),
 
     {ok, ProfileIds}.
 
@@ -318,7 +318,7 @@ where_used_outbound(ServiceId) ->
             [] -> [];
             Else -> Else
         end,
-    ?LOG_INFO("ProfileIds: ~p~n", [R]),
+    ?LOG_INFO(#{"message" => "ProfileIds", "r" => R}),
     ProfileIds = [element(2, dog_ruleset:where_used(RulesId)) || RulesId <- RuleIds],
     {ok, ProfileIds}.
 

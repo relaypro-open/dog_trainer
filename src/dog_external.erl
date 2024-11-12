@@ -46,7 +46,7 @@
 %% ------------------------------------------------------------------
 -spec start_external_broker_connection(LinkName :: binary()) -> {ok, pid()}.
 start_external_broker_connection(EnvName) ->
-    ?LOG_DEBUG("EnvName: ~p", [EnvName]),
+    ?LOG_DEBUG(#{"env_name" => EnvName}),
     {ok, Link} = dog_link:get_by_name(EnvName),
     turtle_conn:new(turtle_connection_config(Link)).
 
@@ -205,14 +205,14 @@ dump_all_active() ->
                 lists:map(
                     fun(E) ->
                         ExternalName = maps:get(<<"name">>, E),
-                        ?LOG_DEBUG("ExternalName: ~p", [ExternalName]),
+                        ?LOG_DEBUG(#{"external_name" => ExternalName}),
                         case dog_link:get_by_name(ExternalName) of
                             {ok, Map} ->
-                                ?LOG_DEBUG("Map: ~p", [Map]),
+                                ?LOG_DEBUG(#{"map" => Map}),
                                 LinkAddressHandling = maps:get(<<"address_handling">>, Map),
                                 maps:put(<<"address_handling">>, LinkAddressHandling, E);
                             _ ->
-                                ?LOG_DEBUG("E: ~p", [E]),
+                                ?LOG_DEBUG(#{"e" => E}),
                                 E
                         end
                     end,
@@ -241,14 +241,14 @@ dump_all() ->
                 lists:map(
                     fun(E) ->
                         ExternalName = maps:get(<<"name">>, E),
-                        ?LOG_DEBUG("ExternalName: ~p", [ExternalName]),
+                        ?LOG_DEBUG(#{"external_name" => ExternalName}),
                         case dog_link:get_by_name(ExternalName) of
                             {ok, Map} ->
-                                ?LOG_DEBUG("Map: ~p", [Map]),
+                                ?LOG_DEBUG(#{"map" => Map}),
                                 LinkAddressHandling = maps:get(<<"address_handling">>, Map),
                                 maps:put(<<"address_handling">>, LinkAddressHandling, E);
                             _ ->
-                                ?LOG_DEBUG("E: ~p", [E]),
+                                ?LOG_DEBUG(#{"e" => E}),
                                 E
                         end
                     end,
@@ -354,7 +354,7 @@ replace(Id, UpdateMap) ->
                             reql:replace(X, NewExternal3)
                         end
                     ),
-                    ?LOG_DEBUG("replaced R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{"message" => "replaced R", "r" => R}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of

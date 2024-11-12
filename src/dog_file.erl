@@ -12,14 +12,11 @@ read_file(FileName) ->
             {ok, IptablesRuleset} ->
                 {ok, IptablesRuleset};
             {error, Reason} ->
-                %?LOG_ERROR("file error: ~p, ~p", [Reason, FileName]),
                 {error, Reason}
         end
     of
         File -> File
     catch
         ErrorType:ErrorReason:Stacktrace ->
-            ?LOG_ERROR("catch ErrorType:ErrorReason:Stacktrace", [
-                ErrorType, ErrorReason, Stacktrace
-            ])
+            ?LOG_ERROR(#{"message" => "catch", "error_type" => ErrorType, "error_reason" => ErrorReason, "stacktrace" => Stacktrace})
     end.

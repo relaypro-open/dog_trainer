@@ -3,11 +3,8 @@
 -include("dog_trainer.hrl").
 
 -export([
-    %cidr_netmask/1,
-    %cidr_network/1,
     generate_iptables_ruleset/11,
     generate_iptables_ruleset/4,
-    %netmask_cidr/1,
     read_iptables_ruleset_set_v4_from_file/1,
     read_iptables_ruleset_set_v6_from_file/1,
     read_iptables_ruleset_unset_v4_from_file/1,
@@ -65,11 +62,10 @@ generate_iptables_ruleset(
 ) ->
     try
         Docker = get_docker(maps:get(<<"docker">>, ProfileJson, <<"undefined">>)),
-        ?LOG_DEBUG("Docker: ~p", [Docker]),
+        ?LOG_DEBUG(#{"docker" => Docker}),
         ProfileId = maps:get(<<"id">>, ProfileJson),
         ProfileName = maps:get(<<"name">>, ProfileJson),
         InboundJson = maps:get(<<"inbound">>, maps:get(<<"rules">>, ProfileJson)),
-        %?LOG_INFO("InboundJson: ~p",[InboundJson]),
         InboundJsonWithIndex = lists:zip(lists:seq(1, length(InboundJson)), InboundJson),
         InboundRules = lists:map(
             fun({Index, L}) ->
@@ -92,9 +88,8 @@ generate_iptables_ruleset(
                     Rules
                 catch
                     Exception:ExceptionReason:Stacktrace ->
-                        ?LOG_ERROR("Error in profile ~p (~p) rule number: ~p", [
-                            ProfileName, ProfileId, Index
-                        ]),
+                        ?LOG_ERROR(#{"message" => "Error in profile rule number", "profile_name" =>
+                                     ProfileName, "profile_id" => ProfileId, "index" => Index}),
                         ?LOG_ERROR(#{
                             exception => Exception,
                             exceptionreason => ExceptionReason,
@@ -140,9 +135,8 @@ generate_iptables_ruleset(
                             Rules
                         catch
                             Exception:ExceptionReason:Stacktrace ->
-                                ?LOG_ERROR("Error in profile ~p (~p) rule number: ~p", [
-                                    ProfileName, ProfileId, Index
-                                ]),
+                                ?LOG_ERROR(#{"message" => "Error in profile", "profile_name" => ProfileName, "profile_id" =>
+                                             ProfileId, "index" => Index}),
                                 ?LOG_ERROR(#{
                                     exception => Exception,
                                     exceptionreason => ExceptionReason,
@@ -177,9 +171,8 @@ generate_iptables_ruleset(
                     Rules
                 catch
                     Exception:ExceptionReason:Stacktrace ->
-                        ?LOG_ERROR("Error in profile ~p (~p) rule number: ~p", [
-                            ProfileName, ProfileId, Index
-                        ]),
+                        ?LOG_ERROR(#{"message" => "Error in profile", "profile_name" => ProfileName, "profile_id" =>
+                                     ProfileId, "index" => Index}),
                         ?LOG_ERROR(#{
                             exception => Exception,
                             exceptionreason => ExceptionReason,
@@ -300,11 +293,6 @@ forward_header_docker_v4() ->
 outbound_header_v4() ->
     "-A OUTPUT -o lo -m state --state RELATED,ESTABLISHED -m comment --comment \"local any\" -j ACCEPT\n".
 
-%-spec forward() -> string().
-%forward() ->
-%"-A FORWARD -j REJECT --reject-with icmp-port-unreachable
-%".
-
 -spec footer_v4() -> iolist().
 footer_v4() ->
     "COMMIT\n".
@@ -317,33 +305,6 @@ footer_docker_v4() ->
     "-A DOCKER-ISOLATION-STAGE-2 -j RETURN\n"
     "-A DOCKER-USER -j RETURN\n"
     "COMMIT\n".
-%# Completed on " ++ date_string() ++ ".".
-%
-%-spec docker_nat_table_v4() -> iolist().
-%docker_nat_table_v4() ->
-%"*nat
-%:PREROUTING ACCEPT [0:0]
-%:INPUT ACCEPT [0:0]
-%:OUTPUT ACCEPT [0:0]
-%:POSTROUTING ACCEPT [0:0]
-%:DOCKER - [0:0]
-%-A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
-%-A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
-%-A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE
-%-A DOCKER -i docker0 -j RETURN
-%COMMIT
-%".
-
-%-spec blank_nat_table_v4() -> iolist().
-%blank_nat_table_v4() ->
-%"*nat
-%:PREROUTING ACCEPT [0:0]
-%:INPUT ACCEPT [0:0]
-%:OUTPUT ACCEPT [0:0]
-%:POSTROUTING ACCEPT [0:0]
-%:DOCKER - [0:0]
-%COMMIT
-%".
 
 -spec header_v6() -> iolist().
 header_v6() ->
@@ -396,11 +357,6 @@ forward_header_v6() ->
 outbound_header_v6() ->
     "-A OUTPUT -p udp -m udp --dport 53 -j ACCEPT\n"
     "-A OUTPUT -p tcp -m tcp --dport 53 -j ACCEPT\n".
-
-%-spec forward() -> string().
-%forward() ->
-%"-A FORWARD -j REJECT --reject-with icmp-port-unreachable
-%".
 
 -spec footer_v6() -> iolist().
 footer_v6() ->
@@ -463,7 +419,6 @@ json_to_rules(
                 <<" ">> ->
                     [];
                 ServiceId ->
-                    %?LOG_INFO("ServiceId: ~p",[ServiceId]),
                     %ServiceName = case bin_uppercase(dog_service:get_name_by_id(ServiceId)) of
                     ServiceName = get_service_name(ServiceId, ServiceIdMap),
                     %{ok, ServiceDefinition} = get_service_by_id(ServiceId),
@@ -485,7 +440,7 @@ json_to_rules(
                         ZoneIdMap,
                         SelfGroupName
                     ),
-                    ?LOG_DEBUG("Rules: ~p~n", [Rules]),
+                    ?LOG_DEBUG(#{"rules" => Rules}),
                     Rules
             end
     end.
@@ -534,10 +489,7 @@ json_to_rule(
                         EnvSep = <<"#">>,
                         <<Environment/bitstring, EnvSep/bitstring, LocalGroup/bitstring>>
                 end,
-            %?LOG_INFO("Group: ~p",[Group]),
             GroupType = maps:get(<<"group_type">>, Json),
-            %?LOG_INFO("GroupType: ~p",[GroupType]),
-            %{ok, GroupName} = case GroupType of
             GroupName =
                 case Environment of
                     <<"local">> ->
@@ -545,7 +497,6 @@ json_to_rule(
                     _ ->
                         Group
                 end,
-            %?LOG_INFO("GroupName: ~p",[GroupName]),
             Sep = <<"_">>,
             %TODO: fix ipsetname to match dog_ipset module name
             IpsetName = get_ipset_name(GroupName, GroupType, Sep, Version),
@@ -564,7 +515,6 @@ json_to_rule(
             PortParameter = get_port_parameter(Protocol, MultiplePorts, Direction, ProtocolModule),
             SourceParameter = get_source_parameter(Direction),
             InterfaceString = get_interface(maps:get(<<"interface">>, Json)),
-            %?LOG_DEBUG("InterfaceString: ~p~n",[InterfaceString]),
             Interface = get_interface(InterfaceString, Direction),
             Action = get_action(maps:get(<<"action">>, Json), Version, RuleType),
             CommentJson = get_comment(maps:get(<<"comment">>, Json)),
@@ -798,8 +748,6 @@ generate_basic_rule_unset(
                             %{ok, Addresses} = dog_group:get_all_ipv4s_by_id(Group),
                             lists:reverse(Addresses)
                     end,
-                %?LOG_INFO("Group: ~p",[Group]),
-                %?LOG_INFO("RoleAddresses: ~p",[RoleAddresses]),
                 lists:map(
                     fun(X) ->
                         io_lib:format("-A ~s ~s ~s~s~s~s ~s~s~s -j ~s~n", [
@@ -818,7 +766,6 @@ generate_basic_rule_unset(
                     RoleAddresses
                 )
         end,
-    %?LOG_INFO("Rule: ~p",[Rule]),
     Rule.
 %BAD:
 %-A OUTPUT -m set --match-set all-active_g_v4 src -p tcp -m tcp --sport 8301 -m state --state RELATED,ESTABLISHED -m comment --comment serf_raft_tcp
@@ -1198,10 +1145,10 @@ get_port_parameter(Protocol, MultiplePorts, Direction, ProtocolModule) ->
         ])
     of
         false ->
-            ?LOG_DEBUG("Protocol: ~p not in list", [Protocol]),
+            ?LOG_DEBUG(#{"message" => "Protocol not in list", "protocol" => Protocol}),
             io_lib:format("", []);
         true ->
-            ?LOG_DEBUG("Protocol: ~p is in list", [Protocol]),
+            ?LOG_DEBUG(#{"message" => "Protocol is in list", "protocol" => Protocol}),
             case Protocol of
                 <<"icmp">> ->
                     " -m icmp --icmp-type";
@@ -1292,7 +1239,7 @@ get_active(Active) ->
 
 -spec get_states(States :: iolist(), Symmetric :: boolean()) -> 'error' | string().
 get_states(States, Symmetric) ->
-    ?LOG_DEBUG("States: ~p~n", [States]),
+    ?LOG_DEBUG(#{"states" => States}),
     case States of
         [] ->
             case Symmetric of
@@ -1346,7 +1293,6 @@ get_service(Service) ->
 
 -spec get_ports(iolist()) -> iolist().
 get_ports(Ports) ->
-    %?LOG_INFO("Ports: ~p",[Ports]),
     lists:join(",", [binary_to_list(X) || X <- Ports]).
 
 -spec get_interface(binary()) -> binary().
@@ -1413,7 +1359,7 @@ read_iptables_ruleset_set_v4_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
          {error, Error} ->
-             ?LOG_ERROR("Error: ~p",[Error])
+             ?LOG_ERROR(#{"error" => Error})
      end.
 -spec read_iptables_ruleset_set_v6_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_set_v6_from_file(GroupName) ->
@@ -1422,7 +1368,7 @@ read_iptables_ruleset_set_v6_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
          {error, Error} ->
-             ?LOG_ERROR("Error: ~p",[Error])
+             ?LOG_ERROR(#{"error" => Error})
      end.
 -spec read_iptables_ruleset_unset_v4_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_unset_v4_from_file(GroupName) ->
@@ -1431,7 +1377,7 @@ read_iptables_ruleset_unset_v4_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
          {error, Error} ->
-             ?LOG_ERROR("Error: ~p",[Error])
+             ?LOG_ERROR(#{"error" => Error})
      end.
 -spec read_iptables_ruleset_unset_v6_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_unset_v6_from_file(GroupName) ->
@@ -1440,7 +1386,7 @@ read_iptables_ruleset_unset_v6_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
          {error, Error} ->
-             ?LOG_ERROR("Error: ~p",[Error])
+             ?LOG_ERROR(#{"error" => Error})
      end.
 
 %%%--------------------------------------------------------------------

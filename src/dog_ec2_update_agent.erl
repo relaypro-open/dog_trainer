@@ -91,7 +91,7 @@ handle_cast({add_to_queue, Groups}, State) ->
     NewState = ordsets:union(ordsets:from_list(Groups), State),
     {noreply, NewState};
 handle_cast(Msg, State) ->
-    ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
+    ?LOG_ERROR(#{"message" => "unknown_message Msg", "msg" => Msg, "state" => State}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -103,7 +103,7 @@ handle_cast(Msg, State) ->
 % TODO: be more specific about Info in spec
 -spec handle_info(_, _) -> {'noreply', _}.
 handle_info(Info, State) ->
-    ?LOG_ERROR("unknown_message: Info: ~p, State: ~p", [Info, State]),
+    ?LOG_ERROR(#{"info" => Info, "message" => "unknown_message Info", "state" => State}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -113,7 +113,7 @@ handle_info(Info, State) ->
 %%----------------------------------------------------------------------
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    ?LOG_INFO(#{"message" => "terminate", "reason" => Reason, "state" => State}),
     {close}.
 
 -spec code_change(_, State :: ips_state(), _) -> {ok, State :: ips_state()}.
@@ -127,7 +127,7 @@ code_change(_OldVsn, State, _Extra) ->
 get_ec2_security_groups(Region) ->
     Config = dog_ec2_sg:config(Region),
     Result = erlcloud_ec2:describe_security_groups([], [], [], Config),
-    ?LOG_DEBUG("Result: ~p~n", [Result]),
+    ?LOG_DEBUG(#{"result" => Result}),
     case Result of
         {ok, R} ->
             {ok, R};

@@ -18,7 +18,7 @@
 
 -spec update_group_iptables(GroupZoneName :: binary(), GroupType :: binary()) -> 'ok'.
 update_group_iptables(GroupZoneName, GroupType) ->
-    ?LOG_INFO("GroupZoneName: ~p", [GroupZoneName]),
+    ?LOG_INFO(#{"group_zone_name" => GroupZoneName}),
     Groups =
         case application:get_env(dog_trainer, generate_unset_tables, true) of
             true ->
@@ -46,15 +46,15 @@ update_group_iptables(GroupZoneName, GroupType) ->
                     end,
                 GroupsList
         end,
-    ?LOG_INFO("Effected Groups: ~p", [Groups]),
-    ?LOG_INFO("add_to_queue: ~p", [Groups]),
+    ?LOG_INFO(#{"groups" => Groups, "message" => "Effected Groups"}),
+    ?LOG_INFO(#{"groups" => Groups, "message" => "add_to_queue"}),
     dog_profile_update_agent:add_to_queue(Groups),
     ok.
 
 -spec update_group_ec2_sgs(GroupZoneName :: binary()) -> 'ok'.
 update_group_ec2_sgs(GroupZoneName) ->
     {ok, GroupList} = dog_group:role_group_effects_groups(GroupZoneName),
-    ?LOG_DEBUG("GroupList: ~p~n", [GroupList]),
+    ?LOG_DEBUG(#{"group_list" => GroupList}),
     plists:map(
         fun(Group) ->
             dog_ec2_sg:publish_ec2_sg_by_name(Group)
@@ -64,7 +64,7 @@ update_group_ec2_sgs(GroupZoneName) ->
 
 -spec update_all_iptables() -> 'ok'.
 update_all_iptables() ->
-    ?LOG_DEBUG("update_all_iptables:start"),
+    ?LOG_DEBUG(#{"message" => "update_all_iptables:start"}),
     {ok, Groups} = dog_group:get_active_groups(),
     GroupNames = [maps:get(<<"name">>, Group) || Group <- Groups],
     ChunkedGroupNames = chunk_list(GroupNames, 2),
@@ -75,7 +75,7 @@ update_all_iptables() ->
         end,
         ChunkedGroupNames
     ),
-    ?LOG_DEBUG("update_all_iptables:end"),
+    ?LOG_DEBUG(#{"message" => "update_all_iptables:end"}),
     ok.
 
 chunk_list(List) ->
@@ -132,7 +132,7 @@ backup_iptables_ruleset4() ->
     Result = os:cmd(Cmd),
     case Result of
         [] ->
-            ?LOG_INFO("iptables backed up"),
+            ?LOG_INFO(#{"message" => "iptables backed up"}),
             ok;
         _ ->
             error
@@ -143,7 +143,7 @@ update_iptables4(TempFile) ->
     ok = backup_iptables_ruleset4(),
     ok = delete_iptables_tempfile(TempFile),
     %TODO
-    ?LOG_INFO("Iptables updated."),
+    ?LOG_INFO(#{"message" => "Iptables updated."}),
     ok.
 
 -spec valid_iptables() -> binary().
@@ -187,7 +187,7 @@ publish_to_queue(
     R6IptablesIptablesRuleset,
     Ipsets
 ) ->
-    ?LOG_INFO("RoutingKey: ~p", [RoutingKey]),
+    ?LOG_INFO(#{"routing_key" => RoutingKey}),
     UserData = #{
         ruleset4_ipset => R4IpsetsIptablesRuleset,
         ruleset6_ipset => R6IpsetsIptablesRuleset,

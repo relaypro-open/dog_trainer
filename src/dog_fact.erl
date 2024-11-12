@@ -38,7 +38,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, fact name not found: ~p", [Name]),
+            ?LOG_ERROR(#{"message" => "error, fact name not found", "name" => Name}),
             {error, notfound};
         _ ->
             Fact = hd(Result),
@@ -72,7 +72,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOG_DEBUG(#{"message" => "delete R", "r" => R}),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -126,7 +126,7 @@ create(FactMap@0) ->
                         end
                     ),
                     Key = hd(maps:get(<<"generated_keys">>, R)),
-                    ?LOG_DEBUG("create R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{"message" => "create R", "r" => R}),
                     {ok, Key};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),

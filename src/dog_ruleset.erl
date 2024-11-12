@@ -52,7 +52,7 @@ create(RulesMap) ->
                         end
                     ),
                     Key = hd(maps:get(<<"generated_keys">>, R)),
-                    ?LOG_DEBUG("create R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{"message" => "create R", "r" => R}),
                     {ok, Key};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
@@ -97,7 +97,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, rules name not found: ~p", [Name]),
+            ?LOG_ERROR(#{"message" => "error, rules name not found", "name" => Name}),
             {error, notfound};
         _ ->
             Rules = hd(Result),
@@ -150,7 +150,7 @@ get_by_id(Id) ->
     ),
     case R of
         {ok, null} ->
-            ?LOG_DEBUG("rules id null return value: ~p", [Id]),
+            ?LOG_DEBUG(#{"id" => Id, "message" => "rules id null return value"}),
             {error, notfound};
         {ok, Rules} ->
             {ok, Rules}
@@ -160,7 +160,7 @@ get_by_id(Id) ->
     {false, atom()} | {validation_error, iolist()} | {true, binary()}.
 update(Id, UpdateMap) ->
     ?LOG_DEBUG(#{id => Id, updatemap => UpdateMap}),
-    ?LOG_INFO("update_in_place"),
+    ?LOG_INFO(#{"message" => "update_in_place"}),
     case get_by_id(Id) of
         {ok, OldRules} ->
             NewRules = maps:merge(OldRules, UpdateMap),
@@ -174,7 +174,7 @@ update(Id, UpdateMap) ->
                             reql:update(X, UpdateMap)
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{"message" => "update R", "r" => R}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of
@@ -200,7 +200,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOG_DEBUG(#{"message" => "delete R", "r" => R}),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -212,7 +212,7 @@ rule_to_text(Rule, Keys) ->
     Values = lists:map(
         fun(L) ->
             Value = maps:get(L, Rule),
-            ?LOG_DEBUG("Key: ~p Value: ~p~n", [L, Value]),
+            ?LOG_DEBUG(#{"value" => Value, "key" => L}),
             case L of
                 <<"group">> ->
                     case Value of
@@ -300,7 +300,7 @@ get_by_profile_id(ProfileId) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, no ruleset associated with profile: ~p", [ProfileId]),
+            ?LOG_ERROR(#{"message" => "error, no ruleset associated with profile", "profile_id" => ProfileId}),
             {error, notfound};
         _ ->
             Rules = hd(Result),

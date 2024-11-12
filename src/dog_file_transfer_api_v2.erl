@@ -212,11 +212,11 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
 stream_file(Req, IoDevice) ->
     case cowboy_req:read_part_body(Req) of
         {ok, Body, Req2} ->
-            ?LOG_DEBUG(<<"part_body ok">>),
+            ?LOG_DEBUG(#{"message" => "part_body ok"}),
             file:write(IoDevice, Body),
             Req2;
         {more, Body, Req2} ->
-            ?LOG_DEBUG(<<"part_body more">>),
+            ?LOG_DEBUG(#{"message" => "part_body more"}),
             file:write(IoDevice, Body),
             stream_file(Req2, IoDevice)
     end.

@@ -23,7 +23,7 @@
 create(FactMap@0) ->
     case dog_json_schema:validate(?VALIDATION_TYPE, FactMap@0) of
         ok ->
-            ?LOG_DEBUG("create: ~p",[FactMap@0]),
+            ?LOG_DEBUG(#{"fact_map@0" => FactMap@0, "message" => "create"}),
             Name = maps:get(<<"name">>, FactMap@0),
             {ok, ExistingFacts} = get_all(),
             ExistingNames = [maps:get(<<"name">>, Fact) || Fact <- ExistingFacts],
@@ -56,7 +56,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOG_DEBUG(#{"message" => "delete R", "r" => R}),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -105,7 +105,7 @@ update(Id, UpdateMap@0) ->
                             reql:replace(X, NewFact, #{return_changes => always})
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{"message" => "update R", "r" => R}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of

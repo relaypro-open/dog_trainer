@@ -22,11 +22,10 @@ start(_StartType, _StartArgs) ->
 
 %%--------------------------------------------------------------------
 prep_stop(_State) ->
-    %?LOG_INFO("Stopping consumer of inbound queue"),
     %supervisor:terminate_child(dog_thumper_sup, ips),
-    ?LOG_INFO("Waiting for outbound queue to clear"),
+    ?LOG_INFO(#{"message" => "Waiting for outbound queue to clear"}),
     wait_for_queue_empty(),
-    ?LOG_INFO("Stopping dog_trainer").
+    ?LOG_INFO(#{"message" => "Stopping dog_trainer"}).
 
 stop(_State) ->
     ok.
@@ -39,7 +38,7 @@ wait_for_queue_empty() ->
         0 ->
             true;
         QueueLength ->
-            ?LOG_INFO("Outbound queue length: ~p", [QueueLength]),
+            ?LOG_INFO(#{"message" => "Outbound queue length", "queue_length" => QueueLength}),
             PollTimeMilliseconds =
                 application:get_env(dog_trainer, queue_poll_time_seconds, 5) * 1000,
             timer:sleep(PollTimeMilliseconds),

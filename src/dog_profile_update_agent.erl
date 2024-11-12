@@ -105,7 +105,7 @@ handle_cast({add_to_queue, Groups}, State) ->
     NewState = ordsets:union(ordsets:from_list(Groups), State),
     {noreply, NewState};
 handle_cast(Msg, State) ->
-    ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
+    ?LOG_ERROR(#{"message" => Msg, "state" => State}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -124,7 +124,7 @@ handle_info(periodic_publish, State) ->
     erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     {noreply, NewState};
 handle_info(Info, State) ->
-    ?LOG_ERROR("unknown_message: Info: ~p, State: ~p", [Info, State]),
+    ?LOG_ERROR(#{"info" => Info, "state" => State}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -134,7 +134,7 @@ handle_info(Info, State) ->
 %%----------------------------------------------------------------------
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    ?LOG_INFO(#{"reason" => Reason, "state" => State}),
     {close}.
 
 -spec code_change(_, State :: ips_state(), _) -> {ok, State :: ips_state()}.
@@ -152,7 +152,7 @@ do_periodic_publish([]) ->
 do_periodic_publish(State) ->
     case dog_agent_checker:check() of
         true ->
-            ?LOG_INFO("State: ~p", [State]),
+            ?LOG_INFO(#{"state" => State}),
             Groups = ordsets:to_list(State),
             imetrics:set_gauge(publish_queue_length, length(Groups)),
             PeriodicPublishMax = application:get_env(dog_trainer, periodic_publish_max, 10),
@@ -169,15 +169,6 @@ do_periodic_publish(State) ->
             {Ipv4RoleMap, Ipv6RoleMap, Ipv4ZoneMap, Ipv6ZoneMap, ZoneIdMap, GroupIdMap,
                 ServiceIdMap} = dog_ipset:id_maps(),
             {MergedIpsets, _InternalIpsets} = dog_ipset:create_ipsets(),
-            %Publish ipsets even if the Group doesn't have an associated Profile:
-            %NonBlankGroups = lists:filter(fun(Group) -> Group =/= <<>> end, Groups),
-            %?LOG_INFO("NonBlankGroups: ~p",[NonBlankGroups]),
-            %case length(NonBlankGroups) > 0 of
-            %  true ->
-            %    dog_ipset:update_ipsets(all_envs);
-            %  false ->
-            %    dog_ipset:update_ipsets(local_env)
-            %end,
             dog_ipset:update_ipsets(all_envs),
             % Deliberately set to empty set, so agent will not update ipsets.
             EmptyIpsets = [],
@@ -221,15 +212,15 @@ do_periodic_publish(State) ->
                         end
                     catch
                         profile_not_found ->
-                            ?LOG_INFO("profile_not_found in group: ~p", [Group]),
+                            ?LOG_INFO(#{message => "profile_not_found in group", "group" => Group}),
                             {Group, profile_not_found}
                     end
                 end,
                 GroupsWithoutEmptyProfiles
             ),
-            ?LOG_INFO("PublishList: ~p", [PublishList]),
+            ?LOG_INFO(#{"publish_list" => PublishList}),
             {ok, ordsets:from_list(LeftoverGroups)};
         false ->
-            ?LOG_INFO("Skipping, dog_agent_checker:check() false"),
+            ?LOG_INFO(#{"message" => "Skipping, dog_agent_checker:check() false"}),
             {ok, State}
     end.
