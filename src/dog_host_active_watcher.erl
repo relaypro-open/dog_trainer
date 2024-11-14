@@ -93,14 +93,13 @@ handle_connection_down(State) ->
     {noreply, State}.
 
 handle_query_result(Result, State) ->
-    ?LOG_INFO(#{"result" => Result}),
     case Result of
         null ->
             pass;
         [] ->
             pass;
         _ ->
-            ?LOG_INFO(#{"result" => Result}),
+            ?LOG_DEBUG(#{"result" => Result}),
             Hostkeys = lists:map(
                 fun(Entry) ->
                     case maps:get(<<"new_val">>, Entry, null) of
@@ -138,7 +137,7 @@ handle_query_result(Result, State) ->
                             pass;
                         _ ->
                             imetrics:add_m(watcher, host_active_update),
-                            ?LOG_INFO(#{"group_names" => GroupNames, "message" => "add_to_queue"}),
+                            ?LOG_DEBUG(#{"group_names" => GroupNames, "message" => "add_to_queue"}),
                             dog_profile_update_agent:add_to_queue(GroupNames)
                     end
             end

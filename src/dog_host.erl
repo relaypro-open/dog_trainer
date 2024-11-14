@@ -60,7 +60,7 @@ keepalive_check(TimeCutoff) ->
         #{<<"id">> => Id, <<"name">> => Name, <<"keepalive_timestamp">> => TimeStamp}
      || {Id, Name, TimeStamp} <- ZippedList, TimeStamp < TimeCutoff
     ],
-    ?LOG_INFO(#{old_agents => OldAgents}),
+    ?LOG_DEBUG(#{old_agents => OldAgents}),
     {ok, OldAgents}.
 
 -spec filter_out_retired_hosts(HostsGroups :: list(map()) ) -> AlertHosts :: list(map()).
@@ -90,7 +90,7 @@ retirement_check(TimeCutoff) ->
         #{<<"id">> => Id, <<"name">> => Name, <<"keepalive_timestamp">> => TimeStamp}
      || {Id, Name, TimeStamp} <- ZippedList, TimeStamp < TimeCutoff
     ],
-    ?LOG_INFO(#{old_agents => OldAgents}),
+    ?LOG_DEBUG(#{old_agents => OldAgents}),
     {ok, OldAgents}.
 
 -spec hash_fail_count_check(HostId :: binary(), HashCheck :: (true | false), HashStatus :: map()) ->
@@ -159,7 +159,7 @@ hash_check(Host) ->
     case dog_group:get_by_name(GroupName) of
     %Iptables
         {error, notfound} ->
-            ?LOG_INFO(#{"group_name" => GroupName, "message" => "Group not found"}),
+            ?LOG_ERROR(#{"group_name" => GroupName, "message" => "Group not found"}),
             {error, notfound};
         {ok, Group} ->
             HostHash4Ipsets = maps:get(<<"hash4_ipsets">>, Host),
@@ -339,7 +339,7 @@ keepalive_age_check(TimeCutoff) ->
         #{<<"id">> => Id, <<"name">> => Name, <<"keepalive_timestamp">> => TimeStamp}
      || {Id, Name, TimeStamp} <- ZippedList, TimeStamp < TimeCutoff
     ],
-    ?LOG_INFO(#{old_agents => OldAgents}),
+    ?LOG_DEBUG(#{old_agents => OldAgents}),
     {ok, OldAgents}.
 
 -spec iptables_hash_logic(
@@ -370,7 +370,7 @@ send_retirement_alert(Host) ->
                        end,
     case RetirementAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
-            ?LOG_INFO(#{host => Host}),
+            ?LOG_DEBUG(#{host => Host}),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
             HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
             ?LOG_INFO(#{message => "Retirement alert sent", host_name => HostName, host_key =>
@@ -417,7 +417,7 @@ send_keepalive_alert(Host) ->
                        end,
     case KeepaliveAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
-            ?LOG_INFO(#{host => Host}),
+            ?LOG_DEBUG(#{host => Host}),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
             HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
             ?LOG_INFO(#{message => "Keepalive disconnect alert sent", host_name => HostName,
@@ -464,7 +464,7 @@ send_keepalive_recover(Host) ->
                        end,
     case KeepaliveAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
-            ?LOG_INFO(#{host => Host}),
+            ?LOG_DEBUG(#{host => Host}),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
             HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
             ?LOG_INFO(#{message => "Keepalive recovery alert sent", host_name => HostName,
@@ -517,7 +517,7 @@ send_hash_alert(Host, HashStatus) ->
                        end,
     case HashAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
-            ?LOG_INFO(#{host => Host}),
+            ?LOG_DEBUG(#{host => Host}),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
             HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
             {ok, IpsetHashes} = dog_ipset:latest_hash(),
@@ -558,7 +558,7 @@ send_hash_recover(Host, HashStatus) ->
     HashAlertEnabled = application:get_env(dog_trainer, hash_alert_enabled, true),
     case HashAlertEnabled of
         true ->
-            ?LOG_INFO(#{host => Host}),
+            ?LOG_DEBUG(#{host => Host}),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
             HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
             GroupName = maps:get(<<"group">>, Host),
@@ -923,7 +923,7 @@ get_all_active_interfaces() ->
     ),
     {ok, Result} = rethink_cursor:all(R),
     Interfaces = lists:flatten(Result),
-    ?LOG_INFO(#{interfaces => Interfaces}),
+    ?LOG_DEBUG(#{interfaces => Interfaces}),
     Interfaces@1 = dog_group:merge(Interfaces),
     case Interfaces@1 of
         [] -> {ok, []};

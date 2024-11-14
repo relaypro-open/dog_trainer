@@ -211,7 +211,7 @@ latest_hash() ->
 
 -spec create(IpsetHash :: binary()) -> {ok, pid()}.
 create(Hash) ->
-    ?LOG_INFO(#{"hash" => Hash}),
+    ?LOG_DEBUG(#{"hash" => Hash}),
     Timestamp = dog_time:timestamp(),
     {ok, R} = dog_rethink:run(
         fun(X) ->

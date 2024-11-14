@@ -62,8 +62,7 @@ loop(_RoutingKey, _CType, Payload, State) ->
         UserData = proplists:get_value(user_data, Proplist),
         ?LOG_DEBUG(#{userdata => UserData}),
         Config = maps:get(config, UserData),
-        ?LOG_DEBUG(#{config => Config}),
-        ?LOG_DEBUG(#{dog_state_from_map => dog_state:from_map(Config)}),
+        ?LOG_DEBUG(#{config => Config, dog_state_from_map => dog_state:from_map(Config)}),
         GroupName = maps:get(<<"group">>, Config),
         UpdateType = maps:get(<<"updatetype">>, Config),
         imetrics:add_m(ips_update, erlang:atom_to_list(UpdateType)),
@@ -87,17 +86,18 @@ loop(_RoutingKey, _CType, Payload, State) ->
                 end,
                 case UpdateType of
                     force ->
-                        ?LOG_INFO(#{message => "update", hostkey => Hostkey}),
+                        ?LOG_INFO([{message, "update"}, {hostkey, Hostkey}, {hostname, Hostname} ]),
+                        ?LOG_INFO(#{message => "update", hostkey => Hostkey, hostname => Hostname }),
                         dog_host:update_by_hostkey(Hostkey, Config),
                         dog_ipset_update_agent:queue_force(),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     update ->
-                        ?LOG_INFO(#{message => "update", hostkey => Hostkey}),
+                        ?LOG_INFO(#{message => "update", hostkey => Hostkey, hostname => Hostname }),
                         dog_host:update_by_hostkey(Hostkey, Config),
                         dog_ipset_update_agent:queue_update(),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     keepalive ->
-                        ?LOG_INFO(#{message => "keepalive", hostkey => Hostkey}),
+                        ?LOG_INFO(#{message => "keepalive", hostkey => Hostkey, hostname => Hostname }),
                         dog_host:update_by_hostkey(Hostkey, Config)
                 end;
             {error, Reason} ->
@@ -112,7 +112,7 @@ loop(_RoutingKey, _CType, Payload, State) ->
                                              hostkey => Hostkey})
                         end;
                     _ ->
-                        ?LOG_INFO(#{message => "Host update for unknown host", reason => Reason,
+                        ?LOG_ERROR(#{message => "Host update for unknown host", reason => Reason,
                                   hostkey => Hostkey})
                 end
         end,
@@ -134,18 +134,17 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
     try
         Proplist = binary_to_term(Payload),
         UserData = proplists:get_value(user_data, Proplist),
-        ?LOG_INFO(#{userdata => UserData}),
         Config = maps:get(config, UserData),
-        ?LOG_INFO(#{config => Config}),
+        ?LOG_DEBUG(#{config => Config}),
         DogStateFromConfig = dog_state:from_map(Config),
-        ?LOG_INFO(#{dog_state_from_config => DogStateFromConfig}),
+        ?LOG_DEBUG(#{dog_state_from_config => DogStateFromConfig}),
         GroupName = maps:get(<<"group">>, Config),
         UpdateType = maps:get(<<"updatetype">>, Config),
         imetrics:add_m(ips_update, erlang:atom_to_list(UpdateType)),
-        ?LOG_INFO(#{updatetype => UpdateType}),
+        ?LOG_DEBUG(#{updatetype => UpdateType}),
         Hostname = maps:get(<<"name">>, Config),
         Hostkey = maps:get(<<"hostkey">>, Config),
-        ?LOG_INFO(#{hostname => Hostname, hostkey => Hostkey}),
+        ?LOG_DEBUG(#{hostname => Hostname, hostkey => Hostkey}),
         dog_config:update_host_keepalive(Hostkey),
         case dog_host:get_by_hostkey(Hostkey) of
             {ok, HostExists} ->
@@ -181,10 +180,10 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
                                 ?LOG_INFO(#{"hostkey" => Hostkey, "message" => "New host reporting"}),
                                 dog_host:create(Config);
                             false ->
-                                ?LOG_INFO(#{"hostkey" => Hostkey, "message" => "Auto Host registration disabled - Unknown host reporting"})
+                                ?LOG_ERROR(#{"hostkey" => Hostkey, "message" => "Auto Host registration disabled - Unknown host reporting"})
                         end;
                     _ ->
-                        ?LOG_INFO(#{"hostkey" => Hostkey, "message" => "Host update for unknown host", reason => Reason})
+                        ?LOG_ERROR(#{"hostkey" => Hostkey, "message" => "Host update for unknown host", reason => Reason})
                 end
         end,
         dog_agent_checker:go()
