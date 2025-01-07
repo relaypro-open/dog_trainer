@@ -34,7 +34,9 @@
         erlsom,
         cache_tab,
         flatlog,
-        eel
+        logger_formatter_json,
+        tuplelog,
+        sync
     ]},
     {env, []},
     {modules, []},
