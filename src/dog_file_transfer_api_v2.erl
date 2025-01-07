@@ -115,9 +115,9 @@ resource_exists(Req, State) ->
                     _ ->
                         undefined
                 end,
-            ?LOG_DEBUG("ID: ~p, Path:~p", [Id, Path]),
+            ?LOGT_DEBUG("ID: ~p, Path:~p", [{id,Id}, {path,Path}]),
             Opts = [{api_user, ApiUserName}],
-            case dog_file_transfer_worker:fetch_file(Path, Id, Opts) of
+            case dog_file_transfer:fetch_file(Path, Id, Opts) of
                 timeout ->
                     Req@2 = cowboy_req:reply(
                         500,
@@ -201,7 +201,7 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
                         {ok, IoDevice} = file:open(LocalFilePath, [raw, write, binary]),
                         Req5 = stream_file(Req2, IoDevice),
                         file:close(IoDevice),
-                        dog_file_transfer_worker:send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts),
+                        dog_file_transfer:send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts),
                         [Req5, RemoteFilePath]
                 end,
             acc_multipart(Hostkey, Req4, [{Headers, Body} | Acc], Opts);
@@ -273,10 +273,10 @@ delete_resource(Req@0, State) ->
             _ ->
                 undefined
         end,
-    ?LOG_DEBUG("ID: ~p, Path:~p", [Id, Path]),
+    ?LOGT_DEBUG("ID: ~p, Path:~p", [{id,Id}, {path,Path}]),
     Opts = [{api_user, ApiUserName}],
     {Result, Req@1} =
-        case dog_file_transfer_worker:delete_file(Path, Id, Opts) of
+        case dog_file_transfer:delete_file(Path, Id, Opts) of
             ok ->
                 {true, Req@0};
             timeout ->

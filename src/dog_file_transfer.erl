@@ -51,7 +51,7 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
         ] ++ Opts
     ),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    CommandExecutionTimeout = application:get_env(dog_trainer, command_execution_timeout_ms, 30000),
+    CommandExecutionTimeout = application:get_env(dog_trainer, command_execution_timeout_ms, 60000),
     Response =
         case
             turtle:rpc_sync(
@@ -89,7 +89,7 @@ delete_file(FilePath, Hostkey, Opts) ->
 
 -spec publish_file_delete(Hostkey :: string(), Filename :: string(), Opts :: list()) -> any().
 publish_file_delete(Hostkey, Filename, Opts) ->
-    FileDeleteTimeout = application:get_env(dog_trainer, file_delete_timeout_ms, 5000),
+    FileDeleteTimeout = application:get_env(dog_trainer, file_delete_timeout_ms, 60000),
     Pid = erlang:self(),
     Message = term_to_binary(
         [
@@ -231,7 +231,7 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
         ] ++ Opts
     ),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    FileTransferTimeout = application:get_env(dog_trainer, file_transfer_timeout_ms, 30000),
+    FileTransferTimeout = application:get_env(dog_trainer, file_transfer_timeout_ms, 60000),
     case
         turtle:rpc_sync(
             file_transfer_publisher,
