@@ -12,7 +12,7 @@
 publish_host_config(Hostkey) ->
     case dog_host:get_by_hostkey(Hostkey) of
         {ok, ConfigMap} ->
-            ?LOG_INFO("ConfigMap: ~p~n", [ConfigMap]),
+            ?LOGT_INFO("ConfigMap: ~p~n", [{config_map,ConfigMap}]),
             UserData = #{config => ConfigMap},
             Count = 1,
             Pid = erlang:self(),
@@ -56,8 +56,8 @@ update_host_keepalive(Hostkey) ->
     IpsetHash :: iolist()
 ) -> ok.
 update_host_hashes(Hostname, Hash4Ipsets, Hash6Ipsets, Hash4Iptables, Hash6Iptables, IpsetHash) ->
-    ?LOG_DEBUG("Hostname: ~p, Hashes: ~p,~p,~p,~p,~p", [
-        Hostname, Hash4Ipsets, Hash6Ipsets, Hash4Iptables, Hash6Iptables, IpsetHash
+    ?LOGT_DEBUG("Hostname: ~p, Hashes: ~p,~p,~p,~p,~p", [
+        {hostname,Hostname}, {hash4_ipsets,Hash4Ipsets}, {hash6_ipsets,Hash6Ipsets}, {hash4_iptables,Hash4Iptables}, {hash6_iptables,Hash6Iptables}, {ipset_hash,IpsetHash}
     ]),
     %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
     %{ok, Connection} = gen_rethink_session:get_connection(dog_session),

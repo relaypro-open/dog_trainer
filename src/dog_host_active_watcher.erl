@@ -77,7 +77,7 @@ init([]) ->
 handle_connection_up(Connection, State) ->
     {ok, RethinkSquashSec} = application:get_env(dog_trainer, rethink_squash_sec),
     ?LOG_DEBUG("handle_connection_up"),
-    ?LOG_DEBUG("Connection: ~p", [Connection]),
+    ?LOGT_DEBUG("Connection: ~p", [{connection,Connection}]),
     Reql = reql:db(<<"dog">>),
     reql:table(Reql, <<"host">>),
     reql:pluck(Reql, [<<"name">>, <<"active">>, <<"hostkey">>]),
@@ -93,14 +93,14 @@ handle_connection_down(State) ->
     {noreply, State}.
 
 handle_query_result(Result, State) ->
-    ?LOG_INFO("Result: ~p", [Result]),
+    ?LOGT_INFO("Result: ~p", [{result,Result}]),
     case Result of
         null ->
             pass;
         [] ->
             pass;
         _ ->
-            ?LOG_INFO("Result: ~p", [Result]),
+            ?LOGT_INFO("Result: ~p", [{result,Result}]),
             Hostkeys = lists:map(
                 fun(Entry) ->
                     case maps:get(<<"new_val">>, Entry, null) of
@@ -114,7 +114,7 @@ handle_query_result(Result, State) ->
             ),
             case Hostkeys of
                 [] ->
-                    ?LOG_ERROR("No Hostkeys found in changefeed: ~p", [Result]),
+                    ?LOGT_ERROR("No Hostkeys found in changefeed: ~p", [{result,Result}]),
                     pass;
                 _ ->
                     GroupNames = lists:map(
@@ -124,13 +124,13 @@ handle_query_result(Result, State) ->
                                     GroupName = maps:get(<<"group">>, Host),
                                     GroupName;
                                 {error, notfound} ->
-                                    ?LOG_ERROR("Hostkey not found: ~p", [Hostkey]),
+                                    ?LOGT_ERROR("Hostkey not found: ~p", [{hostkey,Hostkey}]),
                                     []
                             end
                         end,
                         Hostkeys
                     ),
-                    ?LOG_INFO("Groups updated due to change in host active state: ~p", [GroupNames]),
+                    ?LOGT_INFO("Groups updated due to change in host active state: ~p", [{group_names,GroupNames}]),
                     case GroupNames of
                         [<<>>] ->
                             pass;
@@ -138,7 +138,7 @@ handle_query_result(Result, State) ->
                             pass;
                         _ ->
                             imetrics:add_m(watcher, host_active_update),
-                            ?LOG_INFO("add_to_queue: ~p", [GroupNames]),
+                            ?LOGT_INFO("add_to_queue: ~p", [{group_names,GroupNames}]),
                             dog_profile_update_agent:add_to_queue(GroupNames)
                     end
             end
@@ -152,15 +152,15 @@ handle_query_error(Error, State) ->
     {stop, Error, State}.
 
 handle_call(state, _From, State) ->
-    ?LOG_DEBUG("handle_call changefeed: ~p", [State]),
+    ?LOGT_DEBUG("handle_call changefeed: ~p", [{state,State}]),
     {reply, State, State}.
 
 handle_cast(_Msg, State) ->
-    ?LOG_DEBUG("handle_cast changefeed: ~p", [State]),
+    ?LOGT_DEBUG("handle_cast changefeed: ~p", [{state,State}]),
     {noreply, State}.
 
 handle_info(_Info, State) ->
-    ?LOG_DEBUG("handle_info changefeed: ~p", [State]),
+    ?LOGT_DEBUG("handle_info changefeed: ~p", [{state,State}]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

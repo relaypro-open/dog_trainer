@@ -81,7 +81,7 @@ handle_call(_Request, _From, State) ->
 handle_cast(stop, State) ->
     {stop, normal, State};
 handle_cast(Msg, State) ->
-    ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
+    ?LOGT_ERROR("unknown_message: Msg: ~p, State: ~p", [{msg,Msg}, {state,State}]),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -98,7 +98,7 @@ handle_info(watch_keepalives, State) ->
     erlang:send_after(PollingIntervalSeconds * 1000, self(), watch_keepalives),
     {noreply, []};
 handle_info(Info, State) ->
-    ?LOG_ERROR("unknown_message: Info: ~p, State: ~p", [Info, State]),
+    ?LOGT_ERROR("unknown_message: Info: ~p, State: ~p", [{info,Info}, {state,State}]),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -108,7 +108,7 @@ handle_info(Info, State) ->
 %%----------------------------------------------------------------------
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    ?LOGT_INFO("terminate: Reason: ~p, State: ~p", [{reason,Reason}, {state,State}]),
     {close}.
 
 -spec code_change(_, State :: ips_state(), _) -> {ok, State :: ips_state()}.
@@ -135,7 +135,7 @@ do_watch_keepalives(_State) ->
         true ->
             {ok, HostsRetirementCheck} = dog_host:retirement_check(),
             RetiredHostIds = [maps:get(<<"id">>, H) || H <- HostsRetirementCheck],
-            ?LOG_DEBUG("RetiredHostIds: ~p", [RetiredHostIds]),
+            ?LOGT_DEBUG("RetiredHostIds: ~p", [{retired_host_ids,RetiredHostIds}]),
             case RetiredHostIds of
                 [] ->
                     imetrics:set_gauge_m(<<"host_keepalive">>, <<"retirement">>, 0),

@@ -60,7 +60,7 @@ keepalive_check(TimeCutoff) ->
         #{<<"id">> => Id, <<"name">> => Name, <<"keepalive_timestamp">> => TimeStamp}
      || {Id, Name, TimeStamp} <- ZippedList, TimeStamp < TimeCutoff
     ],
-    ?LOG_INFO("OldAgents: ~p", [OldAgents]),
+    ?LOGT_INFO("OldAgents: ~p", [{old_agents,OldAgents}]),
     {ok, OldAgents}.
 
 -spec filter_out_retired_hosts(HostsGroups :: list(map()) ) -> AlertHosts :: list(map()).
@@ -90,7 +90,7 @@ retirement_check(TimeCutoff) ->
         #{<<"id">> => Id, <<"name">> => Name, <<"keepalive_timestamp">> => TimeStamp}
      || {Id, Name, TimeStamp} <- ZippedList, TimeStamp < TimeCutoff
     ],
-    ?LOG_INFO("OldAgents: ~p", [OldAgents]),
+    ?LOGT_INFO("OldAgents: ~p", [{old_agents,OldAgents}]),
     {ok, OldAgents}.
 
 -spec hash_fail_count_check(HostId :: binary(), HashCheck :: (true | false), HashStatus :: map()) ->
@@ -127,7 +127,7 @@ hash_fail_count(HostId) ->
             reql:get_field(X, <<"hash_fail_count">>)
         end
     ),
-    ?LOG_DEBUG("HostHashFailCount: ~p", [HostHashFailCount]),
+    ?LOGT_DEBUG("HostHashFailCount: ~p", [{host_hash_fail_count,HostHashFailCount}]),
     HostHashFailCount.
 
 -spec hash_fail_count_update(HostId :: binary(), Count :: number()) ->
@@ -141,7 +141,7 @@ hash_fail_count_update(HostId, Count) ->
             reql:update(X, #{<<"hash_fail_count">> => Count})
         end
     ),
-    ?LOG_DEBUG("update R: ~p~n", [R]),
+    ?LOGT_DEBUG("update R: ~p~n", [{r,R}]),
     Replaced = maps:get(<<"replaced">>, R),
     Unchanged = maps:get(<<"unchanged">>, R),
     case {Replaced, Unchanged} of
@@ -155,11 +155,11 @@ hash_check(Host) ->
     HostId = maps:get(<<"id">>, Host),
     HostName = maps:get(<<"name">>, Host),
     GroupName = maps:get(<<"group">>, Host),
-    ?LOG_DEBUG("GroupName: ~p",[GroupName]),
+    ?LOGT_DEBUG("GroupName: ~p", [{group_name,GroupName}]),
     case dog_group:get_by_name(GroupName) of
     %Iptables
         {error, notfound} ->
-            ?LOG_INFO("Group not found: ~p",[GroupName]),
+            ?LOGT_INFO("Group not found: ~p", [{group_name,GroupName}]),
             {error, notfound};
         {ok, Group} ->
             HostHash4Ipsets = maps:get(<<"hash4_ipsets">>, Host),
@@ -195,10 +195,10 @@ hash_check(Host) ->
                 <<"ipset_hash_age_check">> => IpsetHashAgeCheck,
                 <<"iptables_hash_age_check">> => IptablesHashCheck
             },
-            ?LOG_DEBUG("HashStatus: ~p", [HashStatus]),
-            ?LOG_DEBUG("IptablesHashCheck,IpsetHashCheck: ~p, ~p", [IptablesHashCheck, IpsetHashCheck]),
-            ?LOG_DEBUG("IptablesHashAgeCheck: ~s,  IpsetHashAgeCheck: ~s", [
-                IptablesHashAgeCheck, IpsetHashAgeCheck
+            ?LOGT_DEBUG("HashStatus: ~p", [{hash_status,HashStatus}]),
+            ?LOGT_DEBUG("IptablesHashCheck,IpsetHashCheck: ~p, ~p", [{iptables_hash_check,IptablesHashCheck}, {ipset_hash_check,IpsetHashCheck}]),
+            ?LOGT_DEBUG("IptablesHashAgeCheck: ~s,  IpsetHashAgeCheck: ~s", [
+                {iptables_hash_age_check,IptablesHashAgeCheck}, {ipset_hash_age_check,IpsetHashAgeCheck}
             ]),
             case {IptablesHashCheck, IpsetHashCheck} of
                 {true, true} ->
@@ -241,7 +241,7 @@ ipset_hash_age_check(HostId, TimeCutoff) ->
             reql:get_field(X, <<"ipset_hash_timestamp">>)
         end
     ),
-    ?LOG_DEBUG("IpsetHashTimestamp, TimeCutoff: ~p, ~p", [IpsetHashTimestamp, TimeCutoff]),
+    ?LOGT_DEBUG("IpsetHashTimestamp, TimeCutoff: ~p, ~p", [{ipset_hash_timestamp,IpsetHashTimestamp}, {time_cutoff,TimeCutoff}]),
     case IpsetHashTimestamp of
         <<>> ->
             Now = erlang:system_time(second),
@@ -270,7 +270,7 @@ iptables_hash_age_check(HostId, TimeCutoff) ->
             reql:get_field(X, <<"iptables_hash_timestamp">>)
         end
     ),
-    ?LOG_DEBUG("IptablesHashTimestamp: ~p", [IptablesHashTimestamp]),
+    ?LOGT_DEBUG("IptablesHashTimestamp: ~p", [{iptables_hash_timestamp,IptablesHashTimestamp}]),
     case IptablesHashTimestamp of
         <<>> ->
             Now = erlang:system_time(second),
@@ -291,7 +291,7 @@ iptables_hash_age_update(HostId, Timestamp) ->
             reql:update(X, #{<<"iptables_hash_timestamp">> => Timestamp})
         end
     ),
-    ?LOG_DEBUG("update R: ~p~n", [R]),
+    ?LOGT_DEBUG("update R: ~p~n", [{r,R}]),
     Replaced = maps:get(<<"replaced">>, R),
     Unchanged = maps:get(<<"unchanged">>, R),
     case {Replaced, Unchanged} of
@@ -311,7 +311,7 @@ ipset_hash_age_update(HostId, Timestamp) ->
             reql:update(X, #{<<"ipset_hash_timestamp">> => Timestamp})
         end
     ),
-    ?LOG_DEBUG("update R: ~p~n", [R]),
+    ?LOGT_DEBUG("update R: ~p~n", [{r,R}]),
     Replaced = maps:get(<<"replaced">>, R),
     Unchanged = maps:get(<<"unchanged">>, R),
     case {Replaced, Unchanged} of
@@ -341,7 +341,7 @@ keepalive_age_check(TimeCutoff) ->
         #{<<"id">> => Id, <<"name">> => Name, <<"keepalive_timestamp">> => TimeStamp}
      || {Id, Name, TimeStamp} <- ZippedList, TimeStamp < TimeCutoff
     ],
-    ?LOG_INFO("OldAgents: ~p", [OldAgents]),
+    ?LOGT_INFO("OldAgents: ~p", [{old_agents,OldAgents}]),
     {ok, OldAgents}.
 
 -spec iptables_hash_logic(
@@ -372,10 +372,10 @@ send_retirement_alert(Host) ->
                        end,
     case RetirementAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
-            ?LOG_INFO("Host: ~p", [Host]),
+            ?LOGT_INFO("Host: ~p", [{host,Host}]),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
             HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
-            ?LOG_INFO("Retirement alert sent: ~p, ~p", [HostName, HostKey]),
+            ?LOGT_INFO("Retirement alert sent: ~p, ~p", [{host_name,HostName}, {host_key,HostKey}]),
             {ok, SmtpRelay} = application:get_env(dog_trainer, smtp_relay),
             {ok, SmtpUsername} = application:get_env(dog_trainer, smtp_username),
             {ok, SmtpPassword} = application:get_env(dog_trainer, smtp_password),
@@ -418,10 +418,10 @@ send_keepalive_alert(Host) ->
                        end,
     case KeepaliveAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
-            ?LOG_INFO("Host: ~p", [Host]),
+            ?LOGT_INFO("Host: ~p", [{host,Host}]),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
             HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
-            ?LOG_INFO("Keepalive disconnect alert sent: ~p, ~p", [HostName, HostKey]),
+            ?LOGT_INFO("Keepalive disconnect alert sent: ~p, ~p", [{host_name,HostName}, {host_key,HostKey}]),
             {ok, SmtpRelay} = application:get_env(dog_trainer, smtp_relay),
             {ok, SmtpUsername} = application:get_env(dog_trainer, smtp_username),
             {ok, SmtpPassword} = application:get_env(dog_trainer, smtp_password),
@@ -464,10 +464,10 @@ send_keepalive_recover(Host) ->
                        end,
     case KeepaliveAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
-            ?LOG_INFO("Host: ~p", [Host]),
+            ?LOGT_INFO("Host: ~p", [{host,Host}]),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
             HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
-            ?LOG_INFO("Keepalive recover alert sent: ~p, ~p", [HostName, HostKey]),
+            ?LOGT_INFO("Keepalive recover alert sent: ~p, ~p", [{host_name,HostName}, {host_key,HostKey}]),
             {ok, SmtpRelay} = application:get_env(dog_trainer, smtp_relay),
             {ok, SmtpUsername} = application:get_env(dog_trainer, smtp_username),
             {ok, SmtpPassword} = application:get_env(dog_trainer, smtp_password),
@@ -516,12 +516,12 @@ send_hash_alert(Host, HashStatus) ->
                        end,
     case HashAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
-            ?LOG_INFO("Host: ~p", [Host]),
+            ?LOGT_INFO("Host: ~p", [{host,Host}]),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
             HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
             {ok, IpsetHashes} = dog_ipset:latest_hash(),
             {ok, Group} = dog_group:get_by_name(GroupName),
-            ?LOG_INFO("Hash alert sent: ~p", [Host]),
+            ?LOGT_INFO("Hash alert sent: ~p", [{host,Host}]),
             {ok, SmtpRelay} = application:get_env(dog_trainer, smtp_relay),
             {ok, SmtpUsername} = application:get_env(dog_trainer, smtp_username),
             {ok, SmtpPassword} = application:get_env(dog_trainer, smtp_password),
@@ -557,13 +557,13 @@ send_hash_recover(Host, HashStatus) ->
     HashAlertEnabled = application:get_env(dog_trainer, hash_alert_enabled, true),
     case HashAlertEnabled of
         true ->
-            ?LOG_INFO("Host: ~p", [Host]),
+            ?LOGT_INFO("Host: ~p", [{host,Host}]),
             HostName = binary:bin_to_list(maps:get(<<"name">>, Host)),
             HostKey = binary:bin_to_list(maps:get(<<"hostkey">>, Host)),
             GroupName = maps:get(<<"group">>, Host),
             {ok, IpsetHashes} = dog_ipset:latest_hash(),
             {ok, Group} = dog_group:get_by_name(GroupName),
-            ?LOG_INFO("Hash alert sent: ~p", [Host]),
+            ?LOGT_INFO("Hash alert sent: ~p", [{host,Host}]),
             {ok, SmtpRelay} = application:get_env(dog_trainer, smtp_relay),
             {ok, SmtpUsername} = application:get_env(dog_trainer, smtp_username),
             {ok, SmtpPassword} = application:get_env(dog_trainer, smtp_password),
@@ -803,7 +803,7 @@ update(Id, UpdateMap) ->
                             reql:replace(X, NewHost, #{return_changes => always})
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOGT_DEBUG("update R: ~p~n", [{r,R}]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of
@@ -837,7 +837,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOGT_DEBUG("delete R: ~p~n", [{r,R}]),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -868,7 +868,7 @@ get_state_from_host(Host) ->
 -spec set_state_by_id(Id :: binary(), State :: binary()) ->
     {true, binary()} | {false, binary()} | {false, no_updated}.
 set_state_by_id(Id, State) ->
-    ?LOG_DEBUG("Setting agent ~p state to: ~p", [Id, State]),
+    ?LOGT_DEBUG("Setting agent ~p state to: ~p", [{id,Id}, {state,State}]),
     {Active, Hashpass} =
         case State of
             <<"retired">> ->
@@ -921,7 +921,7 @@ get_all_active_interfaces() ->
     ),
     {ok, Result} = rethink_cursor:all(R),
     Interfaces = lists:flatten(Result),
-    ?LOG_INFO("Interfaces: ~p", [Interfaces]),
+    ?LOGT_INFO("Interfaces: ~p", [{interfaces,Interfaces}]),
     Interfaces@1 = dog_group:merge(Interfaces),
     case Interfaces@1 of
         [] -> {ok, []};
@@ -942,7 +942,7 @@ state_event(HostMap, Event, HashStatus) ->
     Id = maps:get(<<"id">>, HostMap),
     {ok, OldState} = get_state_from_host(HostMap),
     NewState = new_state(HostMap, OldState, Event, HashStatus),
-    ?LOG_DEBUG("Id: ~p, Event: ~p, OldState: ~p, NewState: ~p", [Id, Event, OldState, NewState]),
+    ?LOGT_DEBUG("Id: ~p, Event: ~p, OldState: ~p, NewState: ~p", [{id,Id}, {event,Event}, {old_state,OldState}, {new_state,NewState}]),
     case OldState == NewState of
         false ->
             set_state_by_id(Id, NewState);
@@ -1007,5 +1007,5 @@ new_state(HostMap, <<"retired">>, pass_hashcheck, _HashStatus) ->
     send_keepalive_recover(HostMap),
     <<"active">>;
 new_state(HostMap, State, Event, _HashStatus) ->
-    ?LOG_ERROR("Invalid event: ~p, for state : ~p for host: ~p combination", [Event, State, HostMap]),
+    ?LOGT_ERROR("Invalid event: ~p, for state : ~p for host: ~p combination", [{event,Event}, {state,State}, {host_map,HostMap}]),
     State.

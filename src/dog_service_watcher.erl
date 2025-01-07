@@ -77,7 +77,7 @@ init([]) ->
 handle_connection_up(Connection, State) ->
     {ok, RethinkSquashSec} = application:get_env(dog_trainer, rethink_squash_sec),
     ?LOG_INFO("handle_connection_up"),
-    ?LOG_INFO("Connection: ~p", [Connection]),
+    ?LOGT_INFO("Connection: ~p", [{connection,Connection}]),
     Reql = reql:db(<<"dog">>),
     reql:table(Reql, <<"service">>),
     reql:changes(Reql, #{<<"include_initial">> => false, <<"squash">> => RethinkSquashSec}),
@@ -92,7 +92,7 @@ handle_connection_down(State) ->
     {noreply, State}.
 
 handle_query_result(Result, State) ->
-    ?LOG_INFO("Result: ~p", [Result]),
+    ?LOGT_INFO("Result: ~p", [{result,Result}]),
     ?LOG_INFO("dog_service_watcher calling update_all_iptables"),
     %TODO detect which groups are effected by service change
     case Result of
@@ -102,7 +102,7 @@ handle_query_result(Result, State) ->
             imetrics:add_m(watcher, service_update),
             lists:foreach(
                 fun(Entry) ->
-                    ?LOG_INFO("Entry: ~p", [Entry]),
+                    ?LOGT_INFO("Entry: ~p", [{entry,Entry}]),
                     ServiceId =
                         case maps:get(<<"new_val">>, Entry) of
                             null ->
@@ -110,9 +110,9 @@ handle_query_result(Result, State) ->
                             _ ->
                                 maps:get(<<"id">>, maps:get(<<"new_val">>, Entry))
                         end,
-                    ?LOG_INFO("ServiceId: ~p", [ServiceId]),
+                    ?LOGT_INFO("ServiceId: ~p", [{service_id,ServiceId}]),
                     {ok, ProfilesWithService} = dog_service:where_used(ServiceId),
-                    ?LOG_INFO("ProfilesWithService: ~p", [ProfilesWithService]),
+                    ?LOGT_INFO("ProfilesWithService: ~p", [{profiles_with_service,ProfilesWithService}]),
                     GroupIdsWithProfile = lists:flatten(
                         lists:map(
                             fun(ProfileId) ->
@@ -121,7 +121,7 @@ handle_query_result(Result, State) ->
                             ProfilesWithService
                         )
                     ),
-                    ?LOG_INFO("GroupIdsWithProfile : ~p", [GroupIdsWithProfile]),
+                    ?LOGT_INFO("GroupIdsWithProfile : ~p", [{group_ids_with_profile,GroupIdsWithProfile}]),
                     GroupIdsWithProfile2 = lists:flatten([
                         element(2, GroupId)
                      || GroupId <- GroupIdsWithProfile
@@ -130,7 +130,7 @@ handle_query_result(Result, State) ->
                         element(2, dog_group:get_name_by_id(GroupId))
                      || GroupId <- GroupIdsWithProfile2
                     ],
-                    ?LOG_INFO("GroupNamesWithProfile: ~p", [GroupNamesWithProfile]),
+                    ?LOGT_INFO("GroupNamesWithProfile: ~p", [{group_names_with_profile,GroupNamesWithProfile}]),
                     dog_profile_update_agent:add_to_queue(GroupNamesWithProfile)
                 end,
                 Result
@@ -145,15 +145,15 @@ handle_query_error(Error, State) ->
     {stop, Error, State}.
 
 handle_call(state, _From, State) ->
-    ?LOG_DEBUG("handle_call changefeed: ~p", [State]),
+    ?LOGT_DEBUG("handle_call changefeed: ~p", [{state,State}]),
     {reply, State, State}.
 
 handle_cast(_Msg, State) ->
-    ?LOG_DEBUG("handle_cast changefeed: ~p", [State]),
+    ?LOGT_DEBUG("handle_cast changefeed: ~p", [{state,State}]),
     {noreply, State}.
 
 handle_info(_Info, State) ->
-    ?LOG_DEBUG("handle_info changefeed: ~p", [State]),
+    ?LOGT_DEBUG("handle_info changefeed: ~p", [{state,State}]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

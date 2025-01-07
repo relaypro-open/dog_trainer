@@ -39,7 +39,7 @@ wait_for_queue_empty() ->
         0 ->
             true;
         QueueLength ->
-            ?LOG_INFO("Outbound queue length: ~p", [QueueLength]),
+            ?LOGT_INFO("Outbound queue length: ~p", [{queue_length,QueueLength}]),
             PollTimeMilliseconds =
                 application:get_env(dog_trainer, queue_poll_time_seconds, 5) * 1000,
             timer:sleep(PollTimeMilliseconds),

@@ -1,6 +1,7 @@
 -module(plural_api_handler).
 
 -include_lib("kernel/include/logger.hrl").
+-include("dog_trainer.hrl").
 
 -export([init/2]).
 -export([content_types_provided/2]).

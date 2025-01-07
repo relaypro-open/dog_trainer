@@ -1,6 +1,7 @@
 -module(dog_ruleset).
 
 -include_lib("kernel/include/logger.hrl").
+-include("dog_trainer.hrl").
 
 -define(VALIDATION_TYPE, <<"ruleset">>).
 -define(TYPE_TABLE, ruleset).
@@ -36,7 +37,7 @@ init() ->
 -spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(RulesMap) ->
     RulesMap@0 = RulesMap,
-    ?LOG_DEBUG(#{rulesmap@0 => RulesMap@0}),
+    ?LOGT_DEBUG("RulesMap@0: ~p", [{rulesmap@0,RulesMap@0}]),
     Name = maps:get(<<"name">>, RulesMap@0),
     {ok, ExistingRules} = get_all(),
     ExistingNames = [maps:get(<<"name">>, Rules) || Rules <- ExistingRules],
@@ -52,7 +53,7 @@ create(RulesMap) ->
                         end
                     ),
                     Key = hd(maps:get(<<"generated_keys">>, R)),
-                    ?LOG_DEBUG("create R: ~p~n", [R]),
+                    ?LOGT_DEBUG("create R: ~p~n", [{r,R}]),
                     {ok, Key};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
@@ -97,7 +98,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, rules name not found: ~p", [Name]),
+            ?LOGT_ERROR("error, rules name not found: ~p", [{name,Name}]),
             {error, notfound};
         _ ->
             Rules = hd(Result),
@@ -140,7 +141,7 @@ all() ->
 
 -spec get_by_id(Id :: binary()) -> {ok, map()} | {error, notfound}.
 get_by_id(Id) ->
-    ?LOG_DEBUG(#{id => Id}),
+    ?LOGT_DEBUG("Id: ~p", [{id,Id}]),
     R = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -150,7 +151,7 @@ get_by_id(Id) ->
     ),
     case R of
         {ok, null} ->
-            ?LOG_DEBUG("rules id null return value: ~p", [Id]),
+            ?LOGT_DEBUG("rules id null return value: ~p", [{id,Id}]),
             {error, notfound};
         {ok, Rules} ->
             {ok, Rules}
@@ -159,8 +160,8 @@ get_by_id(Id) ->
 -spec update(Id :: binary(), UpdateMap :: map()) ->
     {false, atom()} | {validation_error, iolist()} | {true, binary()}.
 update(Id, UpdateMap) ->
-    ?LOG_DEBUG(#{id => Id, updatemap => UpdateMap}),
-    ?LOG_INFO("update_in_place"),
+    ?LOGT_DEBUG("Id: ~p, UpdateMap: ~p", [{id,Id},{updatemap, UpdateMap}]),
+    ?LOGT_INFO("update_in_place",[]),
     case get_by_id(Id) of
         {ok, OldRules} ->
             NewRules = maps:merge(OldRules, UpdateMap),
@@ -174,7 +175,7 @@ update(Id, UpdateMap) ->
                             reql:update(X, UpdateMap)
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOGT_DEBUG("update R: ~p~n", [{r,R}]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of
@@ -200,7 +201,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOGT_DEBUG("delete R: ~p~n", [{r,R}]),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -212,7 +213,7 @@ rule_to_text(Rule, Keys) ->
     Values = lists:map(
         fun(L) ->
             Value = maps:get(L, Rule),
-            ?LOG_DEBUG("Key: ~p Value: ~p~n", [L, Value]),
+            ?LOGT_DEBUG("Key: ~p Value: ~p~n", [{l,L}, {value,Value}]),
             case L of
                 <<"group">> ->
                     case Value of
@@ -277,7 +278,7 @@ to_text(Rules) ->
 
 -spec where_used(RulesId :: binary()) -> {ok, list()}.
 where_used(RulesetId) ->
-    ?LOG_DEBUG(#{rulesetid => RulesetId}),
+    ?LOGT_DEBUG("RulesetId: ~p", [{rulesetid,RulesetId}]),
     {ok, Ruleset} = get_by_id(RulesetId),
     ProfileId = maps:get(<<"profile_id">>, Ruleset),
     {ok, ProfileId}.
@@ -300,7 +301,7 @@ get_by_profile_id(ProfileId) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, no ruleset associated with profile: ~p", [ProfileId]),
+            ?LOGT_ERROR("error, no ruleset associated with profile: ~p", [{profile_id,ProfileId}]),
             {error, notfound};
         _ ->
             Rules = hd(Result),

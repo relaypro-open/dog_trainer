@@ -19,7 +19,7 @@ read_file(FileName) ->
         File -> File
     catch
         ErrorType:ErrorReason:Stacktrace ->
-            ?LOG_ERROR("catch ErrorType:ErrorReason:Stacktrace", [
-                ErrorType, ErrorReason, Stacktrace
+            ?LOGT_ERROR("catch ErrorType:ErrorReason:Stacktrace", [
+                {error_type,ErrorType}, {error_reason,ErrorReason}, {stacktrace,Stacktrace}
             ])
     end.

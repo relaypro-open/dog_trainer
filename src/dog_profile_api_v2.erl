@@ -1,6 +1,7 @@
 -module(dog_profile_api_v2).
 
 -include_lib("kernel/include/logger.hrl").
+-include("dog_trainer.hrl").
 
 -define(VALIDATION_TYPE, <<"profile">>).
 -define(TYPE_TABLE, profile).
@@ -25,7 +26,7 @@
 
 -spec create(Profile :: map()) -> {'ok', iolist()} | {atom(), binary()}.
 create(Profile) ->
-    ?LOG_DEBUG("Profile: ~p~n", [Profile]),
+    ?LOGT_DEBUG("Profile: ~p~n", [{profile,Profile}]),
     %Timestamp = dog_time:timestamp(),
     case dog_json_schema:validate(?VALIDATION_TYPE, Profile) of
         ok ->
@@ -40,7 +41,7 @@ create(Profile) ->
             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
             {ok, NewVal};
         {error, Error} ->
-            ?LOG_ERROR("~p", [Error]),
+            ?LOGT_ERROR("~p", [{error,Error}]),
             Response = dog_parse:validation_error(Error),
             {validation_error, Response}
     end.
@@ -55,7 +56,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOGT_DEBUG("delete R: ~p~n", [{r,R}]),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 ->
@@ -137,7 +138,7 @@ get_by_id(Id) ->
     ),
     case R of
         {ok, null} ->
-            ?LOG_DEBUG("profile id null return value: ~p", [Id]),
+            ?LOGT_DEBUG("profile id null return value: ~p", [{id,Id}]),
             {error, notfound};
         {ok, Profile} ->
             {ok, Profile}
@@ -156,7 +157,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, profile name not found: ~p", [Name]),
+            ?LOGT_ERROR("error, profile name not found: ~p", [{name,Name}]),
             {error, notfound};
         _ ->
             Profile = hd(Result),
@@ -191,7 +192,7 @@ update_in_place(Id, UpdateMap) ->
                             reql:update(X, UpdateMap, #{return_changes => always})
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOGT_DEBUG("update R: ~p~n", [{r,R}]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of

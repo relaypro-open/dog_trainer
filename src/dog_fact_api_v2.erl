@@ -2,6 +2,7 @@
 -module(dog_fact_api_v2).
 
 -include_lib("kernel/include/logger.hrl").
+-include("dog_trainer.hrl").
 
 -define(VALIDATION_TYPE, <<"fact">>).
 -define(TYPE_TABLE, fact).
@@ -23,7 +24,7 @@
 create(FactMap@0) ->
     case dog_json_schema:validate(?VALIDATION_TYPE, FactMap@0) of
         ok ->
-            ?LOG_DEBUG("create: ~p",[FactMap@0]),
+            ?LOGT_DEBUG("create: ~p", [{fact_map@0,FactMap@0}]),
             Name = maps:get(<<"name">>, FactMap@0),
             {ok, ExistingFacts} = get_all(),
             ExistingNames = [maps:get(<<"name">>, Fact) || Fact <- ExistingFacts],
@@ -56,7 +57,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOGT_DEBUG("delete R: ~p~n", [{r,R}]),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -105,7 +106,7 @@ update(Id, UpdateMap@0) ->
                             reql:replace(X, NewFact, #{return_changes => always})
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOGT_DEBUG("update R: ~p~n", [{r,R}]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of

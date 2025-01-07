@@ -1,6 +1,7 @@
 -module(dog_zone_api_v2).
 
 -include_lib("kernel/include/logger.hrl").
+-include("dog_trainer.hrl").
 
 -define(VALIDATION_TYPE, <<"zone">>).
 -define(TYPE_TABLE, zone).
@@ -55,7 +56,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOGT_DEBUG("delete R: ~p~n", [{r,R}]),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -88,7 +89,7 @@ get_by_name(Name) ->
 
 -spec update(ZoneId :: binary(), UpdateMap :: map()) -> {atom(), any()}.
 update(Id, UpdateMap@0) ->
-    ?LOG_DEBUG("UpdateMap: ~p~n", [UpdateMap@0]),
+    ?LOGT_DEBUG("UpdateMap: ~p~n", [{update_map@0,UpdateMap@0}]),
     {ok, UpdateMap@1} = dog_zone:cleanup(UpdateMap@0),
     case get_by_id(Id) of
         {ok, OldService} ->
@@ -103,7 +104,7 @@ update(Id, UpdateMap@0) ->
                             reql:update(X, UpdateMap@1, #{return_changes => always})
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOGT_DEBUG("update R: ~p~n", [{r,R}]),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of

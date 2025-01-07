@@ -18,7 +18,7 @@
 
 -spec update_group_iptables(GroupZoneName :: binary(), GroupType :: binary()) -> 'ok'.
 update_group_iptables(GroupZoneName, GroupType) ->
-    ?LOG_INFO("GroupZoneName: ~p", [GroupZoneName]),
+    ?LOGT_INFO("GroupZoneName: ~p", [{group_zone_name,GroupZoneName}]),
     Groups =
         case application:get_env(dog_trainer, generate_unset_tables, true) of
             true ->
@@ -46,15 +46,15 @@ update_group_iptables(GroupZoneName, GroupType) ->
                     end,
                 GroupsList
         end,
-    ?LOG_INFO("Effected Groups: ~p", [Groups]),
-    ?LOG_INFO("add_to_queue: ~p", [Groups]),
+    ?LOGT_INFO("Effected Groups: ~p", [{groups,Groups}]),
+    ?LOGT_INFO("add_to_queue: ~p", [{groups,Groups}]),
     dog_profile_update_agent:add_to_queue(Groups),
     ok.
 
 -spec update_group_ec2_sgs(GroupZoneName :: binary()) -> 'ok'.
 update_group_ec2_sgs(GroupZoneName) ->
     {ok, GroupList} = dog_group:role_group_effects_groups(GroupZoneName),
-    ?LOG_DEBUG("GroupList: ~p~n", [GroupList]),
+    ?LOGT_DEBUG("GroupList: ~p~n", [{group_list,GroupList}]),
     plists:map(
         fun(Group) ->
             dog_ec2_sg:publish_ec2_sg_by_name(Group)
@@ -187,7 +187,7 @@ publish_to_queue(
     R6IptablesIptablesRuleset,
     Ipsets
 ) ->
-    ?LOG_INFO("RoutingKey: ~p", [RoutingKey]),
+    ?LOGT_INFO("RoutingKey: ~p", [{routing_key,RoutingKey}]),
     UserData = #{
         ruleset4_ipset => R4IpsetsIptablesRuleset,
         ruleset6_ipset => R6IpsetsIptablesRuleset,

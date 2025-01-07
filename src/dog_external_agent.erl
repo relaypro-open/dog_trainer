@@ -50,16 +50,16 @@ start_link(Link) ->
 loop(_RoutingKey, _CType, Payload, State) ->
     Proplist = binary_to_term(Payload),
     UserData = proplists:get_value(user_data, Proplist),
-    ?LOG_DEBUG("UserData: ~p~n", [UserData]),
+    ?LOGT_DEBUG("UserData: ~p~n", [{user_data,UserData}]),
     Ipsets = maps:get(ipsets, UserData),
-    ?LOG_DEBUG("Ipsets: ~p~n", [Ipsets]),
+    ?LOGT_DEBUG("Ipsets: ~p~n", [{ipsets,Ipsets}]),
     IpsetsDecoded = jsx:decode(Ipsets),
-    ?LOG_DEBUG("IpsetsDecoded: ~p~n", [IpsetsDecoded]),
+    ?LOGT_DEBUG("IpsetsDecoded: ~p~n", [{ipsets_decoded,IpsetsDecoded}]),
     ExternalEnv = jsn:as_map(IpsetsDecoded),
-    ?LOG_DEBUG("ExternalEnv: ~p", [ExternalEnv]),
+    ?LOGT_DEBUG("ExternalEnv: ~p", [{external_env,ExternalEnv}]),
     imetrics:add(external_ipset_update),
     ExternalEnvName = maps:get(<<"name">>, ExternalEnv),
-    ?LOG_INFO("external ipsets receieved: ~p", [ExternalEnvName]),
+    ?LOGT_INFO("external ipsets receieved: ~p", [{external_env_name,ExternalEnvName}]),
     {ok, ExistingExternal} = dog_external:get_by_name(ExternalEnvName),
     ExistingExternalId = maps:get(<<"id">>, ExistingExternal),
     %TODO: create on link creation, set empty, inactive
@@ -77,10 +77,7 @@ set_link_state(
         old_direction_state := DirectionState
     }
 ) ->
-    ?LOG_INFO(
-        "New link state: EnvName: ~p, EnabledState: ~p, NewEnabledState: ~p, DirectionState: ~p, NewDirectionState: ~p",
-        [EnvName, EnabledState, NewEnabledState, DirectionState, NewDirectionState]
-    ),
+    ?LOGT_INFO("New link state: EnvName: ~p, EnabledState: ~p, NewEnabledState: ~p, DirectionState: ~p, NewDirectionState: ~p", [{env_name,EnvName}, {enabled_state,EnabledState}, {new_enabled_state,NewEnabledState}, {direction_state,DirectionState}, {new_direction_state,NewDirectionState}]),
     ExternalId =
         case dog_external:get_by_name(EnvName) of
             {error, notfound} ->
@@ -253,17 +250,17 @@ handle_call(_Request, _From, State) ->
 handle_cast(stop, State) ->
     {stop, normal, State};
 handle_cast(Msg, State) ->
-    ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
+    ?LOGT_ERROR("unknown_message: Msg: ~p, State: ~p", [{msg,Msg}, {state,State}]),
     {noreply, State}.
 
 -spec handle_info(_, _) -> {'noreply', _}.
 handle_info(Info, State) ->
-    ?LOG_ERROR("unknown_message: Info: ~p, State: ~p", [Info, State]),
+    ?LOGT_ERROR("unknown_message: Info: ~p, State: ~p", [{info,Info}, {state,State}]),
     {noreply, State}.
 
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    ?LOGT_INFO("terminate: Reason: ~p, State: ~p", [{reason,Reason}, {state,State}]),
     {close}.
 
 -spec code_change(_, State :: ips_state(), _) -> {ok, State :: ips_state()}.

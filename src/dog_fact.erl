@@ -1,6 +1,7 @@
 -module(dog_fact).
 
 -include_lib("kernel/include/logger.hrl").
+-include("dog_trainer.hrl").
 
 -define(VALIDATION_TYPE, <<"fact">>).
 -define(TYPE_TABLE, fact).
@@ -38,7 +39,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, fact name not found: ~p", [Name]),
+            ?LOGT_ERROR("error, fact name not found: ~p", [{name,Name}]),
             {error, notfound};
         _ ->
             Fact = hd(Result),
@@ -72,7 +73,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOGT_DEBUG("delete R: ~p~n", [{r,R}]),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -126,7 +127,7 @@ create(FactMap@0) ->
                         end
                     ),
                     Key = hd(maps:get(<<"generated_keys">>, R)),
-                    ?LOG_DEBUG("create R: ~p~n", [R]),
+                    ?LOGT_DEBUG("create R: ~p~n", [{r,R}]),
                     {ok, Key};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),

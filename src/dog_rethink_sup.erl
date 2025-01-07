@@ -37,7 +37,7 @@ init([]) ->
     DbSetupResult = rethink_db_setup:setup_rethinkdb(
         RethinkdbHost, RethinkdbPort, RethinkdbUser, RethinkdbPassword
     ),
-    ?LOG_INFO("RethinkDB setup: ~p~n", [DbSetupResult]),
+    ?LOGT_INFO("RethinkDB setup: ~p~n", [{db_setup_result,DbSetupResult}]),
     ConnectOptions = #{
         host => RethinkdbHost,
         port => RethinkdbPort,

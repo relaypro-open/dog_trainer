@@ -79,7 +79,7 @@ init([]) ->
 handle_connection_up(Connection, State) ->
     {ok, RethinkSquashSec} = application:get_env(dog_trainer, rethink_squash_sec),
     ?LOG_INFO("handle_connection_up"),
-    ?LOG_INFO("Connection: ~p", [Connection]),
+    ?LOGT_INFO("Connection: ~p", [{connection,Connection}]),
     Reql = reql:db(<<"dog">>),
     reql:table(Reql, <<"ruleset">>),
     reql:changes(Reql, #{<<"include_initial">> => false, <<"squash">> => RethinkSquashSec}),
@@ -94,7 +94,7 @@ handle_connection_down(State) ->
     {noreply, State}.
 
 handle_query_result(Result, State) ->
-    ?LOG_INFO("Result: ~p", [Result]),
+    ?LOGT_INFO("Result: ~p", [{result,Result}]),
     case Result of
         [] ->
             pass;
@@ -102,7 +102,7 @@ handle_query_result(Result, State) ->
             imetrics:add_m(watcher, ruleset_update),
             lists:foreach(
                 fun(Entry) ->
-                    ?LOG_INFO("Entry: ~p", [Entry]),
+                    ?LOGT_INFO("Entry: ~p", [{entry,Entry}]),
                     PossibleProfileId =
                         case maps:get(<<"new_val">>, Entry) of
                             null ->
@@ -118,7 +118,7 @@ handle_query_result(Result, State) ->
                         ProfileId ->
                             GroupIds = dog_group:get_ids_with_profile_id(ProfileId),
                             %{ok,GroupIds} = dog_profile:where_used(ProfileId),
-                            ?LOG_INFO("GroupIds: ~p", [GroupIds]),
+                            ?LOGT_INFO("GroupIds: ~p", [{group_ids,GroupIds}]),
                             lists:foreach(
                                 fun(GroupId) ->
                                     {ok, GroupName} = dog_group:get_name_by_id(GroupId),
@@ -143,15 +143,15 @@ handle_query_error(Error, State) ->
     {stop, Error, State}.
 
 handle_call(state, _From, State) ->
-    ?LOG_DEBUG("handle_call changefeed: ~p", [State]),
+    ?LOGT_DEBUG("handle_call changefeed: ~p", [{state,State}]),
     {reply, State, State}.
 
 handle_cast(_Msg, State) ->
-    ?LOG_DEBUG("handle_cast changefeed: ~p", [State]),
+    ?LOGT_DEBUG("handle_cast changefeed: ~p", [{state,State}]),
     {noreply, State}.
 
 handle_info(_Info, State) ->
-    ?LOG_DEBUG("handle_info changefeed: ~p", [State]),
+    ?LOGT_DEBUG("handle_info changefeed: ~p", [{state,State}]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

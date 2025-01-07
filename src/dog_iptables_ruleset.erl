@@ -65,11 +65,10 @@ generate_iptables_ruleset(
 ) ->
     try
         Docker = get_docker(maps:get(<<"docker">>, ProfileJson, <<"undefined">>)),
-        ?LOG_DEBUG("Docker: ~p", [Docker]),
+        ?LOGT_DEBUG("Docker: ~p", [{docker,Docker}]),
         ProfileId = maps:get(<<"id">>, ProfileJson),
         ProfileName = maps:get(<<"name">>, ProfileJson),
         InboundJson = maps:get(<<"inbound">>, maps:get(<<"rules">>, ProfileJson)),
-        %?LOG_INFO("InboundJson: ~p",[InboundJson]),
         InboundJsonWithIndex = lists:zip(lists:seq(1, length(InboundJson)), InboundJson),
         InboundRules = lists:map(
             fun({Index, L}) ->
@@ -92,14 +91,13 @@ generate_iptables_ruleset(
                     Rules
                 catch
                     Exception:ExceptionReason:Stacktrace ->
-                        ?LOG_ERROR("Error in profile ~p (~p) rule number: ~p", [
-                            ProfileName, ProfileId, Index
+                        ?LOGT_ERROR("Error in profile ~p (~p) rule number: ~p", [
+                            {profile_name,ProfileName}, {profile_id,ProfileId}, {index,Index}
                         ]),
-                        ?LOG_ERROR(#{
-                            exception => Exception,
-                            exceptionreason => ExceptionReason,
-                            stacktrace => Stacktrace
-                        }),
+                        ?LOGT_ERROR("Exception: ~p, ExceptionReason: ~p, StackTrack: ~p",[
+                                     {exception , Exception},
+                                     {exceptionreason , ExceptionReason},
+                                     {stacktrace , Stacktrace}]),
                         throw(Exception)
                 end
             end,
@@ -140,14 +138,13 @@ generate_iptables_ruleset(
                             Rules
                         catch
                             Exception:ExceptionReason:Stacktrace ->
-                                ?LOG_ERROR("Error in profile ~p (~p) rule number: ~p", [
-                                    ProfileName, ProfileId, Index
+                                ?LOGT_ERROR("Error in profile ~p (~p) rule number: ~p", [
+                                    {profile_name,ProfileName}, {profile_id,ProfileId}, {index,Index}
                                 ]),
-                                ?LOG_ERROR(#{
-                                    exception => Exception,
-                                    exceptionreason => ExceptionReason,
-                                    stacktrace => Stacktrace
-                                }),
+                                ?LOGT_ERROR("Exception: ~p, ExceptionReason: ~p, StackTrack: ~p",[
+                                             {exception , Exception},
+                                             {exceptionreason , ExceptionReason},
+                                             {stacktrace , Stacktrace}]),
                                 throw(Exception)
                         end
                 end
@@ -177,14 +174,13 @@ generate_iptables_ruleset(
                     Rules
                 catch
                     Exception:ExceptionReason:Stacktrace ->
-                        ?LOG_ERROR("Error in profile ~p (~p) rule number: ~p", [
-                            ProfileName, ProfileId, Index
+                        ?LOGT_ERROR("Error in profile ~p (~p) rule number: ~p", [
+                            {profile_name,ProfileName}, {profile_id,ProfileId}, {index,Index}
                         ]),
-                        ?LOG_ERROR(#{
-                            exception => Exception,
-                            exceptionreason => ExceptionReason,
-                            stacktrace => Stacktrace
-                        }),
+                        ?LOGT_ERROR("Exception: ~p, ExceptionReason: ~p, StackTrack: ~p",[
+                                     {exception , Exception},
+                                     {exceptionreason , ExceptionReason},
+                                     {stacktrace , Stacktrace}]),
                         throw(Exception)
                 end
             end,
@@ -247,11 +243,10 @@ generate_iptables_ruleset(
     catch
         Exception:ExceptionReason:Stacktrace ->
             imetrics:add_m(generate_iptables_ruleset, "error"),
-            ?LOG_ERROR(#{
-                exception => Exception,
-                exceptionreason => ExceptionReason,
-                stacktrace => Stacktrace
-            }),
+            ?LOGT_ERROR("Exception: ~p, ExceptionReason: ~p, StackTrack: ~p",[
+                         {exception , Exception},
+                         {exceptionreason , ExceptionReason},
+                         {stacktrace , Stacktrace}]),
             throw(ExceptionReason)
     after
         {ok, []}
@@ -463,7 +458,6 @@ json_to_rules(
                 <<" ">> ->
                     [];
                 ServiceId ->
-                    %?LOG_INFO("ServiceId: ~p",[ServiceId]),
                     %ServiceName = case bin_uppercase(dog_service:get_name_by_id(ServiceId)) of
                     ServiceName = get_service_name(ServiceId, ServiceIdMap),
                     %{ok, ServiceDefinition} = get_service_by_id(ServiceId),
@@ -485,7 +479,7 @@ json_to_rules(
                         ZoneIdMap,
                         SelfGroupName
                     ),
-                    ?LOG_DEBUG("Rules: ~p~n", [Rules]),
+                    ?LOGT_DEBUG("Rules: ~p~n", [{rules,Rules}]),
                     Rules
             end
     end.
@@ -534,9 +528,7 @@ json_to_rule(
                         EnvSep = <<"#">>,
                         <<Environment/bitstring, EnvSep/bitstring, LocalGroup/bitstring>>
                 end,
-            %?LOG_INFO("Group: ~p",[Group]),
             GroupType = maps:get(<<"group_type">>, Json),
-            %?LOG_INFO("GroupType: ~p",[GroupType]),
             %{ok, GroupName} = case GroupType of
             GroupName =
                 case Environment of
@@ -545,7 +537,6 @@ json_to_rule(
                     _ ->
                         Group
                 end,
-            %?LOG_INFO("GroupName: ~p",[GroupName]),
             Sep = <<"_">>,
             %TODO: fix ipsetname to match dog_ipset module name
             IpsetName = get_ipset_name(GroupName, GroupType, Sep, Version),
@@ -564,7 +555,6 @@ json_to_rule(
             PortParameter = get_port_parameter(Protocol, MultiplePorts, Direction, ProtocolModule),
             SourceParameter = get_source_parameter(Direction),
             InterfaceString = get_interface(maps:get(<<"interface">>, Json)),
-            %?LOG_DEBUG("InterfaceString: ~p~n",[InterfaceString]),
             Interface = get_interface(InterfaceString, Direction),
             Action = get_action(maps:get(<<"action">>, Json), Version, RuleType),
             CommentJson = get_comment(maps:get(<<"comment">>, Json)),
@@ -798,8 +788,6 @@ generate_basic_rule_unset(
                             %{ok, Addresses} = dog_group:get_all_ipv4s_by_id(Group),
                             lists:reverse(Addresses)
                     end,
-                %?LOG_INFO("Group: ~p",[Group]),
-                %?LOG_INFO("RoleAddresses: ~p",[RoleAddresses]),
                 lists:map(
                     fun(X) ->
                         io_lib:format("-A ~s ~s ~s~s~s~s ~s~s~s -j ~s~n", [
@@ -818,7 +806,6 @@ generate_basic_rule_unset(
                     RoleAddresses
                 )
         end,
-    %?LOG_INFO("Rule: ~p",[Rule]),
     Rule.
 %BAD:
 %-A OUTPUT -m set --match-set all-active_g_v4 src -p tcp -m tcp --sport 8301 -m state --state RELATED,ESTABLISHED -m comment --comment serf_raft_tcp
@@ -1198,10 +1185,10 @@ get_port_parameter(Protocol, MultiplePorts, Direction, ProtocolModule) ->
         ])
     of
         false ->
-            ?LOG_DEBUG("Protocol: ~p not in list", [Protocol]),
+            ?LOGT_DEBUG("Protocol: ~p not in list", [{protocol,Protocol}]),
             io_lib:format("", []);
         true ->
-            ?LOG_DEBUG("Protocol: ~p is in list", [Protocol]),
+            ?LOGT_DEBUG("Protocol: ~p is in list", [{protocol,Protocol}]),
             case Protocol of
                 <<"icmp">> ->
                     " -m icmp --icmp-type";
@@ -1292,7 +1279,7 @@ get_active(Active) ->
 
 -spec get_states(States :: iolist(), Symmetric :: boolean()) -> 'error' | string().
 get_states(States, Symmetric) ->
-    ?LOG_DEBUG("States: ~p~n", [States]),
+    ?LOGT_DEBUG("States: ~p~n", [{states,States}]),
     case States of
         [] ->
             case Symmetric of
@@ -1346,7 +1333,6 @@ get_service(Service) ->
 
 -spec get_ports(iolist()) -> iolist().
 get_ports(Ports) ->
-    %?LOG_INFO("Ports: ~p",[Ports]),
     lists:join(",", [binary_to_list(X) || X <- Ports]).
 
 -spec get_interface(binary()) -> binary().
@@ -1413,7 +1399,7 @@ read_iptables_ruleset_set_v4_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
          {error, Error} ->
-             ?LOG_ERROR("Error: ~p",[Error])
+             ?LOGT_ERROR("Error: ~p", [{error,Error}])
      end.
 -spec read_iptables_ruleset_set_v6_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_set_v6_from_file(GroupName) ->
@@ -1422,7 +1408,7 @@ read_iptables_ruleset_set_v6_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
          {error, Error} ->
-             ?LOG_ERROR("Error: ~p",[Error])
+             ?LOGT_ERROR("Error: ~p", [{error,Error}])
      end.
 -spec read_iptables_ruleset_unset_v4_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_unset_v4_from_file(GroupName) ->
@@ -1431,7 +1417,7 @@ read_iptables_ruleset_unset_v4_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
          {error, Error} ->
-             ?LOG_ERROR("Error: ~p",[Error])
+             ?LOGT_ERROR("Error: ~p", [{error,Error}])
      end.
 -spec read_iptables_ruleset_unset_v6_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_unset_v6_from_file(GroupName) ->
@@ -1440,7 +1426,7 @@ read_iptables_ruleset_unset_v6_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
          {error, Error} ->
-             ?LOG_ERROR("Error: ~p",[Error])
+             ?LOGT_ERROR("Error: ~p", [{error,Error}])
      end.
 
 %%%--------------------------------------------------------------------

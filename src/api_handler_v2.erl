@@ -73,7 +73,7 @@ resource_exists(Req@0, State@0) ->
             Path = cowboy_req:path(Req@0),
             Handler = get_handler_module(Path),
             Body = cowboy_req:read_body(Req@0),
-            ?LOG_DEBUG("PUT Body ~p", [Body]),
+            ?LOGT_DEBUG("PUT Body ~p", [{body,Body}]),
             {ok, NewContent, Req@1} = Body,
             Map = jsx:decode(NewContent, [return_maps]),
             ObjectName = maps:get(<<"name">>, Map),
@@ -106,7 +106,7 @@ resource_exists(Req@0, State@0) ->
                         ),
                     case {Name, Hostkey} of
                         {_, undefined} ->
-                            ?LOG_DEBUG("Name: ~p~n", [Name]),
+                            ?LOGT_DEBUG("Name: ~p~n", [{name,Name}]),
                             case Handler:get_by_name(Name) of
                                 {ok, Object} ->
                                     State@1 = maps:put(<<"object">>, Object, State@0),
@@ -115,7 +115,7 @@ resource_exists(Req@0, State@0) ->
                                     {false, Req@0, State@0}
                             end;
                         {undefined, _} ->
-                            ?LOG_DEBUG("Hostkey: ~p~n", [Hostkey]),
+                            ?LOGT_DEBUG("Hostkey: ~p~n", [{hostkey,Hostkey}]),
                             case Handler:get_by_hostkey(Hostkey) of
                                 {ok, Object1} ->
                                     State@2 = maps:put(<<"object">>, Object1, State@0),
@@ -157,7 +157,7 @@ from_post_json(Req@0, State) ->
     Handler = get_handler_module(Path),
     HandlerPath = get_handler_path(Path),
     Map = jsx:decode(NewContent, [return_maps]),
-    ?LOG_DEBUG("Map: ~p", [Map]),
+    ?LOGT_DEBUG("Map: ~p", [{map,Map}]),
     %Object = maps:get(<<"object">>, State),
     %case Object of
     %    {error, notfound} ->
@@ -214,7 +214,7 @@ from_put_json(Req@0, State) ->
     SuccessMap = #{<<"id">> => Id},
     Req@1 = cowboy_req:set_resp_body([jsx:encode(SuccessMap)], Req@0),
     InPlace = cowboy_req:match_qs([{inplace, [], plain}], Req@1),
-    ?LOG_DEBUG("InPlace: ~p", [InPlace]),
+    ?LOGT_DEBUG("InPlace: ~p", [{in_place,InPlace}]),
     Response =
         case InPlace of
             #{inplace := <<"True">>} ->
@@ -224,13 +224,13 @@ from_put_json(Req@0, State) ->
         end,
     case Response of
         {false, Error} when is_atom(Error) ->
-            ?LOG_DEBUG("{false, ~p}", [Error]),
+            ?LOGT_DEBUG("{false, ~p}", [{error,Error}]),
             Req@2 = cowboy_req:set_resp_body([atom_to_list(Error)], Req@1),
             {false, Req@2, State};
         {false, ResponseMap} ->
             ObjectId = maps:get(<<"id">>, ResponseMap),
             Uri = io_lib:format("~s/~s/~s", [?V2ROOT, HandlerPath, ObjectId]),
-            ?LOG_DEBUG("ObjectId: ~p", [ObjectId]),
+            ?LOGT_DEBUG("ObjectId: ~p", [{object_id,ObjectId}]),
             Req@2 = cowboy_req:reply(
                 303,
                 #{
@@ -244,7 +244,7 @@ from_put_json(Req@0, State) ->
         {true, ResponseMap} ->
             ObjectId = maps:get(<<"id">>, ResponseMap),
             Uri = io_lib:format("~s/~s/~s", [?V2ROOT, HandlerPath, ObjectId]),
-            ?LOG_DEBUG("ObjectId: ~p", [ObjectId]),
+            ?LOGT_DEBUG("ObjectId: ~p", [{object_id,ObjectId}]),
             Req@2 = cowboy_req:reply(
                 303,
                 #{
@@ -378,7 +378,7 @@ to_text(Req, State) ->
                                 end,
                                 case cowboy_req:match_qs([{git_diff, [], plain}], Req) of
                                     #{git_diff := plain} ->
-                                        ?LOG_DEBUG("here ~n", []),
+                                        ?LOGT_DEBUG("here ~n", []),
                                         case dog_profile:get_by_id(Id) of
                                             {ok, Profile_} ->
                                                 {ok, T_} = dog_profile:to_text(Profile_),
@@ -387,7 +387,7 @@ to_text(Req, State) ->
                                                 Error_
                                         end;
                                     #{git_diff := DiffId_} ->
-                                        ?LOG_DEBUG("here WHAT~n", []),
+                                        ?LOGT_DEBUG("here WHAT~n", []),
                                         ProfileResult1_ = dog_profile:get_by_id(Id),
                                         ProfileResult2_ = dog_profile:get_by_id(DiffId_),
                                         case {ProfileResult1_, ProfileResult2_} of

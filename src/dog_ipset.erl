@@ -158,7 +158,7 @@ write_ipsets_to_file(IpSet) ->
 
 -spec add_to_ipset(Name :: binary(), Ip :: binary()) -> iolist().
 add_to_ipset(Name, Ip) ->
-    ?LOG_DEBUG("add_to_ipset(Name,Ip): ~p, ~p", [Name, Ip]),
+    ?LOGT_DEBUG("add_to_ipset(Name,Ip): ~p, ~p", [{name,Name}, {ip,Ip}]),
     Add = "add " ++ binary_to_list(Name) ++ " " ++ binary_to_list(Ip),
     Add.
 
@@ -221,7 +221,7 @@ latest_hash() ->
 
 -spec create(IpsetHash :: binary()) -> {ok, pid()}.
 create(Hash) ->
-    ?LOG_INFO("hash: ~p", [Hash]),
+    ?LOGT_INFO("hash: ~p", [{hash,Hash}]),
     %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
     %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     Timestamp = dog_time:timestamp(),
@@ -444,7 +444,7 @@ publish_to_external(InternalIpsetsMap) ->
 -spec publish_to_queue(Ipsets :: list()) -> any().
 publish_to_queue(Ipsets) ->
     ?LOG_INFO("local publish"),
-    ?LOG_DEBUG("Ipsets: ~p", [Ipsets]),
+    ?LOGT_DEBUG("Ipsets: ~p", [{ipsets,Ipsets}]),
     UserData = #{
         ruleset4_ipset => false,
         ruleset6_ipset => false,
@@ -478,7 +478,7 @@ publish_to_outbound_exchanges(IpsetExternalMap) ->
             EnvName = maps:get(<<"name">>, Env),
             ExternalMap = maps:put(<<"ec2">>, IdsByGroup, IpsetExternalMap),
             %ExternalMap = maps:put(<<"ec2">>,jsx:encode(#{}),IpsetExternalMap),
-            ?LOG_DEBUG("ExternalMap: ~p~n", [ExternalMap]),
+            ?LOGT_DEBUG("ExternalMap: ~p~n", [{external_map,ExternalMap}]),
             publish_to_outbound_exchange(EnvName, ExternalMap)
         end,
         ExternalEnvs
@@ -486,7 +486,7 @@ publish_to_outbound_exchanges(IpsetExternalMap) ->
 
 -spec publish_to_outbound_exchange(TargetEnvName :: binary(), IpsetExternalMap :: map()) -> any().
 publish_to_outbound_exchange(TargetEnvName, IpsetExternalMap) ->
-    ?LOG_INFO("IpsetExternalMap: ~p", [IpsetExternalMap]),
+    ?LOGT_INFO("IpsetExternalMap: ~p", [{ipset_external_map,IpsetExternalMap}]),
     {ok, LocalEnvName} = application:get_env(dog_trainer, env),
     UserData = #{
         ipsets => jsx:encode(IpsetExternalMap),
@@ -503,7 +503,7 @@ publish_to_outbound_exchange(TargetEnvName, IpsetExternalMap) ->
     RoutingKey = binary:list_to_bin(LocalEnvName),
     BrokerConfigName = list_to_atom(binary:bin_to_list(TargetEnvName)),
     %thumper:start_link(BrokerConfigName),
-    ?LOG_INFO("~p, ~p, ~p, ~p", [BrokerConfigName, Message, <<"inbound">>, RoutingKey]),
+    ?LOGT_INFO("~p, ~p, ~p, ~p", [{broker_config_name,BrokerConfigName}, {message,Message}, <<"inbound">>, {routing_key,RoutingKey}]),
     %Response = thumper:publish_to(BrokerConfigName, Message, <<"inbound">>, RoutingKey),
     PublisherName = erlang:binary_to_atom(<<TargetEnvName/binary, <<"_publisher">>/binary>>),
     Response = turtle:publish(
@@ -523,8 +523,8 @@ hash_check(AgentIpsetHash) ->
     {ok, LatestHash} = latest_hash(),
     case AgentIpsetHash == LatestHash of
         false ->
-            ?LOG_INFO("Host IpsetHash ~p not equal to Latest IpsetHashes: ~p", [
-                AgentIpsetHash, LatestHash
+            ?LOGT_INFO("Host IpsetHash ~p not equal to Latest IpsetHashes: ~p", [
+                {agent_ipset_hash,AgentIpsetHash}, {latest_hash,LatestHash}
             ]),
             false;
         true ->
@@ -540,7 +540,7 @@ update_ipsets(Env) ->
     NewIpsetHash = create_hash(NormalizedIpset),
     delete_old(),
     create(NewIpsetHash),
-    ?LOG_DEBUG("LastestHash, NewIpsetHash: ~p, ~p", [LatestHash, NewIpsetHash]),
+    ?LOGT_DEBUG("LastestHash, NewIpsetHash: ~p, ~p", [{latest_hash,LatestHash}, {new_ipset_hash,NewIpsetHash}]),
     case NewIpsetHash == LatestHash of
         false ->
             ?LOG_DEBUG("false"),
@@ -573,7 +573,7 @@ persist_ipset() ->
         [] ->
             ok;
         Result ->
-            ?LOG_ERROR("PersistCmd Error: ~p", [Result]),
+            ?LOGT_ERROR("PersistCmd Error: ~p", [{result,Result}]),
             {error, Result}
     end.
 
@@ -611,7 +611,7 @@ read_current_ipset() ->
 read_hash() ->
     NormalizedIpset = normalize_ipset(read_current_ipset()),
     IpsetHash = create_hash(NormalizedIpset),
-    ?LOG_INFO("ipset hash: ~p", [IpsetHash]),
+    ?LOGT_INFO("ipset hash: ~p", [{ipset_hash,IpsetHash}]),
     IpsetHash.
 
 -spec match_only_add(Line :: iolist()) -> boolean().

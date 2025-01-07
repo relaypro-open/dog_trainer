@@ -17,7 +17,7 @@ init([]) ->
                 fun(Link) ->
                     LinkName = maps:get(<<"name">>, Link),
                     %EnvName = LinkName,
-                    ?LOG_DEBUG("LinkName: ~p", [LinkName]),
+                    ?LOGT_DEBUG("LinkName: ~p", [{link_name,LinkName}]),
                     %[
                     % dog_external_agent:inbound_service_spec(LinkName),
                     %dog_external_agent:outbound_publisher_spec(LinkName)

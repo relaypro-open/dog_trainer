@@ -26,7 +26,7 @@ to_json(Req, State) ->
     Json =
         case cowboy_req:match_qs([{group, [], plain}], Req) of
             #{group := GroupName} ->
-                ?LOG_INFO("add_to_queue: ~p", [GroupName]),
+                ?LOGT_INFO("add_to_queue: ~p", [{group_name,GroupName}]),
                 dog_profile_update_agent:add_to_queue([GroupName]),
                 %ok = dog_profile:publish_iptables_ruleset(GroupName),
                 jsx:encode(ok);

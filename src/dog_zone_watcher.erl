@@ -77,7 +77,7 @@ init([]) ->
 handle_connection_up(Connection, State) ->
     {ok, RethinkSquashSec} = application:get_env(dog_trainer, rethink_squash_sec),
     ?LOG_INFO("handle_connection_up"),
-    ?LOG_INFO("Connection: ~p", [Connection]),
+    ?LOGT_INFO("Connection: ~p", [{connection,Connection}]),
     Reql = reql:db(<<"dog">>),
     reql:table(Reql, <<"zone">>),
     reql:changes(Reql, #{<<"include_initial">> => false, <<"squash">> => RethinkSquashSec}),
@@ -92,7 +92,7 @@ handle_connection_down(State) ->
     {noreply, State}.
 
 handle_query_result(Result, State) ->
-    ?LOG_INFO("Result: ~p", [Result]),
+    ?LOGT_INFO("Result: ~p", [{result,Result}]),
     case Result of
         [] ->
             pass;
@@ -123,15 +123,15 @@ handle_query_error(Error, State) ->
     {stop, Error, State}.
 
 handle_call(state, _From, State) ->
-    ?LOG_DEBUG("handle_call changefeed: ~p", [State]),
+    ?LOGT_DEBUG("handle_call changefeed: ~p", [{state,State}]),
     {reply, State, State}.
 
 handle_cast(_Msg, State) ->
-    ?LOG_DEBUG("handle_cast changefeed: ~p", [State]),
+    ?LOGT_DEBUG("handle_cast changefeed: ~p", [{state,State}]),
     {noreply, State}.
 
 handle_info(_Info, State) ->
-    ?LOG_DEBUG("handle_info changefeed: ~p", [State]),
+    ?LOGT_DEBUG("handle_info changefeed: ~p", [{state,State}]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
