@@ -503,7 +503,8 @@ publish_to_outbound_exchange(TargetEnvName, IpsetExternalMap) ->
     RoutingKey = binary:list_to_bin(LocalEnvName),
     BrokerConfigName = list_to_atom(binary:bin_to_list(TargetEnvName)),
     %thumper:start_link(BrokerConfigName),
-    ?LOGT_INFO("~p, ~p, ~p, ~p", [{broker_config_name,BrokerConfigName}, {message,Message}, <<"inbound">>, {routing_key,RoutingKey}]),
+    ?LOGT_INFO("~p, ~p, ~p, ~p", [{broker_config_name,BrokerConfigName}, {message,Message},
+                                  {inbound,<<"inbound">>}, {routing_key,RoutingKey}]),
     %Response = thumper:publish_to(BrokerConfigName, Message, <<"inbound">>, RoutingKey),
     PublisherName = erlang:binary_to_atom(<<TargetEnvName/binary, <<"_publisher">>/binary>>),
     Response = turtle:publish(
