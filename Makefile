@@ -20,3 +20,6 @@ github_release:
 delete_release:
 	git tag -d ${VERSION}
 	git push --delete origin ${VERSION}
+
+local_shell:
+	rebar3 as local shell

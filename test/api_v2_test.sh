@@ -21,7 +21,7 @@ echo -e "{\n\"name\":\"drewtest\",\n\"ipv4_addresses\":[\"1.1.1.1\",\"3.3.3.3\"]
 put "${TESTDIR}/zone_update.json" "${BASEURL}/zone/${ZONE_ID}"
 putc "${TESTDIR}/zone_update.json" "${BASEURL}/zone/${ZONE_ID}" 303
 get ${BASEURL}/zone/${ZONE_ID}
-delete ${BASEURL}/zone/${ZONE_ID}
+#delete ${BASEURL}/zone/${ZONE_ID}
 get ${BASEURL}/zones
 
 echo "SERVICE"
@@ -34,7 +34,7 @@ putc "${TESTDIR}/service_update.json" "${BASEURL}/service/${SERVICE_ID}" 303
 putc "${TESTDIR}/service_update_no_ports.json" "${BASEURL}/service/${SERVICE_ID}" 303
 putc "${TESTDIR}/service_update_string_ports.json" "${BASEURL}/service/${SERVICE_ID}" 400
 get ${BASEURL}/service/${SERVICE_ID}
-delete ${BASEURL}/service/${SERVICE_ID}
+#delete ${BASEURL}/service/${SERVICE_ID}
 get ${BASEURL}/services
 
 #ssh service
@@ -61,11 +61,11 @@ put "${TESTDIR}/profile_v2_update.json" "${BASEURL}/profile/${PROFILE_ID}"
 putc "${TESTDIR}/profile_v2_update.json" "${BASEURL}/profile/${PROFILE_ID}" 303 #updates create new profiles
 putc "${TESTDIR}/profile_v2_update_blank_name.json" "${BASEURL}/profile/${PROFILE_ID}" 400
 get ${BASEURL}/profile/${PROFILE_ID}
-delete ${BASEURL}/profile/${PROFILE_ID}
+#delete ${BASEURL}/profile/${PROFILE_ID}
 get ${BASEURL}/profiles
 
 echo "RULESET CLEANUP"
-delete ${BASEURL}/ruleset/${RULESET_ID}
+#delete ${BASEURL}/ruleset/${RULESET_ID}
 
 echo "GROUP"
 GROUP_ID=$(post "${TESTDIR}/group.json" "${BASEURL}/group")
@@ -75,7 +75,7 @@ put "${TESTDIR}/group_update.json" "${BASEURL}/group/${GROUP_ID}"
 putc "${TESTDIR}/group_update.json" "${BASEURL}/group/${GROUP_ID}" 303
 putc "${TESTDIR}/group_update_blank_name.json" "${BASEURL}/group/${GROUP_ID}" 400
 get ${BASEURL}/group/${GROUP_ID}
-delete ${BASEURL}/group/${GROUP_ID}
+#delete ${BASEURL}/group/${GROUP_ID}
 get ${BASEURL}/groups
 
 echo "HOST"
@@ -109,10 +109,10 @@ put "${TESTDIR}/fact_update.json" "${BASEURL}/fact/${FACT_ID}"
 putc "${TESTDIR}/fact_update.json" "${BASEURL}/fact/${FACT_ID}" 303
 putc "${TESTDIR}/fact_update_blank_factname.json" "${BASEURL}/fact/${FACT_ID}" 400
 get ${BASEURL}/fact/${FACT_ID}
-delete ${BASEURL}/fact/${FACT_ID}
+#delete ${BASEURL}/fact/${FACT_ID}
 get ${BASEURL}/facts
 
-delete ${BASEURL}/service/${SERVICE_ID}
+#delete ${BASEURL}/service/${SERVICE_ID}
 echo
 #echo "PASS: ${PASS} / FAIL: ${FAIL}"
 test_report
