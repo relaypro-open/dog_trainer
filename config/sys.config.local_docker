@@ -65,7 +65,9 @@
                                #{
                                  max_depth => 3,
                                  term_depth => 50,
-                                 colored => true
+                                 colored => true,
+                                 keys_keep => [unstructured_log,template_log],
+                                 keys_remove => []
                                 }}}},
               {handler, disk_log, logger_disk_log_h,
                #{
@@ -80,9 +82,7 @@
                  formatter => {flatlog, 
                                #{
                                  map_depth => 3,
-                                 term_depth => 50,
-                                 keys_keep => [unstructured_log,template_log],
-                                 keys_remove => []
+                                 term_depth => 50
                                 }
                               }
                 }
