@@ -22,6 +22,7 @@ init(Req, Opts) ->
 
 from_post_json(Req, State) ->
     ?LOG_DEBUG("Req: ~p", [Req]),
+    %Hostkey = erlang:term_to_binary(cowboy_req:binding(id, Req)),
     Hostkey = cowboy_req:binding(id, Req),
     ApiUserName = cowboy_req:header(<<"x-consumer-username">>, Req),
     ConsumerCustomId = cowboy_req:header(<<"x-consumer-custom-id">>, Req),
@@ -82,6 +83,7 @@ from_post_json(Req, State) ->
 handle_command(Hostkey, Message, ApiUserName) ->
     ?LOG_DEBUG("Message: ~p", [Message]),
     Command = maps:get(<<"command">>, Message),
+    %UseShell = erlang:binary_to_existing_atom(maps:get(<<"use_shell">>, Message, <<"false">>)),
     UseShell = erlang:binary_to_atom(maps:get(<<"use_shell">>, Message, <<"false">>)),
     NewOpts =
         case (maps:is_key(<<"user">>, Message)) of
@@ -92,8 +94,7 @@ handle_command(Hostkey, Message, ApiUserName) ->
                 [{use_shell, UseShell}, {api_user, ApiUserName}]
         end,
     ?LOG_DEBUG("NewOpts: ~p", [NewOpts]),
-    %dog_file_transfer_worker:execute_command(Command, Hostkey, NewOpts).
-    dog_file_transfer_worker:execute_command(Command, Hostkey, NewOpts).
+    dog_file_transfer:execute_command(Command, Hostkey, NewOpts).
 
 terminate(_Reason, _Req, _State) ->
     ok.
@@ -117,7 +118,7 @@ resource_exists(Req, State) ->
                 end,
             ?LOG_DEBUG("ID: ~p, Path:~p", [Id, Path]),
             Opts = [{api_user, ApiUserName}],
-            case dog_file_transfer_worker:fetch_file(Path, Id, Opts) of
+            case dog_file_transfer:fetch_file(Path, Id, Opts) of
                 timeout ->
                     Req@2 = cowboy_req:reply(
                         500,
@@ -148,6 +149,7 @@ resource_exists(Req, State) ->
 from_post_multipart(Req, State) ->
     ApiUserName = cowboy_req:header(<<"x-consumer-username">>, Req),
     Opts = [{api_user, ApiUserName}],
+    %Hostkey = term_to_binary(cowboy_req:binding(id, Req)),
     Hostkey = cowboy_req:binding(id, Req),
     ?LOG_DEBUG("Hostkey= ~p~n", [Hostkey]),
     ?LOG_DEBUG("Req= ~p~n", [Req]),
@@ -197,11 +199,14 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
                         LocalFilePath =
                             ?FILE_LOCATION_BASE ++ dog_common:to_list(Hostkey) ++ "/send/" ++
                                 dog_common:to_list(RemoteFilePath),
-                        filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),
-                        {ok, IoDevice} = file:open(LocalFilePath, [raw, write, binary]),
+                        ok = filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),
+                        {ok, IoDevice} = file:open(LocalFilePath, [raw, write, binary, sync]),
                         Req5 = stream_file(Req2, IoDevice),
-                        file:close(IoDevice),
-                        dog_file_transfer_worker:send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts),
+                        ok = file:close(IoDevice),
+                        Response = dog_file_transfer:send_file(
+                            LocalFilePath, RemoteFilePath, Hostkey, Opts
+                        ),
+                        ?LOG_DEBUG(#{response => Response}),
                         [Req5, RemoteFilePath]
                 end,
             acc_multipart(Hostkey, Req4, [{Headers, Body} | Acc], Opts);
@@ -276,7 +281,7 @@ delete_resource(Req@0, State) ->
     ?LOG_DEBUG("ID: ~p, Path:~p", [Id, Path]),
     Opts = [{api_user, ApiUserName}],
     {Result, Req@1} =
-        case dog_file_transfer_worker:delete_file(Path, Id, Opts) of
+        case dog_file_transfer:delete_file(Path, Id, Opts) of
             ok ->
                 {true, Req@0};
             timeout ->

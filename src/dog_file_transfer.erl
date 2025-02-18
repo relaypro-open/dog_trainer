@@ -16,7 +16,7 @@
     execute_command/2,
     execute_command/3,
     fetch_file/3,
-    send_data/5,
+    send_data/6,
     send_file/4
 ]).
 
@@ -125,12 +125,12 @@ publish_file_delete(Hostkey, Filename, Opts) ->
 -spec publish_file_send(
     Hostkey :: string(),
     RemoteFilePath :: string(),
-    Data :: binary(),
+    Data :: string(),
     TotalBlocks :: integer(),
     CurrentBlock :: integer(),
     MaxBlockSizeBytes :: integer(),
     Opts :: list()
-) -> any().
+) -> {ack | nack, Time :: integer()}.
 publish_file_send(
     Hostkey, RemoteFilePath, Data, TotalBlocks, CurrentBlock, MaxBlockSizeBytes, Opts
 ) ->
@@ -151,8 +151,8 @@ publish_file_send(
         ] ++ Opts
     ),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    ?LOG_ERROR(#{routing_key => RoutingKey}),
-    Response = turtle:publish(
+    ?LOG_DEBUG(#{routing_key => RoutingKey}),
+    Response = turtle:publish_sync(
         file_transfer_publisher,
         <<"file_transfer">>,
         RoutingKey,
@@ -170,14 +170,14 @@ send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
     MaxBlockSizeBytes = application:get_env(dog_trainer, max_block_size_bytes, 134217728),
     ?LOG_DEBUG(#{localfilepath => LocalFilePath, hostkey => Hostkey}),
     {ok, IoDevice} = file:open(LocalFilePath, [read, binary, read_ahead, raw]),
-    send_data(IoDevice, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts),
+    ok = send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts),
     ok = file:close(IoDevice).
 
-send_data(IoDevice, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts) ->
-    TotalBlocks = number_blocks(RemoteFilePath, MaxBlockSizeBytes),
-    send_data(IoDevice, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, 0, Opts).
+send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts) ->
+    TotalBlocks = number_blocks(LocalFilePath, MaxBlockSizeBytes),
+    ok = send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, 0, Opts).
 
-send_data(IoDevice, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, CurrentBlock, Opts) ->
+send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, CurrentBlock, Opts) ->
     case file:read(IoDevice, MaxBlockSizeBytes) of
         {ok, Data} ->
             ?LOG_DEBUG(#{
@@ -188,29 +188,31 @@ send_data(IoDevice, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, Cur
             }),
             % Write Data to Socket
             NextBlock = CurrentBlock + 1,
-            publish_file_send(
+            {ack, _Time} = publish_file_send(
                 Hostkey, RemoteFilePath, Data, TotalBlocks, NextBlock, MaxBlockSizeBytes, Opts
             ),
-            send_data(
-                IoDevice, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, NextBlock, Opts
+            %?LOG_DEBUG(#{response => Response}),
+            ok = send_data(
+                IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, NextBlock, Opts
             );
+        eof when MaxBlockSizeBytes =:= 0 ->
+            error;
         eof ->
             ok
     end.
 
-number_blocks(RemoteFilePath, MaxBlockSizeBytes) ->
+-spec number_blocks(LocalFilePath :: string(), MaxBlockSizeBytes :: integer()) ->
+    FileSize :: integer().
+number_blocks(LocalFilePath, MaxBlockSizeBytes) ->
+    {ok, FileInfo} = file:read_file_info(LocalFilePath),
+    ?LOG_DEBUG(#{file_info => FileInfo}),
+    FullBlocks = erlang:floor(FileInfo#file_info.size / MaxBlockSizeBytes),
     FileSize =
-        case file:read_file_info(RemoteFilePath) of
-            {ok, FileInfo} ->
-                FullBlocks = erlang:floor(FileInfo#file_info.size / MaxBlockSizeBytes),
-                case FileInfo#file_info.size rem MaxBlockSizeBytes of
-                    N when N > 0 ->
-                        FullBlocks + 1;
-                    _ ->
-                        FullBlocks
-                end;
-            {error, _Reason} ->
-                0
+        case FileInfo#file_info.size rem MaxBlockSizeBytes of
+            N when N > 0 ->
+                FullBlocks + 1;
+            _ ->
+                FullBlocks
         end,
     FileSize.
 
