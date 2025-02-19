@@ -16,7 +16,6 @@ start_link() ->
 init([]) ->
     {ok,
         {{one_for_one, 5, 10}, [
-            ?SUP(dog_db_pool_sup),
             ?SUP(dog_rethink_sup),
             ?SUP(dog_watcher_sup),
             ?SUP(dog_publisher_sup),
