@@ -117,6 +117,12 @@ start_link() ->
     {ok, _} = cowboy:start_clear(
         http,
         [{port, 7070}, {ip, {0, 0, 0, 0}}],
-        #{env => #{dispatch => Dispatch}}
+        #{env => #{dispatch => Dispatch}
+          ,
+          stream_handlers => [
+            cowboy_access_log_h,
+            cowboy_stream_h
+        ]
+         }
     ),
     dog_api_sup:start_link().

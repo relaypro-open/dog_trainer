@@ -35,9 +35,12 @@ from_post_json(Req, State) ->
     case dog_host:get_by_hostkey(Hostkey) of
         {error, notfound} ->
             Req@2 = cowboy_req:reply(
-                404,
+                200,
                 #{<<"content-type">> => <<"application/json">>},
-                jsx:encode(<<"Hostkey not found">>),
+                jsx:encode(
+                  #{Hostkey =>
+                    #{retcode => 1, stdout => "" , stderr => <<"Hostkey not found">>
+                            }}),
                 Req
             ),
             {stop, Req@2, State};
@@ -51,9 +54,11 @@ from_post_json(Req, State) ->
             case Response of
                 {error, StdErr} ->
                     Req@2 = cowboy_req:reply(
-                        400,
+                        200,
                         #{<<"content-type">> => <<"application/json">>},
-                        jsx:encode(#{Hostkey => #{retcode => 1, stdout => <<"">>, stderr => StdErr}}),
+                        jsx:encode(#{Hostkey => #{retcode => 1, stdout => <<"">>, stderr => #{error
+                                                                                              =>
+                                                                                              StdErr}}}),
                         Req
                     ),
                     {stop, Req@2, State};
@@ -61,7 +66,7 @@ from_post_json(Req, State) ->
                     Req@2 = cowboy_req:reply(
                         200,
                         #{<<"content-type">> => <<"application/json">>},
-                        jsx:encode(#{Hostkey => #{retcode => 0, stdout => <<"">>, stderr => <<"">>}}),
+                        jsx:encode(#{Hostkey => #{retcode => 0, stdout => <<"">>, stderr => #{}}}),
                         Req
                     ),
                     {stop, Req@2, State};
@@ -71,7 +76,7 @@ from_post_json(Req, State) ->
                         #{<<"content-type">> => <<"application/json">>},
                         jsx:encode(#{
                             Hostkey => #{
-                                retcode => 0, stdout => string:trim(StdOut), stderr => <<"">>
+                                retcode => 0, stdout => string:trim(StdOut), stderr => #{}
                             }
                         }),
                         Req
@@ -121,7 +126,7 @@ resource_exists(Req, State) ->
             case dog_file_transfer:fetch_file(Path, Id, Opts) of
                 timeout ->
                     Req@2 = cowboy_req:reply(
-                        500,
+                        200,
                         #{<<"content-type">> => <<"application/json">>},
                         jsx:encode(#{error => timeout}),
                         Req
@@ -129,7 +134,7 @@ resource_exists(Req, State) ->
                     {stop, Req@2, State};
                 {error, Error} ->
                     Req@2 = cowboy_req:reply(
-                        400,
+                        200,
                         #{<<"content-type">> => <<"application/json">>},
                         jsx:encode(#{error => Error}),
                         Req
@@ -156,7 +161,7 @@ from_post_multipart(Req, State) ->
     case dog_host:get_by_hostkey(Hostkey) of
         {error, notfound} ->
             Req@2 = cowboy_req:reply(
-                404,
+                200,
                 #{<<"content-type">> => <<"application/json">>},
                 jsx:encode(<<"Hostkey not found">>),
                 Req
