@@ -36,8 +36,8 @@
         flatlog,
         eel,
         sync,
-        cowboy_access_log
-    ]},
+        cowboy_access_log,
+	logger_logstash_formatter
     {env, []},
     {modules, []},
     {maintainers, []},
