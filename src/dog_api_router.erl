@@ -114,15 +114,38 @@ start_link() ->
             {"/api/zones/ips", plural_api_handler, #{}}
         ]}
     ]),
-    {ok, _} = cowboy:start_clear(
-        http,
-        [{port, 7070}, {ip, {0, 0, 0, 0}}],
-        #{env => #{dispatch => Dispatch}
-          ,
+    %Alarms = #{
+    %    my_alarm => #{
+    %        type => num_connections,
+    %        treshold => 100,
+    %        callback => fun(Ref, Name, ConnSup, ConnPids) ->
+    %            logger:warning("Warning (~s): "
+    %                    "Supervisor ~s of listener ~s "
+    %                    "has ~b connections",
+    %                [Name, Ref, ConnSup, length(ConnPids)])
+    %        end
+    %        }
+    %},
+
+    CowboyOptions =
+        #{env => #{dispatch => Dispatch},
+          request_timeout => 12000,
           stream_handlers => [
             cowboy_access_log_h,
+            cowboy_compress_h,
             cowboy_stream_h
-        ]
-         }
+            ]
+         },
+    RanchOptions = [
+                    {port, 7070},
+                    {ip, {0, 0, 0, 0}},
+                    {max_connections,1024},
+                    {num_acceptors,50}%,
+                    %{alarms,Alarms}
+                   ],
+    {ok, _} = cowboy:start_clear(
+        http,
+        RanchOptions,
+        CowboyOptions
     ),
     dog_api_sup:start_link().
