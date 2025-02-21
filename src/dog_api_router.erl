@@ -114,21 +114,10 @@ start_link() ->
             {"/api/zones/ips", plural_api_handler, #{}}
         ]}
     ]),
-    %Alarms = #{
-    %    my_alarm => #{
-    %        type => num_connections,
-    %        treshold => 100,
-    %        callback => fun(Ref, Name, ConnSup, ConnPids) ->
-    %            logger:warning("Warning (~s): "
-    %                    "Supervisor ~s of listener ~s "
-    %                    "has ~b connections",
-    %                [Name, Ref, ConnSup, length(ConnPids)])
-    %        end
-    %        }
-    %},
 
     CowboyOptions =
         #{env => #{dispatch => Dispatch},
+          idle_timeout => 300000,
           request_timeout => 12000,
           stream_handlers => [
             cowboy_access_log_h,
@@ -140,8 +129,8 @@ start_link() ->
                     {port, 7070},
                     {ip, {0, 0, 0, 0}},
                     {max_connections,1024},
-                    {num_acceptors,50}%,
-                    %{alarms,Alarms}
+                    {num_acceptors,50},
+                    {keepalive, true}
                    ],
     {ok, _} = cowboy:start_clear(
         http,
