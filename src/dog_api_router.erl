@@ -129,7 +129,7 @@ start_link() ->
                     {port, 7070},
                     {ip, {0, 0, 0, 0}},
                     {max_connections,1024},
-                    {num_acceptors,50},
+                    {num_acceptors,100},
                     {keepalive, true}
                    ],
     {ok, _} = cowboy:start_clear(
