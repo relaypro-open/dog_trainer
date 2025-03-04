@@ -85,6 +85,7 @@ from_post_json(Req, State) ->
             end
     end.
 
+-spec handle_command(Hostkey :: binary(), Message :: binary(), ApiUserName :: binary() ) -> {ok | error, iolist()}.
 handle_command(Hostkey, Message, ApiUserName) ->
     ?LOG_DEBUG("Message: ~p", [Message]),
     Command = maps:get(<<"command">>, Message),
@@ -99,7 +100,8 @@ handle_command(Hostkey, Message, ApiUserName) ->
                 [{use_shell, UseShell}, {api_user, ApiUserName}]
         end,
     ?LOG_DEBUG("NewOpts: ~p", [NewOpts]),
-    dog_file_transfer:execute_command(Command, Hostkey, NewOpts).
+    Result = dog_file_transfer:execute_command(Command, Hostkey, NewOpts),
+    Result.
 
 terminate(_Reason, _Req, _State) ->
     ok.
@@ -124,14 +126,14 @@ resource_exists(Req, State) ->
             ?LOG_DEBUG("ID: ~p, Path:~p", [Id, Path]),
             Opts = [{api_user, ApiUserName}],
             case dog_file_transfer:fetch_file(Path, Id, Opts) of
-                timeout ->
-                    Req@2 = cowboy_req:reply(
-                        200,
-                        #{<<"content-type">> => <<"application/json">>},
-                        jsx:encode(#{error => timeout}),
-                        Req
-                    ),
-                    {stop, Req@2, State};
+                %timeout ->
+                %    Req@2 = cowboy_req:reply(
+                %        200,
+                %        #{<<"content-type">> => <<"application/json">>},
+                %        jsx:encode(#{error => timeout}),
+                %        Req
+                %    ),
+                %    {stop, Req@2, State};
                 {error, Error} ->
                     Req@2 = cowboy_req:reply(
                         200,
@@ -161,7 +163,7 @@ from_post_multipart(Req, State) ->
     case dog_host:get_by_hostkey(Hostkey) of
         {error, notfound} ->
             Req@2 = cowboy_req:reply(
-                200,
+                403,
                 #{<<"content-type">> => <<"application/json">>},
                 jsx:encode(<<"Hostkey not found">>),
                 Req
@@ -186,6 +188,7 @@ from_post_multipart(Req, State) ->
                 ParsedResult,
                 Req@2
             ),
+            ?LOG_DEBUG("Req@3: ~p", [Req@3]),
             {stop, Req@3, State}
     end.
 
@@ -201,15 +204,19 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
                         ?LOG_DEBUG("stream_file filename=~p content_type=~p~n", [
                             RemoteFilePath, CType
                         ]),
+                        HostFilePath =
+                            ?FILE_LOCATION_BASE ++ dog_common:to_list(Hostkey) ++ "/send/",
                         LocalFilePath =
-                            ?FILE_LOCATION_BASE ++ dog_common:to_list(Hostkey) ++ "/send/" ++
-                                dog_common:to_list(RemoteFilePath),
+                            HostFilePath ++ dog_common:to_list(RemoteFilePath),
+                        LocalFilePath =
+                            ?FILE_LOCATION_BASE ++ dog_common:to_list(Hostkey) ++ "/send/" ++ dog_common:to_list(RemoteFilePath),
                         ok = filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),
                         {ok, IoDevice} = file:open(LocalFilePath, [raw, write, binary, sync]),
                         Req5 = stream_file(Req2, IoDevice),
+                        ok = file:sync(IoDevice),
                         ok = file:close(IoDevice),
                         Response = dog_file_transfer:send_file(
-                            LocalFilePath, RemoteFilePath, Hostkey, Opts
+                            HostFilePath, LocalFilePath, RemoteFilePath, Hostkey, Opts
                         ),
                         ?LOG_DEBUG(#{response => Response}),
                         [Req5, RemoteFilePath]

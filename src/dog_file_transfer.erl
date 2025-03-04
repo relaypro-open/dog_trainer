@@ -17,7 +17,7 @@
     execute_command/3,
     fetch_file/3,
     send_data/6,
-    send_file/4
+    send_file/5
 ]).
 
 -export([
@@ -30,9 +30,13 @@
 hostkey_to_routing_key(Hostkey) ->
     erlang:iolist_to_binary(["*.*.*.", Hostkey]).
 
+-spec execute_command(Hostkey :: string(), ExecuteCommand :: string()) ->
+    {ok | error, iolist()}.
 execute_command(ExecuteCommand, Hostkey) ->
     execute_command(ExecuteCommand, Hostkey, []).
 
+-spec execute_command(Hostkey :: string(), ExecuteCommand :: string(), Opts :: list()) ->
+    {ok | error, iolist()}.
 execute_command(ExecuteCommand, Hostkey, Opts) ->
     imetrics:add_m(file_transfer, execute_command),
     publish_execute_command(Hostkey, ExecuteCommand, Opts).
@@ -163,15 +167,17 @@ publish_file_send(
     Response.
 
 -spec send_file(
-    LocalFilePath :: string(), RemoteFilePath :: string(), Hostkey :: string(), Opts :: list()
+    HostFilePath :: string(), LocalFilePath :: string(), RemoteFilePath :: string(), Hostkey :: string(), Opts :: list()
 ) -> ok | error.
-send_file(LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
+send_file(HostFilePath, LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
     imetrics:add_m(file_transfer, send_file),
     MaxBlockSizeBytes = application:get_env(dog_trainer, max_block_size_bytes, 134217728),
     ?LOG_DEBUG(#{localfilepath => LocalFilePath, hostkey => Hostkey}),
     {ok, IoDevice} = file:open(LocalFilePath, [read, binary, read_ahead, raw]),
     ok = send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts),
-    ok = file:close(IoDevice).
+    ok = file:close(IoDevice),
+    ?LOG_DEBUG("del_dir_r: ~p",[LocalFilePath]),
+    ok = file:del_dir_r(HostFilePath).
 
 send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts) ->
     TotalBlocks = number_blocks(LocalFilePath, MaxBlockSizeBytes),
@@ -194,7 +200,8 @@ send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBloc
             %?LOG_DEBUG(#{response => Response}),
             ok = send_data(
                 IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, NextBlock, Opts
-            );
+            ),
+            ok;
         eof when MaxBlockSizeBytes =:= 0 ->
             error;
         eof ->
@@ -255,7 +262,8 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
                         ?FILE_LOCATION_BASE ++ dog_common:to_list(Hostkey) ++ "/fetch/" ++
                             dog_common:to_list(Filename),
                     filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),
-                    ok = file:write_file(LocalFilePath, Response, [raw, write, binary]),
+                    ok = file:write_file(LocalFilePath, Response, [raw, write, binary, sync]),
+                    ok = file:delete(LocalFilePath),
                     ?LOG_INFO("Response size in bytes: ~p", [erlang:size(Response)]),
                     Response;
                 <<"text/json">> ->
