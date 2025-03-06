@@ -258,12 +258,6 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
             ?LOG_DEBUG(#{ctype => CType}),
             case CType of
                 <<"application/octet-stream">> ->
-                    LocalFilePath =
-                        ?FILE_LOCATION_BASE ++ dog_common:to_list(Hostkey) ++ "/fetch/" ++
-                            dog_common:to_list(Filename),
-                    filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),
-                    ok = file:write_file(LocalFilePath, Response, [raw, write, binary, sync]),
-                    ok = file:delete(LocalFilePath),
                     ?LOG_INFO("Response size in bytes: ~p", [erlang:size(Response)]),
                     Response;
                 <<"text/json">> ->
