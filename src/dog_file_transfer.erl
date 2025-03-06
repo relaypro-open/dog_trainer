@@ -176,7 +176,7 @@ send_file(HostFilePath, LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
     {ok, IoDevice} = file:open(LocalFilePath, [read, binary, read_ahead, raw]),
     ok = send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts),
     ok = file:close(IoDevice),
-    ?LOG_DEBUG("del_dir_r: ~p",[LocalFilePath]),
+    ?LOG_DEBUG("del_dir_r: ~p",[HostFilePath]),
     ok = file:del_dir_r(HostFilePath).
 
 send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts) ->

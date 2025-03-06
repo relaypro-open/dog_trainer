@@ -205,9 +205,9 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
                             RemoteFilePath, CType
                         ]),
                         UUID = entropy_string:session_id(),
-                        HostFilePath = io_lib:format("~s/~s/~s/send",[?FILE_LOCATION_BASE, dog_common:to_list(Hostkey), UUID]),
+                        HostFilePath = io_lib:format("~s/~s/~s",[?FILE_LOCATION_BASE, dog_common:to_list(Hostkey), UUID]),
                         ?LOG_DEBUG("HostFilePath: ~p", [HostFilePath]),
-                        LocalFilePath = io_lib:format("~s/~s",[ HostFilePath, dog_common:to_list(RemoteFilePath)]),
+                        LocalFilePath = io_lib:format("~s/send/~s",[ HostFilePath, dog_common:to_list(RemoteFilePath)]),
                         ?LOG_DEBUG("LocalFilePath: ~p", [LocalFilePath]),
                         ok = filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),
                         {ok, IoDevice} = file:open(LocalFilePath, [raw, write, binary, sync]),
