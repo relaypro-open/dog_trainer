@@ -204,12 +204,11 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
                         ?LOG_DEBUG("stream_file filename=~p content_type=~p~n", [
                             RemoteFilePath, CType
                         ]),
-                        HostFilePath =
-                            ?FILE_LOCATION_BASE ++ dog_common:to_list(Hostkey) ++ "/send/",
-                        LocalFilePath =
-                            HostFilePath ++ dog_common:to_list(RemoteFilePath),
-                        LocalFilePath =
-                            ?FILE_LOCATION_BASE ++ dog_common:to_list(Hostkey) ++ "/send/" ++ dog_common:to_list(RemoteFilePath),
+                        UUID = entropy_string:session_id(),
+                        HostFilePath = io_lib:format("~s/~s/~s/send",[?FILE_LOCATION_BASE, dog_common:to_list(Hostkey), UUID]),
+                        ?LOG_DEBUG("HostFilePath: ~p", [HostFilePath]),
+                        LocalFilePath = io_lib:format("~s/~s",[ HostFilePath, dog_common:to_list(RemoteFilePath)]),
+                        ?LOG_DEBUG("LocalFilePath: ~p", [LocalFilePath]),
                         ok = filelib:ensure_dir(filename:dirname(LocalFilePath) ++ "/"),
                         {ok, IoDevice} = file:open(LocalFilePath, [raw, write, binary, sync]),
                         Req5 = stream_file(Req2, IoDevice),
