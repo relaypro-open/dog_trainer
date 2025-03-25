@@ -31,18 +31,18 @@ hostkey_to_routing_key(Hostkey) ->
     erlang:iolist_to_binary(["*.*.*.", Hostkey]).
 
 -spec execute_command(Hostkey :: string(), ExecuteCommand :: string()) ->
-    {ok | error, iolist()}.
+    {'error', dynamic()} | {'ok', dynamic()} | {'error', term()}.
 execute_command(ExecuteCommand, Hostkey) ->
     execute_command(ExecuteCommand, Hostkey, []).
 
 -spec execute_command(Hostkey :: string(), ExecuteCommand :: string(), Opts :: list()) ->
-    {ok | error, iolist()}.
+    {'error', dynamic()} | {'ok', dynamic()} | {'error', term()}.
 execute_command(ExecuteCommand, Hostkey, Opts) ->
     imetrics:add_m(file_transfer, execute_command),
     publish_execute_command(Hostkey, ExecuteCommand, Opts).
 
 -spec publish_execute_command(Hostkey :: string(), ExecuteCommand :: string(), Opts :: list()) ->
-    {ok | error, iolist()}.
+    {'error', dynamic()} | {'ok', dynamic()} | {'error', term()}.
 publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
     ExecuteCommandBase64 = base64:encode(ExecuteCommand),
     Pid = erlang:self(),
@@ -84,8 +84,11 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
     Response.
 
 decode_payload(Payload) ->
-    {Response, Message} = hd(jsx:decode(Payload)),
-    {Response, Message}.
+    case jsx:decode(Payload) of
+        [] -> {error, empty_payload};
+        [H | _T] -> {Response, Message} = H,
+            {Response, Message}
+    end.
 
 delete_file(FilePath, Hostkey, Opts) ->
     imetrics:add_m(file_transfer, delete_file),
@@ -118,7 +121,7 @@ publish_file_delete(Hostkey, Filename, Opts) ->
             ?LOG_ERROR(#{reason => Reason, routing_key => RoutingKey}),
             Reason;
         {ok, _NTime, _CType, Payload} ->
-            case hd(jsx:decode(Payload)) of
+            case decode_payload(Payload) of
                 {<<"error">>, Error} ->
                     {error, Error};
                 <<"ok">> ->
@@ -129,7 +132,7 @@ publish_file_delete(Hostkey, Filename, Opts) ->
 -spec publish_file_send(
     Hostkey :: string(),
     RemoteFilePath :: string(),
-    Data :: string(),
+    Data :: string() | binary(),
     TotalBlocks :: integer(),
     CurrentBlock :: integer(),
     MaxBlockSizeBytes :: integer(),
@@ -184,6 +187,7 @@ send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, MaxBlockSizeBytes, O
     ok = send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, 0, Opts).
 
 send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, CurrentBlock, Opts) ->
+    %{ok, Data} | eof | {error, Reason}
     case file:read(IoDevice, MaxBlockSizeBytes) of
         {ok, Data} ->
             ?LOG_DEBUG(#{
@@ -202,6 +206,8 @@ send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBloc
                 IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, NextBlock, Opts
             ),
             ok;
+        {error, _Reason} ->
+            error;
         eof when MaxBlockSizeBytes =:= 0 ->
             error;
         eof ->
@@ -210,12 +216,18 @@ send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBloc
 
 -spec number_blocks(LocalFilePath :: string(), MaxBlockSizeBytes :: integer()) ->
     FileSize :: integer().
+number_blocks(_LocalFilePath, 0) ->
+    0;
 number_blocks(LocalFilePath, MaxBlockSizeBytes) ->
     {ok, FileInfo} = file:read_file_info(LocalFilePath),
     ?LOG_DEBUG(#{file_info => FileInfo}),
-    FullBlocks = erlang:floor(FileInfo#file_info.size / MaxBlockSizeBytes),
+    FileSize = case FileInfo of
+        {ok, Fi} -> Fi#file_info.size;
+        {error, _} -> 0
+    end,
+    FullBlocks = erlang:floor(FileSize / MaxBlockSizeBytes),
     FileSize =
-        case FileInfo#file_info.size rem MaxBlockSizeBytes of
+        case FileSize rem MaxBlockSizeBytes of
             N when N > 0 ->
                 FullBlocks + 1;
             _ ->
@@ -261,7 +273,7 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
                     ?LOG_INFO("Response size in bytes: ~p", [erlang:size(Response)]),
                     Response;
                 <<"text/json">> ->
-                    case hd(jsx:decode(Response)) of
+                    case decode_payload(Response) of
                         {<<"error">>, StdErr} ->
                             ?LOG_ERROR(#{stderr => StdErr, routing_key => RoutingKey}),
                             {error, StdErr};
