@@ -187,7 +187,6 @@ send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, MaxBlockSizeBytes, O
     ok = send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, 0, Opts).
 
 send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, CurrentBlock, Opts) ->
-    %{ok, Data} | eof | {error, Reason}
     case file:read(IoDevice, MaxBlockSizeBytes) of
         {ok, Data} ->
             ?LOG_DEBUG(#{
@@ -201,7 +200,6 @@ send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBloc
             {ack, _Time} = publish_file_send(
                 Hostkey, RemoteFilePath, Data, TotalBlocks, NextBlock, MaxBlockSizeBytes, Opts
             ),
-            %?LOG_DEBUG(#{response => Response}),
             ok = send_data(
                 IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, NextBlock, Opts
             ),
@@ -283,10 +281,3 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
                     end
             end
     end.
-
-%-define(HASH_BLOCK_SIZE,1024*1024*32).
-%file_hash(Filename) ->
-%    file_hash(Filename,Accum).
-%
-%file_hash(Filename,
-%file_hash(Filename) ->

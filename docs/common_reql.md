@@ -317,3 +317,11 @@ r.db('dog').table('group').withFields(['profile_id']).innerJoin(
   function(groupRow, rulesetRow) {
     return groupRow('profile_id').eq(rulesetRow('profile_id'))})('right')('id')
 ```
+
+Find Group/Zone/etc in Ruleset:
+```
+r.db('dog').table('ruleset')
+  .filter(
+    r.row("rules").toJSON().match("$ID")
+  ).getField("name")
+```

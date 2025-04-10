@@ -22,7 +22,6 @@ init(Req, Opts) ->
 
 from_post_json(Req, State) ->
     ?LOG_DEBUG("Req: ~p", [Req]),
-    %Hostkey = erlang:term_to_binary(cowboy_req:binding(id, Req)),
     Hostkey = cowboy_req:binding(id, Req),
     ApiUserName = cowboy_req:header(<<"x-consumer-username">>, Req),
     ConsumerCustomId = cowboy_req:header(<<"x-consumer-custom-id">>, Req),
@@ -89,7 +88,6 @@ from_post_json(Req, State) ->
 handle_command(Hostkey, Message, ApiUserName) ->
     ?LOG_DEBUG("Message: ~p", [Message]),
     Command = maps:get(<<"command">>, Message),
-    %UseShell = erlang:binary_to_existing_atom(maps:get(<<"use_shell">>, Message, <<"false">>)),
     UseShell = erlang:binary_to_atom(maps:get(<<"use_shell">>, Message, <<"false">>)),
     NewOpts =
         case (maps:is_key(<<"user">>, Message)) of
@@ -126,14 +124,6 @@ resource_exists(Req, State) ->
             ?LOG_DEBUG("ID: ~p, Path:~p", [Id, Path]),
             Opts = [{api_user, ApiUserName}],
             case dog_file_transfer:fetch_file(Path, Id, Opts) of
-                %timeout ->
-                %    Req@2 = cowboy_req:reply(
-                %        200,
-                %        #{<<"content-type">> => <<"application/json">>},
-                %        jsx:encode(#{error => timeout}),
-                %        Req
-                %    ),
-                %    {stop, Req@2, State};
                 {error, Error} ->
                     Req@2 = cowboy_req:reply(
                         200,
@@ -156,7 +146,6 @@ resource_exists(Req, State) ->
 from_post_multipart(Req, State) ->
     ApiUserName = cowboy_req:header(<<"x-consumer-username">>, Req),
     Opts = [{api_user, ApiUserName}],
-    %Hostkey = term_to_binary(cowboy_req:binding(id, Req)),
     Hostkey = cowboy_req:binding(id, Req),
     ?LOG_DEBUG("Hostkey= ~p~n", [Hostkey]),
     ?LOG_DEBUG("Req= ~p~n", [Req]),
@@ -275,9 +264,6 @@ to_file(Req, State) ->
 
 to_json(Req, State) ->
     ?LOG_DEBUG("State: ~p~n", [State]),
-    %Id = cowboy_req:binding(id, Req),
-    %Sub = cowboy_req:binding(sub, Req),
-    %Object = maps:get(<<"object">>,State),
     Json = jsx:encode(State),
     {Json, Req, State}.
 
