@@ -31,18 +31,18 @@ hostkey_to_routing_key(Hostkey) ->
     erlang:iolist_to_binary(["*.*.*.", Hostkey]).
 
 -spec execute_command(Hostkey :: string(), ExecuteCommand :: string()) ->
-    {'error', dynamic()} | {'ok', dynamic()} | {'error', term()}.
+    {'error', binary()} | {'ok', binary()} | {'error', term()}.
 execute_command(ExecuteCommand, Hostkey) ->
     execute_command(ExecuteCommand, Hostkey, []).
 
 -spec execute_command(Hostkey :: string(), ExecuteCommand :: string(), Opts :: list()) ->
-    {'error', dynamic()} | {'ok', dynamic()} | {'error', term()}.
+    {'error', binary()} | {'ok', binary()} | {'error', term()}.
 execute_command(ExecuteCommand, Hostkey, Opts) ->
     imetrics:add_m(file_transfer, execute_command),
     publish_execute_command(Hostkey, ExecuteCommand, Opts).
 
 -spec publish_execute_command(Hostkey :: string(), ExecuteCommand :: string(), Opts :: list()) ->
-    {'error', dynamic()} | {'ok', dynamic()} | {'error', term()}.
+    {'error', binary()} | {'ok', binary()} | {'error', term()}.
 publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
     ExecuteCommandBase64 = base64:encode(ExecuteCommand),
     Pid = erlang:self(),
