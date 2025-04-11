@@ -50,7 +50,7 @@ COPY scripts scripts/
 ARG cachebust
 RUN find /data/_build
 #Build the release
-RUN ./rebar3 release as local_docker
+RUN ./rebar3 as local_docker release
 
 RUN pwd
 RUN find .
@@ -61,7 +61,7 @@ RUN mkdir -p /opt/dog_trainer
 RUN mkdir -p /var/log/dog_trainer
 RUN mkdir -p /tmp/dog_trainer
 # Install the released application
-COPY --from=compile /data/_build/default/rel/dog_trainer /opt/dog_trainer
+COPY --from=compile /data/_build/local_docker/rel/dog_trainer /opt/dog_trainer
 RUN ls -latr /var/log/dog_trainer
 
 # Expose relevant ports
