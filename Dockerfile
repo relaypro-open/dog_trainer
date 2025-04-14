@@ -1,5 +1,5 @@
 # Build stage 0
-FROM erlang:23 as base
+FROM docker.io/erlang:23 as base
 
 # elixir expects utf8.
 ENV ELIXIR_VERSION="v1.9.4" \

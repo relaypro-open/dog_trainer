@@ -1,5 +1,5 @@
 # Build stage 0
-FROM erlang:24 as base
+FROM docker.io/erlang:24 as base
 
 ENV DOG_TRAINER_ENV=t1
 ENV DOG_TRAINER_AWS_KEY=
