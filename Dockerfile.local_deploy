@@ -1,5 +1,5 @@
 # Build stage 0
-FROM erlang:24 as base
+FROM docker.io/erlang:24 as base
 
 ENV DOG_TRAINER_ENV=t1
 ENV DOG_TRAINER_AWS_KEY=
@@ -22,7 +22,7 @@ ENV DOG_TRAINER_KEYFILE=/etc/dog_trainer/private/server.key
 ENV DOG_TRAINER_BROKER_HOST=rabbitmq
 ENV DOG_TRAINER_BROKER_PORT=5673
 
-RUN apt-get update && apt-get install -y less ack lsb-release vim-tiny jq curl
+RUN apt-get update && apt-get install -y less ack lsb-release vim-tiny jq curl gettext-base
 
 #Set working directory
 RUN mkdir /data
@@ -43,14 +43,14 @@ COPY src src/
 COPY priv priv/
 COPY config config/
 RUN mkdir -p /etc/dog_trainer
-#COPY config/sys.config.src config/sys.config.src
+COPY config/sys.config.template config/sys.config.template
 COPY include include/
 COPY scripts scripts/
 
 ARG cachebust
 RUN find /data/_build
 #Build the release
-RUN ./rebar3 as local_docker release
+RUN ./rebar3 as container release
 
 RUN pwd
 RUN find .
@@ -61,7 +61,7 @@ RUN mkdir -p /opt/dog_trainer
 RUN mkdir -p /var/log/dog_trainer
 RUN mkdir -p /tmp/dog_trainer
 # Install the released application
-COPY --from=compile /data/_build/local_docker/rel/dog_trainer /opt/dog_trainer
+COPY --from=compile /data/_build/container/rel/dog_trainer /opt/dog_trainer
 RUN ls -latr /var/log/dog_trainer
 
 # Expose relevant ports
@@ -79,6 +79,10 @@ FROM scratch AS tar
 COPY --from=deploy /tmp/dog_trainer.tar.gz / 
 
 FROM deploy as run
-CMD /bin/bash -c "/etc/rabbitmq/csc_certs.sh" && /bin/bash -c "/opt/dog_trainer/bin/dog_trainer foreground"
-#CMD /bin/bash -c "/etc/rabbitmq/csc_certs.sh"  && /bin/bash -c "sleep infinity"
 
+ARG CERT_SOURCE=none
+ENV CERT_SOURCE=$CERT_SOURCE
+RUN echo ${CERT_SOURCE}
+COPY scripts scripts/
+RUN chmod u+x scripts/entrypoint.sh
+ENTRYPOINT [ "scripts/entrypoint.sh" ]

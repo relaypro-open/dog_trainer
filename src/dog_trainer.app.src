@@ -35,7 +35,6 @@
         cache_tab,
         flatlog,
         eel,
-        sync,
         cowboy_access_log,
         logger_logstash_formatter,
         entropy_string
