@@ -1,0 +1,3337 @@
+openapi: 3.0.1
+info:
+  title: Dog Trainer API
+  version: 1.4.0
+  description: API for managing Dog Trainer resources. Schemas are derived from `priv/schema/**/*.json` files.
+servers:
+  - url: http://localhost:7070
+    description: Local development server
+tags:
+  - name: ExternalV2
+    description: External Resources API (V2)
+  - name: FactV2
+    description: Fact Resources API (V2)
+  - name: FileTransferV2
+    description: File Transfer API (V2)
+  - name: GroupV2
+    description: Group Resources API (V2)
+  - name: HostV2
+    description: Host Resources API (V2)
+  - name: IpsetsV2
+    description: IPsets API (V2)
+  - name: LinkV2
+    description: Link Resources API (V2)
+  - name: ProfileV2
+    description: Profile Resources API (V2)
+  - name: RulesetV2
+    description: Ruleset Resources API (V2)
+  - name: ServiceV2
+    description: Service Resources API (V2)
+  - name: ZoneV2
+    description: Zone Resources API (V2)
+  - name: ExternalV1
+    description: External Resources API (V1 - Deprecated)
+  - name: FactV1
+    description: Fact Resources API (V1 - Deprecated)
+  - name: GroupV1
+    description: Group Resources API (V1 - Deprecated)
+  - name: HostV1
+    description: Host Resources API (V1 - Deprecated)
+  - name: LinkV1
+    description: Link Resources API (V1 - Deprecated)
+  - name: ProfileV1
+    description: Profile Resources API (V1 - Deprecated)
+  - name: RulesetV1
+    description: Ruleset Resources API (V1 - Deprecated)
+  - name: ServiceV1
+    description: Service Resources API (V1 - Deprecated)
+  - name: ZoneV1
+    description: Zone Resources API (V1 - Deprecated)
+  - name: HCL
+    description: HCL Generation API
+  - name: Healthcheck
+    description: Healthcheck API
+  - name: Publish
+    description: Publish API
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      description: Resource ID
+      schema:
+        type: string
+    Sub:
+      name: sub
+      in: path
+      required: true
+      description: Sub-resource or action
+      schema:
+        type: string
+    FilePath:
+      name: path
+      in: query
+      required: true
+      description: Path to the file for transfer operations
+      schema:
+        type: string
+    InPlace:
+      name: inplace
+      in: query
+      description: For PUT operations, whether to update in place or create a new version (specific to some handlers)
+      schema:
+        type: string
+        enum:
+          - 'True'
+          - 'False'
+    NameQuery:
+      name: name
+      in: query
+      description: Filter by resource name
+      schema:
+        type: string
+    HostkeyQuery:
+      name: hostkey
+      in: query
+      description: Filter by host key (for Host resources)
+      schema:
+        type: string
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: string
+        message:
+          type: string
+    Ec2SecurityGroup:
+      type: object
+      description: EC2 security group definition from priv/schema/group/group-schema.json
+      properties:
+        region:
+          type: string
+          pattern: ^(.*)-(.*)-(.*)$
+        sgid:
+          type: string
+          pattern: ^sg-(.*)$
+    ExternalGroupDefinition:
+      type: object
+      description: 'Definition for groups within an External resource version, from priv/schema/external/external-schema.json. OpenAPI does not directly support ''propertyNames'', so this is represented with additionalProperties. Keys should match pattern: ^[A-Za-z_.-][A-Za-z0-9_.-]{1,28}$'
+      additionalProperties:
+        type: array
+        items:
+          type: string
+    ExternalVersion:
+      type: object
+      description: Version definition for v4 or v6 of an External resource, from priv/schema/external/external-schema.json
+      properties:
+        groups:
+          $ref: '#/components/schemas/ExternalGroupDefinition'
+        zones:
+          $ref: '#/components/schemas/ExternalGroupDefinition'
+      required:
+        - groups
+        - zones
+    External:
+      type: object
+      description: External resource, from priv/schema/external/external-schema.json
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 2
+        v4:
+          $ref: '#/components/schemas/ExternalVersion'
+        v6:
+          $ref: '#/components/schemas/ExternalVersion'
+        state:
+          type: string
+          description: Defaulted to 'active' if not provided on creation (by dog_external_api_v2).
+          default: active
+      required:
+        - name
+        - v4
+        - v6
+    FactGroupDefinition:
+      type: object
+      description: Group definition within a Fact, from priv/schema/fact/fact-schema.json
+      properties:
+        name:
+          type: string
+          minLength: 1
+          pattern: ^[A-Za-z_](0-9A-Za-z_)*
+        vars:
+          type: object
+          additionalProperties: true
+        hosts:
+          type: object
+          additionalProperties: true
+      required:
+        - name
+        - hosts
+    Fact:
+      type: object
+      description: 'Fact resource, from priv/schema/fact/fact-schema.json. The ''groups'' property is an object where keys are group names matching #/definitions/group from the schema.'
+      properties:
+        name:
+          type: string
+          minLength: 1
+          pattern: ^[A-Za-z_](0-9A-Za-z_)*
+        groups:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/FactGroupDefinition'
+      required:
+        - name
+        - groups
+    Group:
+      type: object
+      description: Group resource, from priv/schema/group/group-schema.json. Backend defaults several fields on creation (dog_group_api_v2).
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 28
+          pattern: ^[A-Za-z0-9_.-](.*)$
+        profile_name:
+          type: string
+          minLength: 1
+        ec2_security_group_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ec2SecurityGroup'
+        profile_id:
+          type: string
+          description: ID of the associated profile. Set by backend based on profile_name.
+        vars:
+          type: object
+          additionalProperties: true
+          description: Key-value pairs for group variables
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Timestamp of creation, set by backend.
+        hash4_ipsets:
+          type: string
+          readOnly: true
+          default: ''
+        hash6_ipsets:
+          type: string
+          readOnly: true
+          default: ''
+        hash4_iptables:
+          type: string
+          readOnly: true
+          default: ''
+        hash6_iptables:
+          type: string
+          readOnly: true
+          default: ''
+        ipset_hash:
+          type: string
+          readOnly: true
+          default: ''
+        external_ipv4_addresses:
+          type: array
+          items:
+            type: string
+            format: ipv4
+          default: []
+        external_ipv6_addresses:
+          type: array
+          items:
+            type: string
+            format: ipv6
+          default: []
+        profile_version:
+          type: string
+          default: latest
+      required:
+        - name
+    Host:
+      type: object
+      description: Host resource, from priv/schema/host/host-schema.json. Backend defaults several fields on creation (dog_host_api_v2).
+      properties:
+        active:
+          type: string
+          enum:
+            - active
+            - inactive
+            - retired
+            - new
+          default: new
+        environment:
+          type: string
+          minLength: 1
+          default: '*'
+        hostkey:
+          type: string
+          minLength: 10
+          pattern: ^[A-Za-z0-9+%_.-](.*)$
+        location:
+          type: string
+          minLength: 1
+          default: '*'
+        group:
+          type: string
+          maxLength: 28
+        name:
+          type: string
+          minLength: 1
+        hash_alert_sent:
+          type: string
+          readOnly: true
+          default: ''
+        hash_fail_count:
+          type: integer
+          readOnly: true
+          default: 0
+        ipset_hash_timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+        iptables_hash_timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+        keepalive_alert_sent:
+          type: string
+          readOnly: true
+          default: ''
+        keepalive_timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - environment
+        - group
+        - hostkey
+        - location
+        - name
+    LinkSslOptions:
+      type: object
+      description: SSL options for a Link connection, from priv/schema/link/link-schema.json
+      properties:
+        cacertfile:
+          type: string
+          minLength: 1
+        certfile:
+          type: string
+          minLength: 1
+        fail_if_no_peer_cert:
+          type: boolean
+        keyfile:
+          type: string
+          minLength: 1
+        server_name_indication:
+          type: string
+          minLength: 1
+        verify:
+          type: string
+          minLength: 1
+      required:
+        - cacertfile
+        - certfile
+        - fail_if_no_peer_cert
+        - keyfile
+        - server_name_indication
+        - verify
+    LinkConnection:
+      type: object
+      description: Connection details for a Link, from priv/schema/link/link-schema.json
+      properties:
+        api_port:
+          type: number
+        host:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+          format: password
+        port:
+          type: number
+        ssl_options:
+          $ref: '#/components/schemas/LinkSslOptions'
+        user:
+          type: string
+        virtual_host:
+          type: string
+      required:
+        - api_port
+        - host
+        - password
+        - ssl_options
+    Link:
+      type: object
+      description: Link resource, from priv/schema/link/link-schema.json
+      properties:
+        connection:
+          $ref: '#/components/schemas/LinkConnection'
+        connection_type:
+          type: string
+          enum:
+            - thumper
+        direction:
+          type: string
+          enum:
+            - bidirectional
+            - inbound
+            - outbound
+        enabled:
+          type: boolean
+        name:
+          type: string
+          minLength: 1
+          maxLength: 2
+        state:
+          type: string
+          enum:
+            - active
+            - inactive
+        address_handling:
+          type: string
+          enum:
+            - prefix
+            - union
+      required:
+        - connection
+        - connection_type
+        - direction
+        - enabled
+        - name
+        - address_handling
+    Profile:
+      type: object
+      description: Profile resource, from priv/schema/profile/profile-schema.json. 'created' timestamp is managed by backend (dog_profile_api_v2).
+      properties:
+        name:
+          type: string
+          minLength: 1
+        version:
+          type: string
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - name
+    RuleProperties:
+      type: object
+      description: Common properties for a firewall rule, from priv/schema/ruleset/ruleset-schema.json
+      properties:
+        active:
+          type: boolean
+        states:
+          type: array
+          items:
+            type: string
+            enum:
+              - NEW
+              - ESTABLISHED
+              - RELATED
+              - INVALID
+        log:
+          type: boolean
+        log_prefix:
+          type: string
+        group:
+          type: string
+          minLength: 1
+          maxLength: 37
+          pattern: ^[A-Za-z0-9_.-](.*)$
+        group_type:
+          type: string
+          enum:
+            - ANY
+            - GROUP
+            - ROLE
+            - ZONE
+        service:
+          type: string
+          minLength: 1
+          pattern: ^[A-Za-z0-9_.-]*$
+        interface:
+          type: string
+        action:
+          type: string
+          enum:
+            - ACCEPT
+            - DROP
+            - REJECT
+        comment:
+          type: string
+          minLength: 0
+        conn_limit_above:
+          type: number
+          minimum: 1
+        conn_limit_mask:
+          type: number
+          minimum: 1
+        seconds:
+          type: number
+          minimum: 1
+        hit_count:
+          type: number
+          minimum: 1
+        set_name:
+          type: string
+    RuleBasic:
+      allOf:
+        - $ref: '#/components/schemas/RuleProperties'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - BASIC
+          required:
+            - type
+            - active
+            - log
+            - log_prefix
+            - group
+            - group_type
+            - service
+            - interface
+            - action
+            - comment
+    RuleConnlimit:
+      allOf:
+        - $ref: '#/components/schemas/RuleProperties'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - CONNLIMIT
+          required:
+            - type
+            - active
+            - log
+            - log_prefix
+            - group
+            - group_type
+            - service
+            - interface
+            - action
+            - comment
+            - conn_limit_above
+    RuleRecent:
+      allOf:
+        - $ref: '#/components/schemas/RuleProperties'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - RECENT
+          required:
+            - type
+            - active
+            - log
+            - log_prefix
+            - group
+            - group_type
+            - service
+            - interface
+            - action
+            - comment
+            - hit_count
+            - seconds
+    AnyRule:
+      oneOf:
+        - $ref: '#/components/schemas/RuleBasic'
+        - $ref: '#/components/schemas/RuleConnlimit'
+        - $ref: '#/components/schemas/RuleRecent'
+      discriminator:
+        propertyName: type
+        mapping:
+          BASIC: '#/components/schemas/RuleBasic'
+          CONNLIMIT: '#/components/schemas/RuleConnlimit'
+          RECENT: '#/components/schemas/RuleRecent'
+      description: A firewall rule, which can be of type BASIC, CONNLIMIT, or RECENT, each with different required fields. From priv/schema/ruleset/ruleset-schema.json
+    Ruleset:
+      type: object
+      description: Ruleset resource, from priv/schema/ruleset/ruleset-schema.json
+      properties:
+        name:
+          type: string
+          minLength: 1
+        profile_id:
+          type: string
+          minLength: 1
+        rules:
+          type: object
+          properties:
+            inbound:
+              type: array
+              items:
+                $ref: '#/components/schemas/AnyRule'
+            outbound:
+              type: array
+              items:
+                $ref: '#/components/schemas/AnyRule'
+          required:
+            - inbound
+            - outbound
+      required:
+        - name
+    ServiceItem:
+      type: object
+      description: An item within a Service definition, from priv/schema/service/service-schema.json
+      properties:
+        protocol:
+          oneOf:
+            - type: string
+              enum:
+                - tcp
+                - udp
+                - icmp
+                - udplite
+                - esp
+                - ah
+                - sctp
+            - type: string
+              pattern: ^[0-9]*$
+        ports:
+          type: array
+          items:
+            type: string
+            pattern: '[0-9:]*'
+      required:
+        - protocol
+        - ports
+    Service:
+      type: object
+      description: Service resource, from priv/schema/service/service-schema.json
+      properties:
+        name:
+          type: string
+          minLength: 1
+          pattern: ^((?!\s).)*$
+        version:
+          type: number
+        services:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ServiceItem'
+      required:
+        - name
+        - version
+        - services
+    Zone:
+      type: object
+      description: Zone resource, from priv/schema/zone/zone-schema.json
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 28
+          pattern: ^[A-Za-z0-9_.-](.*)$
+        ipv4_addresses:
+          type: array
+          items:
+            type: string
+            pattern: \b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b
+            format: ipv4
+        ipv6_addresses:
+          type: array
+          items:
+            type: string
+            pattern: ((([0-9a-fA-F]{0,4})\:){2,7})([0-9a-fA-F]{0,4})
+            format: ipv6
+      required:
+        - name
+        - ipv4_addresses
+        - ipv6_addresses
+    IpsetInfo:
+      type: object
+      properties:
+        ipsets:
+          type: object
+          description: Map of ipset information
+          additionalProperties: true
+    FileTransferCommand:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          type: string
+          description: Command to execute
+        use_shell:
+          type: string
+          enum:
+            - 'true'
+            - 'false'
+          default: 'false'
+        user:
+          type: string
+          description: User to execute command as (optional)
+    FileTransferCommandResponse:
+      type: object
+      description: Response from a file transfer command execution, keyed by hostkey.
+      additionalProperties:
+        type: object
+        properties:
+          retcode:
+            type: integer
+          stdout:
+            type: string
+          stderr:
+            type: object
+            additionalProperties: true
+    FileTransferUploadResponseItem:
+      type: object
+      description: Information about a single uploaded file part.
+      properties:
+        headers:
+          type: object
+          description: Headers of the part
+        body:
+          type: string
+          description: Body or filename of the part
+    Hcl:
+      type: string
+      description: HCL (HashiCorp Configuration Language) representation of the resource
+    IpAddresses:
+      type: array
+      items:
+        type: string
+        format: ip
+    HostDetailsArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/Host'
+    Ec2SecurityGroupIds:
+      type: array
+      items:
+        $ref: '#/components/schemas/Ec2SecurityGroup'
+    PublishBody:
+      type: object
+      description: Body for the publish endpoint (structure unknown)
+      additionalProperties: true
+    HealthcheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    BadRequest:
+      description: Bad request (e.g., validation error)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflict (e.g., resource already exists or precondition failed)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized. Check X-Consumer-Username and related headers.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NoContent:
+      description: Operation successful, no content to return
+    SeeOther:
+      description: Operation successful, resource can be found at a different URI (typically after PUT).
+      headers:
+        Location:
+          schema:
+            type: string
+          description: URL of the resource
+  securitySchemes:
+    KongApiKey:
+      type: apiKey
+      name: apikey
+      in: header
+      description: API key for Kong gateway (if applicable).
+    ConsumerInfo:
+      type: apiKey
+      name: X-Consumer-Username
+      in: header
+      description: Identifies the API consumer. Other X-Consumer-* headers may also be relevant.
+security:
+  - KongApiKey: []
+  - ConsumerInfo: []
+paths:
+  '/api/V2/external':
+    post:
+      tags:
+        - ExternalV2
+      summary: Create a new External resource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/External'
+      responses:
+        '201':
+          description: External created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/External'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/V2/external/{id}':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - ExternalV2
+      summary: Get an External resource by ID
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/External'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - ExternalV2
+      summary: Update/Replace an External resource by ID
+      description: The backend `dog_external_api_v2:replace/2` function is called, which implies a full replacement rather than a partial update. The response code is typically 200 or 303 based on handler logic.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/External'
+      responses:
+        '200':
+          description: External updated/replaced (actual response code might be 303 based on handler logic)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/External'
+        '303':
+          $ref: '#/components/responses/SeeOther'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/External'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - ExternalV2
+      summary: Delete an External resource by ID
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/V2/external/{id}/hcl':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - ExternalV2
+      summary: Get HCL representation of an External resource
+      responses:
+        '200':
+          description: HCL representation
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Hcl'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/externals':
+    get:
+      tags:
+        - ExternalV2
+      summary: List all External resources
+      responses:
+        '200':
+          description: A list of externals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/External'
+  '/api/V2/externals/{sub}':
+    get:
+      parameters:
+        - name: sub
+          in: path
+          required: true
+          description: Sub-resource or action
+          schema:
+            type: string
+      tags:
+        - ExternalV2
+      summary: Get a subset or filtered list of External resources (e.g., active)
+      responses:
+        '200':
+          description: Filtered list of externals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/External'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/fact':
+    post:
+      tags:
+        - FactV2
+      summary: Create a new Fact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Fact'
+      responses:
+        '201':
+          description: Fact created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fact'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/V2/fact/{id}':
+    get:
+      tags:
+        - FactV2
+      summary: Get a Fact by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fact'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - FactV2
+      summary: Update a Fact by ID
+      description: The backend `dog_fact_api_v2:update/2` calls `maps:merge` then `reql:replace`, implying a full replacement of the Fact resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Fact'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      responses:
+        '303':
+          $ref: '#/components/responses/SeeOther'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - FactV2
+      summary: Delete a Fact by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/fact/{id}/hcl':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - FactV2
+      summary: Get HCL representation of a Fact
+      responses:
+        '200':
+          description: HCL representation
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Hcl'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/facts':
+    get:
+      tags:
+        - FactV2
+      summary: List all Facts
+      responses:
+        '200':
+          description: A list of facts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Fact'
+  '/api/V2/facts/{sub}':
+    get:
+      parameters:
+        - name: sub
+          in: path
+          required: true
+          description: Sub-resource or action
+          schema:
+            type: string
+      tags:
+        - FactV2
+      summary: Get a subset or filtered list of Facts (e.g. 'schema')
+      responses:
+        '200':
+          description: Filtered list of facts or the fact schema.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Fact'
+            text/plain:
+              schema:
+                type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/file_transfer/{id}':
+    post:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Hostkey of the target host
+          schema:
+            type: string
+      tags:
+        - FileTransferV2
+      summary: Execute a command or upload a file to a host
+      description: Accepts 'application/json' for command execution or 'multipart/form-data' for file uploads.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileTransferCommand'
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Command executed or file uploaded. Response format varies.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/FileTransferCommandResponse'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/FileTransferUploadResponseItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: Hostkey not found or forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+        - FileTransferV2
+      summary: Fetch a file from a host
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Hostkey of the target host
+          schema:
+            type: string
+        - $ref: '#/components/parameters/FilePath'
+      responses:
+        '200':
+          description: File content or error information.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - FileTransferV2
+      summary: Delete a file on a host
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Hostkey of the target host
+          schema:
+            type: string
+        - $ref: '#/components/parameters/FilePath'
+      responses:
+        '200':
+          description: Deletion status (success or error details)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/group':
+    post:
+      tags:
+        - GroupV2
+      summary: Create a new Group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Group'
+      responses:
+        '201':
+          description: Group created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/V2/group/{id}':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - GroupV2
+      summary: Get a Group by ID
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+        - name: inplace
+          in: query
+          description: For PUT operations, whether to update in place or create a new version (specific to some handlers)
+          schema:
+            type: string
+            enum:
+              - 'True'
+              - 'False'
+      tags:
+        - GroupV2
+      summary: Update a Group by ID
+      description: The backend `dog_group_api_v2:update/2` calls `reql:replace`, implying a full replacement. `api_handler_v2` supports `inplace` query param, but `dog_group_api_v2:update/2` doesn't use it, it calls `dog_group_api_v2:update/3` which also doesn't use `InPlace` for group updates.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Group'
+      responses:
+        '303':
+          $ref: '#/components/responses/SeeOther'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - GroupV2
+      summary: Delete a Group by ID
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/group/{id}/hcl':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - GroupV2
+      summary: Get HCL representation of a Group
+      responses:
+        '200':
+          description: HCL representation
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Hcl'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/group/{id}/ips':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - GroupV2
+      summary: Get all IP addresses for a Group
+      responses:
+        '200':
+          description: List of IP addresses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpAddresses'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/group/{id}/ipv4s':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - GroupV2
+      summary: Get all IPv4 addresses for a Group
+      responses:
+        '200':
+          description: List of IPv4 addresses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpAddresses'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/group/{id}/ipv6s':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - GroupV2
+      summary: Get all IPv6 addresses for a Group
+      responses:
+        '200':
+          description: List of IPv6 addresses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpAddresses'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/group/{id}/internal_ips':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - GroupV2
+      summary: Get internal IP addresses for a Group
+      responses:
+        '200':
+          description: List of internal IP addresses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpAddresses'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/group/{id}/external_ips':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - GroupV2
+      summary: Get external IP addresses for a Group
+      responses:
+        '200':
+          description: List of external IP addresses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpAddresses'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/group/{id}/hosts':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - GroupV2
+      summary: Get all Hosts within a Group
+      responses:
+        '200':
+          description: List of hosts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostDetailsArray'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/group/{id}/ec2_security_group_ids':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - GroupV2
+      summary: Get EC2 security group IDs for a Group
+      responses:
+        '200':
+          description: List of EC2 security group IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ec2SecurityGroupIds'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/groups':
+    get:
+      tags:
+        - GroupV2
+      summary: List all Groups
+      responses:
+        '200':
+          description: A list of groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Group'
+  '/api/V2/groups/{sub}':
+    get:
+      parameters:
+        - name: sub
+          in: path
+          required: true
+          description: Sub-resource or action
+          schema:
+            type: string
+      tags:
+        - GroupV2
+      summary: Get a subset of Groups (e.g., 'active', 'all_active_names', 'names', 'schema')
+      responses:
+        '200':
+          description: Filtered list of groups, group names, or the group schema.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - $ref: '#/components/schemas/Group'
+                    - type: string
+            text/plain:
+              schema:
+                type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/host':
+    post:
+      tags:
+        - HostV2
+      summary: Create a new Host
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Host'
+      responses:
+        '201':
+          description: Host created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Host'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/V2/host/{id}':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - HostV2
+      summary: Get a Host by ID
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Host'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+        - name: inplace
+          in: query
+          description: For PUT operations, whether to update in place or create a new version (specific to some handlers)
+          schema:
+            type: string
+            enum:
+              - 'True'
+              - 'False'
+      tags:
+        - HostV2
+      summary: Update a Host by ID
+      description: The backend `dog_host_api_v2:update/2` calls `reql:replace`, implying a full replacement. `api_handler_v2` supports `inplace` query param, but `dog_host_api_v2:update/2` doesn't use it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Host'
+      responses:
+        '303':
+          $ref: '#/components/responses/SeeOther'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Host'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - HostV2
+      summary: Delete a Host by ID
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/host/{id}/hcl':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - HostV2
+      summary: Get HCL representation of a Host
+      responses:
+        '200':
+          description: HCL representation
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Hcl'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/hosts':
+    get:
+      tags:
+        - HostV2
+      summary: List all Hosts
+      parameters:
+        - $ref: '#/components/parameters/NameQuery'
+          required: false
+        - $ref: '#/components/parameters/HostkeyQuery'
+          required: false
+      responses:
+        '200':
+          description: A list of hosts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Host'
+  '/api/V2/hosts/{sub}':
+    get:
+      parameters:
+        - name: sub
+          in: path
+          required: true
+          description: Sub-resource or action
+          schema:
+            type: string
+          examples:
+            active:
+              value: active
+            ips:
+              value: ips
+            names:
+              value: names
+            schema:
+              value: schema
+      tags:
+        - HostV2
+      summary: Get a subset of Hosts (e.g., 'active', 'ips', 'names', 'hostkeys', 'schema')
+      responses:
+        '200':
+          description: Filtered list of hosts, related data, or the host schema.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - $ref: '#/components/schemas/Host'
+                    - type: string
+            text/plain:
+              schema:
+                type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/hosts/ips':
+    get:
+      tags:
+        - HostV2
+      summary: Get all IPs for all active hosts (special plural handler case)
+      responses:
+        '200':
+          description: Map of host IPs
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/IpAddresses'
+  '/api/V2/ipsets':
+    get:
+      tags:
+        - IpsetsV2
+      summary: Get all IPset information
+      responses:
+        '200':
+          description: IPset information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpsetInfo'
+  '/api/V2/link':
+    post:
+      tags:
+        - LinkV2
+      summary: Create a new Link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Link'
+      responses:
+        '201':
+          description: Link created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Link'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/V2/link/{id}':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - LinkV2
+      summary: Get a Link by ID
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Link'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+        - name: inplace
+          in: query
+          description: For PUT operations, whether to update in place or create a new version (specific to some handlers)
+          schema:
+            type: string
+            enum:
+              - 'True'
+              - 'False'
+      tags:
+        - LinkV2
+      summary: Update a Link by ID
+      description: The backend `dog_link_api_v2:update/2` calls `reql:update`, implying a partial update is possible. `api_handler_v2` supports `inplace` query param, but `dog_link_api_v2:update/2` doesn't use it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Link'
+      responses:
+        '303':
+          $ref: '#/components/responses/SeeOther'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Link'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - LinkV2
+      summary: Delete a Link by ID
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Link enabled, cannot delete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  '/api/V2/link/{id}/hcl':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - LinkV2
+      summary: Get HCL representation of a Link
+      responses:
+        '200':
+          description: HCL representation
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Hcl'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/links':
+    get:
+      tags:
+        - LinkV2
+      summary: List all Links
+      responses:
+        '200':
+          description: A list of links
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Link'
+  '/api/V2/links/{sub}':
+    get:
+      parameters:
+        - name: sub
+          in: path
+          required: true
+          description: Sub-resource or action
+          schema:
+            type: string
+          examples:
+            schema:
+              value: schema
+      tags:
+        - LinkV2
+      summary: Get a subset or filtered list of Links (e.g. 'schema')
+      responses:
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '200':
+          description: Filtered list of links or the link schema.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Link'
+            text/plain:
+              schema:
+                type: string
+
+  '/api/V2/profile':
+    post:
+      tags:
+        - ProfileV2
+      summary: Create a new Profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Profile'
+      responses:
+        '201':
+          description: Profile created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/V2/profile/{id}':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - ProfileV2
+      summary: Get a Profile by ID
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+        - name: inplace
+          in: query
+          description: For PUT operations, whether to update in place or create a new version (specific to some handlers)
+          schema:
+            type: string
+            enum:
+              - 'True'
+              - 'False'
+      tags:
+        - ProfileV2
+      summary: Update a Profile by ID
+      description: The backend `dog_profile_api_v2:update/2` calls `reql:update`, implying a partial update is possible. The `inplace` parameter is handled by `api_handler_v2` and passed to `dog_profile_api_v2:update/3`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Profile'
+      responses:
+        '303':
+          $ref: '#/components/responses/SeeOther'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - ProfileV2
+      summary: Delete a Profile by ID
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/profile/{id}/hcl':
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+      tags:
+        - ProfileV2
+      summary: Get HCL representation of a Profile
+      responses:
+        '200':
+          description: HCL representation
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Hcl'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/profiles':
+    get:
+      tags:
+        - ProfileV2
+      summary: List all Profiles
+      responses:
+        '200':
+          description: A list of profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Profile'
+  '/api/V2/profiles/{sub}':
+    get:
+      parameters:
+        - name: sub
+          in: path
+          required: true
+          description: Sub-resource or action
+          schema:
+            type: string
+          examples:
+            active:
+              value: active
+            names:
+              value: names
+            schema:
+              value: schema
+      tags:
+        - ProfileV2
+      summary: Get a subset of Profiles (e.g., 'active', 'names', 'schema')
+      responses:
+        '200':
+          description: Filtered list of profiles, profile names, or the profile schema.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - $ref: '#/components/schemas/Profile'
+                    - type: string
+            text/plain:
+              schema:
+                type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/ruleset':
+    post:
+      tags:
+        - RulesetV2
+      summary: Create a new Ruleset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ruleset'
+      responses:
+        '201':
+          description: Ruleset created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ruleset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/V2/ruleset/{id}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/InPlace'
+    get:
+      tags:
+        - RulesetV2
+      summary: Get a Ruleset by ID
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ruleset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - RulesetV2
+      summary: Update a Ruleset by ID
+      description: The backend `dog_ruleset_api_v2:update/2` calls `reql:update`, implying a partial update is possible. `api_handler_v2` supports `inplace` query param, but `dog_ruleset_api_v2:update/2` doesn't use it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ruleset'
+      responses:
+        '303':
+          $ref: '#/components/responses/SeeOther'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ruleset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - RulesetV2
+      summary: Delete a Ruleset by ID
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Ruleset in use, cannot delete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  '/api/V2/ruleset/{id}/hcl':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+        - RulesetV2
+      summary: Get HCL representation of a Ruleset
+      responses:
+        '200':
+          description: HCL representation
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Hcl'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/rulesets':
+    get:
+      tags:
+        - RulesetV2
+      summary: List all Rulesets
+      responses:
+        '200':
+          description: A list of rulesets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ruleset'
+  '/api/V2/rulesets/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - RulesetV2
+      summary: Get a subset of Rulesets (e.g., 'active', 'all_active_names', 'names', 'schema')
+      responses:
+        '200':
+          description: Filtered list of rulesets, ruleset names, or the ruleset schema.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - $ref: '#/components/schemas/Ruleset'
+                    - type: string
+            text/plain:
+              schema:
+                type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/service':
+    post:
+      tags:
+        - ServiceV2
+      summary: Create a new Service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Service'
+      responses:
+        '201':
+          description: Service created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/V2/service/{id}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/InPlace'
+    get:
+      tags:
+        - ServiceV2
+      summary: Get a Service by ID
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - ServiceV2
+      summary: Update a Service by ID
+      description: The backend `dog_service_api_v2:update/2` calls `reql:update`, implying a partial update is possible. `api_handler_v2` supports `inplace` query param, but `dog_service_api_v2:update/2` doesn't use it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Service'
+      responses:
+        '303':
+          $ref: '#/components/responses/SeeOther'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - ServiceV2
+      summary: Delete a Service by ID
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/service/{id}/hcl':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+        - ServiceV2
+      summary: Get HCL representation of a Service
+      responses:
+        '200':
+          description: HCL representation
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Hcl'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/services':
+    get:
+      tags:
+        - ServiceV2
+      summary: List all Services
+      responses:
+        '200':
+          description: A list of services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+  '/api/V2/services/{sub}':
+    get:
+      tags:
+        - ServiceV2
+      summary: Get a subset or filtered list of Services (e.g. 'schema')
+      parameters:
+        - $ref: '#/components/parameters/Sub'
+      responses:
+        '200':
+          description: Filtered list of services or the service schema.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+            text/plain:
+              schema:
+                type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/zone/':
+    post:
+      tags:
+        - ZoneV2
+      summary: Create a new Zone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Zone'
+      responses:
+        '201':
+          description: Zone created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Zone'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/V2/zone/{id}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/InPlace'
+    get:
+      tags:
+        - ZoneV2
+      summary: Get a Zone by ID
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Zone'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - ZoneV2
+      summary: Update a Zone by ID
+      description: The backend `dog_zone_api_v2:update/2` calls `reql:update`, implying a partial update is possible. `api_handler_v2` supports `inplace` query param, but `dog_zone_api_v2:update/2` doesn't use it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Zone'
+      responses:
+        '303':
+          $ref: '#/components/responses/SeeOther'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Zone'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - ZoneV2
+      summary: Delete a Zone by ID
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/zone/{id}/hcl':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+        - ZoneV2
+      summary: Get HCL representation of a Zone
+      responses:
+        '200':
+          description: HCL representation
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Hcl'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/zones':
+    get:
+      tags:
+        - ZoneV2
+      summary: List all Zones
+      responses:
+        '200':
+          description: A list of zones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Zone'
+  '/api/V2/zones/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - ZoneV2
+      summary: Get a subset of Zones (e.g., 'ips', 'names', 'schema')
+      responses:
+        '200':
+          description: Filtered list of zones, related data, or the zone schema.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - $ref: '#/components/schemas/Zone'
+                    - type: string
+                    - $ref: '#/components/schemas/IpAddresses'
+            text/plain:
+              schema:
+                type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/V2/zones/ips':
+    get:
+      tags:
+        - ZoneV2
+      summary: Get all IPs for all zones (special plural handler case)
+      responses:
+        '200':
+          description: Map of zone IPs
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/IpAddresses'
+  '/api/external':
+    post:
+      tags:
+        - ExternalV1
+      summary: Create External (V1)
+      deprecated: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/External'
+      responses:
+        '201':
+          description: External created (V1)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/external/{id}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+        - ExternalV1
+      summary: Get External by ID (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - ExternalV1
+      summary: Update External (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/External'
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - ExternalV1
+      summary: Delete External (V1)
+      deprecated: true
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/external/{id}/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - ExternalV1
+      summary: Get External sub-resource (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/externals':
+    get:
+      tags:
+        - ExternalV1
+      summary: List Externals (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/externals/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - ExternalV1
+      summary: List External sub-resources (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/fact':
+    post:
+      tags:
+        - FactV1
+      summary: Create Fact (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Fact'
+      responses:
+        '201':
+          description: Resource created (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/fact/{id}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+        - FactV1
+      summary: Get Fact by ID (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - FactV1
+      summary: Update Fact (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Fact'
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - FactV1
+      summary: Delete Fact (V1)
+      deprecated: true
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/fact/{id}/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - FactV1
+      summary: Get Fact sub-resource (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/facts':
+    get:
+      tags:
+        - FactV1
+      summary: List Facts (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/facts/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - FactV1
+      summary: List Fact sub-resources (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/group':
+    post:
+      tags:
+        - GroupV1
+      summary: Create Group (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Group'
+      responses:
+        '201':
+          description: Resource created (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/group/{id}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+        - GroupV1
+      summary: Get Group by ID (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - GroupV1
+      summary: Update Group (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Group'
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - GroupV1
+      summary: Delete Group (V1)
+      deprecated: true
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/group/{id}/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - GroupV1
+      summary: Get Group sub-resource (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/groups':
+    get:
+      tags:
+        - GroupV1
+      summary: List Groups (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/groups/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - GroupV1
+      summary: List Group sub-resources (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/host':
+    post:
+      tags:
+        - HostV1
+      summary: Create Host (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Host'
+      responses:
+        '201':
+          description: Resource created (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/host/{id}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+        - HostV1
+      summary: Get Host by ID (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - HostV1
+      summary: Update Host (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Host'
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - HostV1
+      summary: Delete Host (V1)
+      deprecated: true
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/host/{id}/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - HostV1
+      summary: Get Host sub-resource (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/hosts':
+    get:
+      tags:
+        - HostV1
+      summary: List Hosts (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/hosts/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - HostV1
+      summary: List Host sub-resources (V1, e.g. 'ips')
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/hosts/ips':
+    get:
+      tags:
+        - HostV1
+      summary: List Host IPs (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/link':
+    post:
+      tags:
+        - LinkV1
+      summary: Create Link (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Link'
+      responses:
+        '201':
+          description: Resource created (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/link/{id}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+        - LinkV1
+      summary: Get Link by ID (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - LinkV1
+      summary: Update Link (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Link'
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - LinkV1
+      summary: Delete Link (V1)
+      deprecated: true
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/link/{id}/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - LinkV1
+      summary: Get Link sub-resource (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/links':
+    get:
+      tags:
+        - LinkV1
+      summary: List Links (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/links/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - LinkV1
+      summary: List Link sub-resources (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/profile':
+    post:
+      tags:
+        - ProfileV1
+      summary: Create Profile (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Profile'
+      responses:
+        '201':
+          description: Resource created (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/profile/{id}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+        - ProfileV1
+      summary: Get Profile by ID (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - ProfileV1
+      summary: Update Profile (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Profile'
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - ProfileV1
+      summary: Delete Profile (V1)
+      deprecated: true
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/profile/{id}/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - ProfileV1
+      summary: Get Profile sub-resource (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/profiles':
+    get:
+      tags:
+        - ProfileV1
+      summary: List Profiles (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/profiles/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - ProfileV1
+      summary: List Profile sub-resources (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/ruleset':
+    post:
+      tags:
+        - RulesetV1
+      summary: Create Ruleset (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ruleset'
+      responses:
+        '201':
+          description: Resource created (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/ruleset/{id}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+        - RulesetV1
+      summary: Get Ruleset by ID (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - RulesetV1
+      summary: Update Ruleset (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ruleset'
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - RulesetV1
+      summary: Delete Ruleset (V1)
+      deprecated: true
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/ruleset/{id}/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - RulesetV1
+      summary: Get Ruleset sub-resource (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/rulesets':
+    get:
+      tags:
+        - RulesetV1
+      summary: List Rulesets (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/rulesets/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - RulesetV1
+      summary: List Ruleset sub-resources (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/service':
+    post:
+      tags:
+        - ServiceV1
+      summary: Create Service (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Service'
+      responses:
+        '201':
+          description: Resource created (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/service/{id}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+        - ServiceV1
+      summary: Get Service by ID (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - ServiceV1
+      summary: Update Service (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Service'
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - ServiceV1
+      summary: Delete Service (V1)
+      deprecated: true
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/service/{id}/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - ServiceV1
+      summary: Get Service sub-resource (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/services':
+    get:
+      tags:
+        - ServiceV1
+      summary: List Services (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/services/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - ServiceV1
+      summary: List Service sub-resources (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/zone/':
+    post:
+      tags:
+        - ZoneV1
+      summary: Create Zone (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Zone'
+      responses:
+        '201':
+          description: Resource created (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  '/api/zone/{id}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags:
+        - ZoneV1
+      summary: Get Zone by ID (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - ZoneV1
+      summary: Update Zone (V1)
+      deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Zone'
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - ZoneV1
+      summary: Delete Zone (V1)
+      deprecated: true
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/zone/{id}/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - ZoneV1
+      summary: Get Zone sub-resource (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/zones':
+    get:
+      tags:
+        - ZoneV1
+      summary: List Zones (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/zones/{sub}':
+    parameters:
+      - $ref: '#/components/parameters/Sub'
+    get:
+      tags:
+        - ZoneV1
+      summary: List Zone sub-resources (V1, e.g. 'ips')
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/zones/ips':
+    get:
+      tags:
+        - ZoneV1
+      summary: List Zone IPs (V1)
+      deprecated: true
+      responses:
+        '200':
+          description: Successful operation (V1 - Deprecated)
+  '/api/hcl/{sub}':
+    parameters:
+      - name: sub
+        in: path
+        required: true
+        description: The type of resource to generate HCL for (e.g., 'group', 'host').
+        schema:
+          type: string
+    get:
+      tags:
+        - HCL
+      summary: Generate HCL for a given resource type
+      responses:
+        '200':
+          description: HCL output
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Hcl'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/api/healthcheck':
+    get:
+      tags:
+        - Healthcheck
+      summary: Perform a health check of the API
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthcheckResponse'
+        '503':
+          description: API is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  '/api/publish':
+    post:
+      tags:
+        - Publish
+      summary: Publish changes (specific action, details TBD)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishBody'
+      responses:
+        '200':
+          description: Publish action completed (details TBD)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+
+
+
+
