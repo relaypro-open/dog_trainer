@@ -788,6 +788,7 @@ get_hosts_by_id(GroupId) ->
                         reql:bracket(Y, <<"group">>),
                         reql:eq(Y, GroupName)
                     end),
+                    reql:filter(X, #{<<"active">> => <<"active">>}),
                     reql:pluck(X, [<<"name">>, <<"id">>, <<"hostkey">>])
                 end
             ),
