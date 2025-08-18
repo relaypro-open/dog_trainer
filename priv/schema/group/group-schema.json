@@ -1,41 +1,41 @@
 {
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "",
-    "type": "object",
-    "definitions": {
-        "ec2_security_group": {
-            "type": "object",
-            "properties": {
-                "region" :{
-                    "type": "string",
-                    "pattern": "^(.*)-(.*)-(.*)$"
-                },
-                "sgid" :{
-                    "type": "string",
-                    "pattern": "^sg-(.*)$"
-                }
-            }
-        }
-    },
-    "properties": {
-        "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 28,
-            "pattern": "^[A-Za-z0-9_.-](.*)$"
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "",
+  "type": "object",
+  "definitions": {
+    "ec2_security_group": {
+      "type": "object",
+      "properties": {
+        "region": {
+          "type": "string",
+          "pattern": "^(.*)-(.*)-(.*)$"
         },
-        "profile_name": {
-            "type": "string",
-            "minLength": 1
-        },
-        "ec2_security_group_ids": {
-            "type": "array",
-            "items": {
-                "$ref": "#/definitions/ec2_security_group"
-            }
+        "sgid": {
+          "type": "string",
+          "pattern": "^sg-(.*)$"
         }
+      }
+    }
+  },
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 26,
+      "pattern": "^[A-Za-z0-9_.-](.*)$"
     },
-    "required": [
-        "name"
-    ]
+    "profile_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ec2_security_group_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ec2_security_group"
+      }
+    }
+  },
+  "required": [
+    "name"
+  ]
 }

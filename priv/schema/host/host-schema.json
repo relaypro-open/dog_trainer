@@ -27,7 +27,7 @@
     },
     "group": {
       "minLength": 0,
-      "maxLength": 28
+      "maxLength": 26
     },
     "name": {
       "type": "string",
