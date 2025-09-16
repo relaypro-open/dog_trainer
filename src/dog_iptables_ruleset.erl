@@ -561,7 +561,7 @@ json_to_rule(
             ProtocolString = get_protcol_string(Protocol),
             MultiplePorts = get_multiple_ports(Ports),
             ProtocolModule = get_protocol_module(MultiplePorts, Protocol),
-            PortParameter = get_port_parameter(Protocol, MultiplePorts, Direction, ProtocolModule),
+            PortParameter = get_port_parameter(Protocol, MultiplePorts, Direction, ProtocolModule, Symmetric),
             SourceParameter = get_source_parameter(Direction),
             InterfaceString = get_interface(maps:get(<<"interface">>, Json)),
             %?LOG_DEBUG("InterfaceString: ~p~n",[InterfaceString]),
@@ -1182,9 +1182,10 @@ get_ports_list(Direction, Protocol, Ports) ->
     Protocol :: binary(),
     MultiplePorts :: boolean(),
     Direction :: atom(),
-    ProtocolModule :: iolist()
+    ProtocolModule :: iolist(),
+    Symmetric :: boolean()
 ) -> iolist().
-get_port_parameter(Protocol, MultiplePorts, Direction, ProtocolModule) ->
+get_port_parameter(Protocol, MultiplePorts, Direction, ProtocolModule, Symmetric) ->
     case
         lists:member(Protocol, [
             <<"udp">>,
@@ -1215,7 +1216,12 @@ get_port_parameter(Protocol, MultiplePorts, Direction, ProtocolModule) ->
                                     inbound ->
                                         " --dports";
                                     outbound ->
-                                        " --sports"
+                                        case Symmetric of
+                                            true ->
+                                                " --sports";
+                                            false ->
+                                                " --dports"
+                                        end
                                 end,
                             io_lib:format("~s -m multiport~s", [ProtocolModule, DirectionPorts]);
                         false ->
@@ -1224,7 +1230,12 @@ get_port_parameter(Protocol, MultiplePorts, Direction, ProtocolModule) ->
                                     inbound ->
                                         " --dport";
                                     outbound ->
-                                        " --sport"
+                                        case Symmetric of
+                                            true ->
+                                                " --sport";
+                                            false ->
+                                                " --dport"
+                                        end
                                 end,
                             io_lib:format("~s~s", [ProtocolModule, DirectionPorts])
                     end
@@ -1445,7 +1456,7 @@ read_iptables_ruleset_unset_v6_from_file(GroupName) ->
 
 %%%--------------------------------------------------------------------
 %%% @spec cidr_netmask(Bits :: integer()) -> ipv4()
-%%% @doc  Return the netmask corresponding to the network bits received in CIDR 
+%%% @doc  Return the netmask corresponding to the network bits received in CIDR
 %%%       format.
 %%%--------------------------------------------------------------------
 %cidr_netmask(Bits) when is_integer(Bits) andalso Bits =< 32 ->
@@ -1467,7 +1478,7 @@ read_iptables_ruleset_unset_v6_from_file(GroupName) ->
 %
 %%%--------------------------------------------------------------------
 %%% @spec cidr_network({Addr :: ipv4(), Bits :: integer()}) -> ipv4()
-%%% @doc  Return the subnet corresponding the the IP address and network bits 
+%%% @doc  Return the subnet corresponding the the IP address and network bits
 %%%       received in CIDR format.
 %%%--------------------------------------------------------------------
 %cidr_network({{I1, I2, I3, I4}, Bits}) when is_integer(Bits) andalso Bits =< 32 ->
@@ -1488,8 +1499,8 @@ read_iptables_ruleset_unset_v6_from_file(GroupName) ->
 %  end.
 %
 %binary_ones(OnesZeros) when is_list(OnesZeros) ->
-%  length(lists:filter(fun(X) -> 
-%                          integer_to_binary(X) == <<"49">> end, 
+%  length(lists:filter(fun(X) ->
+%                          integer_to_binary(X) == <<"49">> end,
 %                      OnesZeros)).
 %
 %integer_to_binary_list(Integer) when is_integer(Integer) ->
