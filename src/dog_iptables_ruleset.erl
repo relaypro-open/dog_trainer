@@ -570,6 +570,7 @@ json_to_rule(
             CommentJson = get_comment(maps:get(<<"comment">>, Json)),
             Comment = get_comment_json(CommentJson),
             Active = get_active(maps:get(<<"active">>, Json)),
+            SrcDst = get_src_or_dst(Direction, Symmetric),
             {RoleMap, ZoneMap} =
                 case Version of
                     <<"v4">> -> {Ipv4RoleMap, Ipv4ZoneMap};
@@ -597,7 +598,8 @@ json_to_rule(
                                             Comment,
                                             GroupType,
                                             ServiceName,
-                                            IpsetName
+                                            IpsetName,
+                                            SrcDst
                                         );
                                     %TODO conversion between ipv4 and ipv6 masks
                                     connlimit ->
@@ -617,7 +619,8 @@ json_to_rule(
                                             Comment,
                                             ServiceName,
                                             IpsetName,
-                                            ConnLimitString
+                                            ConnLimitString,
+                                            SrcDst
                                         );
                                     recent ->
                                         RecentName = maps:get(
@@ -640,7 +643,8 @@ json_to_rule(
                                             Comment,
                                             ServiceName,
                                             IpsetName,
-                                            RecentString
+                                            RecentString,
+                                            SrcDst
                                         ),
                                         RecentSetString = get_recent_set(RecentName),
                                         RecentSetRule = generate_recent_rule_set_set(
@@ -653,7 +657,8 @@ json_to_rule(
                                             Comment,
                                             ServiceName,
                                             IpsetName,
-                                            RecentSetString
+                                            RecentSetString,
+                                            SrcDst
                                         ),
                                         io_lib:format("~s~n~s", [RecentRule, RecentSetRule])
                                 end;
@@ -837,25 +842,27 @@ generate_basic_rule_set(
     Comment,
     _GroupType,
     ServiceName,
-    IpsetName
+    IpsetName,
+    SrcDst
 ) ->
     case {IpsetName, ServiceName} of
         {<<"ANY">>, <<"ANY">>} ->
             io_lib:format("-A ~s~s~s~s -j ~s~n", [Chain, Interface, States, Comment, Action]);
         {_, <<"ANY">>} ->
-            io_lib:format("-A ~s~s -m set --match-set ~s src~s~s -j ~s~n", [
-                Chain, Interface, IpsetName, States, Comment, Action
+            io_lib:format("-A ~s~s -m set --match-set ~s ~s~s~s -j ~s~n", [
+                Chain, Interface, IpsetName, SrcDst, States, Comment, Action
             ]);
         {<<"ANY">>, _} ->
             io_lib:format("-A ~s~s~s~s ~s~s~s -j ~s~n", [
                 Chain, Interface, ProtocolString, PortParameter, Ports, States, Comment, Action
             ]);
         {_, _} ->
-            io_lib:format("-A ~s~s~s -m set --match-set ~s src~s ~s~s~s -j ~s~n", [
+            io_lib:format("-A ~s~s~s -m set --match-set ~s ~s~s ~s~s~s -j ~s~n", [
                 Chain,
                 Interface,
                 ProtocolString,
                 IpsetName,
+                SrcDst,
                 PortParameter,
                 Ports,
                 States,
@@ -876,7 +883,8 @@ generate_connlimit_rule_set(
     Comment,
     ServiceName,
     IpsetName,
-    ConnLimitString
+    ConnLimitString,
+    SrcDst
 ) ->
     case {IpsetName, ServiceName} of
         {<<"ANY">>, <<"ANY">>} ->
@@ -884,10 +892,11 @@ generate_connlimit_rule_set(
                 Chain, Interface, States, ConnLimitString, Comment, Action
             ]);
         {_, <<"ANY">>} ->
-            io_lib:format("-A ~s~s -m set --match-set ~s src~s~s~s -j ~s~n", [
+            io_lib:format("-A ~s~s -m set --match-set ~s ~s~s~s~s -j ~s~n", [
                 Chain,
                 Interface,
                 IpsetName,
+                SrcDst,
                 States,
                 ConnLimitString,
                 Comment,
@@ -906,11 +915,12 @@ generate_connlimit_rule_set(
                 Action
             ]);
         {_, _} ->
-            io_lib:format("-A ~s~s~s -m set --match-set ~s src~s ~s~s~s~s -j ~s~n", [
+            io_lib:format("-A ~s~s~s -m set --match-set ~s ~s~s ~s~s~s~s -j ~s~n", [
                 Chain,
                 Interface,
                 ProtocolString,
                 IpsetName,
+                SrcDst,
                 PortParameter,
                 Ports,
                 States,
@@ -934,7 +944,8 @@ generate_recent_rule_set(
     Comment,
     ServiceName,
     IpsetName,
-    RecentString
+    RecentString,
+    SrcDst
 ) ->
     case {IpsetName, ServiceName} of
         {<<"ANY">>, <<"ANY">>} ->
@@ -942,8 +953,8 @@ generate_recent_rule_set(
                 Chain, Interface, States, RecentString, Comment, Action
             ]);
         {_, <<"ANY">>} ->
-            io_lib:format("-A ~s~s -m set --match-set ~s src~s~s~s -j ~s~n", [
-                Chain, Interface, IpsetName, States, RecentString, Comment, Action
+            io_lib:format("-A ~s~s -m set --match-set ~s ~s~s~s~s -j ~s~n", [
+                Chain, Interface, IpsetName, SrcDst, States, RecentString, Comment, Action
             ]);
         {<<"ANY">>, _} ->
             io_lib:format("-A ~s~s~s~s ~s~s~s~s -j ~s~n", [
@@ -958,11 +969,12 @@ generate_recent_rule_set(
                 Action
             ]);
         {_, _} ->
-            io_lib:format("-A ~s~s~s -m set --match-set ~s src~s ~s~s~s~s -j ~s~n", [
+            io_lib:format("-A ~s~s~s -m set --match-set ~s ~s~s ~s~s~s~s -j ~s~n", [
                 Chain,
                 Interface,
                 ProtocolString,
                 IpsetName,
+                SrcDst,
                 PortParameter,
                 Ports,
                 States,
@@ -1000,14 +1012,15 @@ generate_recent_rule_set_set(
     Comment,
     ServiceName,
     IpsetName,
-    RecentString
+    RecentString,
+    SrcDst
 ) ->
     case {IpsetName, ServiceName} of
         {<<"ANY">>, <<"ANY">>} ->
             io_lib:format("-A ~s~s~s~s~s~n", [Chain, Interface, States, RecentString, Comment]);
         {_, <<"ANY">>} ->
-            io_lib:format("-A ~s~s -m set --match-set ~s src~s~s~s~n", [
-                Chain, Interface, IpsetName, States, RecentString, Comment
+            io_lib:format("-A ~s~s -m set --match-set ~s ~s~s~s~s~n", [
+                Chain, Interface, IpsetName, SrcDst, States, RecentString, Comment
             ]);
         {<<"ANY">>, _} ->
             io_lib:format("-A ~s~s~s~s ~s~s~s~s~n", [
@@ -1021,11 +1034,12 @@ generate_recent_rule_set_set(
                 Comment
             ]);
         {_, _} ->
-            io_lib:format("-A ~s~s~s -m set --match-set ~s src~s ~s~s~s~s~n", [
+            io_lib:format("-A ~s~s~s -m set --match-set ~s ~s~s ~s~s~s~s~n", [
                 Chain,
                 Interface,
                 ProtocolString,
                 IpsetName,
+                SrcDst,
                 PortParameter,
                 Ports,
                 States,
@@ -1104,6 +1118,21 @@ get_source_parameter(Direction) ->
     case Direction of
         inbound -> "-s";
         outbound -> "-d"
+    end.
+
+-spec get_src_or_dst(Direction :: atom(), Symmetric :: boolean()) -> iolist().
+get_src_or_dst(Direction, Symmetric) ->
+    case Symmetric of
+        true ->
+            case Direction of
+                inbound -> "src";
+                outbound -> "src"
+            end;
+        false ->
+            case Direction of
+                inbound -> "src";
+                outbound -> "dst"
+            end
     end.
 
 -spec get_service_name(ServiceId :: binary(), ServiceIdMap :: map()) -> {error, atom()} | binary().
