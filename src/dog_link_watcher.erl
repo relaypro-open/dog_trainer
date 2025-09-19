@@ -153,8 +153,7 @@ handle_query_result(Result, State) ->
                 Result
             )
     end,
-    %TODO
-    dog_ipset:update_ipsets(all_envs),
+    dog_ipset_update_agent:queue_update(),
     {noreply, [Result | State]}.
 
 handle_query_done(State) ->

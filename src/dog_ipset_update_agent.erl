@@ -153,6 +153,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 -spec do_periodic_publish(_) -> OldServers :: {ok, list()}.
 do_periodic_publish(State) ->
+    ?LOG_INFO("do_periodic_publish"),
     case dog_agent_checker:check() of
         true ->
             case State of
@@ -164,10 +165,10 @@ do_periodic_publish(State) ->
                             case S of
                                 update ->
                                     ?LOG_INFO("State: ~p", [State]),
-                                    dog_ipset:update_ipsets(all_envs);
+                                    dog_ipset:update_ipsets();
                                 force ->
                                     ?LOG_INFO("State: ~p", [State]),
-                                    dog_ipset:force_update_ipsets()
+                                    dog_ipset:update_ipsets()
                             end
                         end,
                         State

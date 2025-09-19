@@ -3,12 +3,10 @@
 -include("dog_trainer.hrl").
 
 -export([
-    publish_to_queue/6,
+    publish_to_queue/7,
     update_all_iptables/0,
     update_group_iptables/2,
-    valid_iptables/0,
-    update_group_ec2_sgs/1,
-    write_temp_iptables/1
+    update_group_ec2_sgs/1
 ]).
 
 -export([
@@ -89,90 +87,10 @@ chunk_list(List, Len) ->
     {Head, Tail} = lists:split(Len, List),
     [Head | chunk_list(Tail, Len)].
 
--spec write_temp_iptables(IptablesRuleset :: iolist()) -> 'ok' | 'validation_error'.
-write_temp_iptables(IptablesRuleset) ->
-    {ok, TempFile} = write_to_temp_file4(IptablesRuleset),
-    update_iptables4(TempFile),
-    ok.
-%TODO: temporarily disabled validation because ipsets don't exist on dog_trainer
-%case validate_iptables_ruleset4(TempFile) of
-%    ok ->
-%        update_iptables4(TempFile);
-%    _ -> validation_error
-%end.
-
--spec delete_iptables_tempfile(TempFile :: iolist()) -> 'ok'.
-delete_iptables_tempfile(TempFile) ->
-    ok = file:delete(TempFile),
-    ok.
-
--spec write_to_temp_file4(IptablesRuleset :: iolist()) -> {'ok', [any(), ...]}.
-write_to_temp_file4(IptablesRuleset) ->
-    RandString = binary_to_list(base16:encode(crypto:strong_rand_bytes(6))),
-    TempFile = ?RUNDIR ++ "/iptables4." ++ RandString ++ ".txt",
-    ok = file:write_file(TempFile, IptablesRuleset),
-    {ok, TempFile}.
-
-%TODO: temporarily disabled validation because ipsets don't exist on dog_trainer
-%-spec validate_iptables_ruleset4([any(),...]) -> 'error' | 'ok'.
-%validate_iptables_ruleset4(TempFile) ->
-%    Cmd = "sudo /sbin/iptables-restore --test " ++ TempFile,
-%    Result = os:cmd(Cmd),
-%    case Result of
-%        [] ->
-%           ?LOG_INFO("iptables valid"),
-%            ok;
-%        _ ->
-%            error
-%    end.
-
--spec backup_iptables_ruleset4() -> 'error' | 'ok'.
-backup_iptables_ruleset4() ->
-    Cmd = "sudo " ++ "/sbin/iptables-save" ++ " > " ++ ?RUNDIR ++ "/iptables.back",
-    Result = os:cmd(Cmd),
-    case Result of
-        [] ->
-            ?LOG_INFO("iptables backed up"),
-            ok;
-        _ ->
-            error
-    end.
-
--spec update_iptables4([any(), ...]) -> 'ok'.
-update_iptables4(TempFile) ->
-    ok = backup_iptables_ruleset4(),
-    ok = delete_iptables_tempfile(TempFile),
-    %TODO
-    ?LOG_INFO("Iptables updated."),
-    ok.
-
--spec valid_iptables() -> binary().
-valid_iptables() ->
-    <<
-        "# Generated iptables by devops\n"
-        "*filter\n"
-        ":INPUT ACCEPT [0:0]\n"
-        ":FORWARD ACCEPT [0:0]\n"
-        ":OUTPUT ACCEPT [33:2995]\n"
-        ":FIREWALL-INPUT - [0:0]\n"
-        ":PROXY - [0:0]\n"
-        ":SSH - [0:0]\n"
-        "-A INPUT -i lo -j ACCEPT\n"
-        "-A INPUT -j FIREWALL-INPUT\n"
-        "-A INPUT -j REJECT --reject-with icmp-port-unreachable\n"
-        "-A FIREWALL-INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT\n"
-        "-A FIREWALL-INPUT -p tcp -m tcp --dport 22 -j SSH\n"
-        "-A FIREWALL-INPUT -j LOG --log-prefix \"Dropped@FIREWALL-INPUT - \" --log-level 7 --log-ip-options\n"
-        "-A FIREWALL-INPUT -j REJECT --reject-with icmp-port-unreachable\n"
-        "-A PROXY -p tcp -m tcp --dport 8005 -j ACCEPT\n"
-        "-A PROXY -j LOG --log-prefix \"Dropped@PROXY - \" --log-level 7 --log-ip-options\n"
-        "-A PROXY -j REJECT --reject-with icmp-port-unreachable\n"
-        "COMMIT\n"
-        "# Generated iptables by devops"
-    >>.
 
 -spec publish_to_queue(
     RoutingKey :: binary(),
+    Group :: binary(),
     R4IpsetsIptablesRuleset :: list() | boolean(),
     R6IpsetsIptablesRuleset :: list() | boolean(),
     R4IptablesIptablesRuleset :: list() | boolean(),
@@ -181,6 +99,7 @@ valid_iptables() ->
 ) -> any().
 publish_to_queue(
     RoutingKey,
+    Group,
     R4IpsetsIptablesRuleset,
     R6IpsetsIptablesRuleset,
     R4IptablesIptablesRuleset,
@@ -209,4 +128,5 @@ publish_to_queue(
         #{delivery_mode => persistent}
     ),
     imetrics:add(iptables_publish),
+    imetrics:add_m(iptables_publish_group, Group),
     Response.

@@ -3,11 +3,7 @@
 -include("dog_trainer.hrl").
 
 -export([
-    %,
     create/1
-    %delete/1,
-    %replace/2,
-    %update/2
 ]).
 
 -export([
@@ -16,15 +12,12 @@
     create_ipsets/0,
     create_ipsets/2,
     delete_old/0,
-    force_update_ipsets/0,
-    %generate_ipsets/0,
     get_hashes/0,
     get_ipsets/0,
     hash_check/1,
     id_maps/0,
     ipsets_map/0,
     latest_hash/0,
-    %ipsets_map/4,
     normalize_ipset/1,
     persist_ipset/0,
     publish_to_outbound_exchanges/1,
@@ -32,8 +25,7 @@
     publish_to_external/1,
     read_current_ipset/0,
     read_hash/0,
-    %set_hash/1,
-    %update_ipsets/0,
+    update_ipsets/0,
     update_ipsets/1
 ]).
 
@@ -530,6 +522,10 @@ hash_check(AgentIpsetHash) ->
         true ->
             true
     end.
+
+-spec update_ipsets() -> ok.
+update_ipsets() ->
+    update_ipsets(all_envs).
 
 -spec update_ipsets(Env :: atom()) -> ok.
 update_ipsets(Env) ->

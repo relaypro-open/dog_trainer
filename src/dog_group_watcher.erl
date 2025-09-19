@@ -140,7 +140,7 @@ handle_query_result(Result, State) ->
                 Result
             )
     end,
-    dog_ipset:force_update_ipsets(),
+    dog_ipset_update_agent:queue_update(),
     {noreply, [Result | State]}.
 
 handle_query_done(State) ->

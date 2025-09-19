@@ -18,6 +18,7 @@
     rekey_map_of_maps/3,
     rkmm/3,
     to_list/1,
+    to_binary/1,
     tuple_pairs_to_map_of_lists/1,
     to_terraform_name/1,
     eq_join/4
@@ -39,6 +40,23 @@ to_list(Item) when is_integer(Item) ->
     integer_to_list(Item);
 to_list(Item) when is_float(Item) ->
     float_to_list(Item).
+
+-spec to_binary(Item :: iolist() | atom() | tuple() | map() | binary() | integer() | float()) ->
+    binary().
+to_binary(Item) when is_atom(Item) ->
+    erlang:atom_to_binary(Item, utf8);
+to_binary(Item) when is_list(Item) -> % Assumes Item is a valid iolist or string
+    erlang:iolist_to_binary(Item);
+to_binary(Item) when is_tuple(Item) -> % String representation like "{a,b}"
+    erlang:iolist_to_binary(io_lib:format("~p", [Item]));
+to_binary(Item) when is_map(Item) -> % String representation like "#{a=>b}"
+    erlang:iolist_to_binary(io_lib:format("~p", [Item]));
+to_binary(Item) when is_binary(Item) ->
+    Item;
+to_binary(Item) when is_integer(Item) ->
+    erlang:integer_to_binary(Item);
+to_binary(Item) when is_float(Item) ->
+    erlang:float_to_binary(Item).
 
 -spec re_filter(List :: [iolist()], Re :: string()) -> [iolist()].
 re_filter(List, Re) ->
