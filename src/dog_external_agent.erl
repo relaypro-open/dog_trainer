@@ -64,7 +64,8 @@ loop(_RoutingKey, _CType, Payload, State) ->
     ExistingExternalId = maps:get(<<"id">>, ExistingExternal),
     %TODO: create on link creation, set empty, inactive
     dog_external:replace(ExistingExternalId, ExternalEnv),
-    dog_ipset_update_agent:queue_update(),
+    ?LOG_INFO("dog_ipset_update_agent:queue_update()"),
+    dog_ipset_update_agent:queue_update(ExternalEnvName),
     {ack, State}.
 
 -spec set_link_state(NewState :: map()) -> ok | error.

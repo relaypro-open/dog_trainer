@@ -107,7 +107,8 @@ handle_query_result(Result, State) ->
                                 maps:get(<<"name">>, maps:get(<<"new_val">>, Entry))
                         end,
                     imetrics:add_m(watcher, zone_update),
-                    dog_ipset_update_agent:queue_update(),
+                    ?LOG_INFO("dog_ipset_update_agent:queue_update()"),
+                    dog_ipset_update_agent:queue_update(ZoneName),
                     GroupType = <<"zone">>,
                     dog_iptables:update_group_iptables(ZoneName, GroupType)
                 end,

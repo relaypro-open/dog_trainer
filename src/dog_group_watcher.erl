@@ -135,12 +135,13 @@ handle_query_result(Result, State) ->
                     {ok, _} = dog_group:set_hash4_ipsets(GroupName, Hash4Ipsets),
                     {ok, _} = dog_group:set_hash6_ipsets(GroupName, Hash6Ipsets),
                     {ok, _} = dog_group:set_hash4_iptables(GroupName, Hash4Iptables),
-                    {ok, _} = dog_group:set_hash6_iptables(GroupName, Hash6Iptables)
+                    {ok, _} = dog_group:set_hash6_iptables(GroupName, Hash6Iptables),
+                    ?LOG_INFO("dog_ipset_update_agent:queue_update()"),
+                    dog_ipset_update_agent:queue_update(GroupName)
                 end,
                 Result
             )
     end,
-    dog_ipset_update_agent:queue_update(),
     {noreply, [Result | State]}.
 
 handle_query_done(State) ->

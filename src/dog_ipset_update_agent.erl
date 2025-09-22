@@ -6,6 +6,7 @@
 %% ------------------------------------------------------------------
 
 -include("dog_trainer.hrl").
+-include_lib("kernel/include/logger.hrl").
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
@@ -14,7 +15,7 @@
     start_link/0,
     queue_force/0,
     queue_length/0,
-    queue_update/0,
+    queue_update/1,
     periodic_publish/0
 ]).
 
@@ -34,7 +35,7 @@
 %% ------------------------------------------------------------------
 %% test Function Exports
 %% ------------------------------------------------------------------
--export([do_periodic_publish/1]).
+%-export([do_periodic_publish/1]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -47,11 +48,12 @@ start_link() ->
 
 -spec periodic_publish() -> OldServer :: ok.
 periodic_publish() ->
+    ?LOG_INFO("function"),
     gen_server:call(?MODULE, periodic_publish).
 
--spec queue_update() -> ok.
-queue_update() ->
-    gen_server:cast(?MODULE, {add_to_queue, [update]}).
+-spec queue_update(Source :: iolist) -> ok.
+queue_update(Source) ->
+    gen_server:cast(?MODULE, {add_to_queue, [Source]}).
 
 -spec queue_force() -> ok.
 queue_force() ->
@@ -108,8 +110,8 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(_, _) -> {'noreply', _}.
 handle_cast(stop, State) ->
     {stop, normal, State};
-handle_cast({add_to_queue, Groups}, State) ->
-    NewState = ordsets:union(ordsets:from_list(Groups), State),
+handle_cast({add_to_queue, Sources}, State) ->
+    NewState = ordsets:union(ordsets:from_list(Sources), State),
     {noreply, NewState};
 handle_cast(Msg, State) ->
     ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
@@ -158,23 +160,13 @@ do_periodic_publish(State) ->
         true ->
             case State of
                 [] ->
-                    pass;
+                    {ok, []};
                 _ ->
-                    lists:foreach(
-                        fun(S) ->
-                            case S of
-                                update ->
-                                    ?LOG_INFO("State: ~p", [State]),
-                                    dog_ipset:update_ipsets();
-                                force ->
-                                    ?LOG_INFO("State: ~p", [State]),
-                                    dog_ipset:update_ipsets()
-                            end
-                        end,
-                        State
-                    )
-            end,
-            {ok, ordsets:new()};
+                    ?LOG_INFO("ipset queue: ~p", [State]),
+                    ?LOG_INFO("length of ipset queue: ~p", [length(State)]),
+                    dog_ipset:update_ipsets(),
+                    {ok, []}
+            end;
         false ->
             ?LOG_INFO("Skipping, dog_agent_checker:check() false"),
             {ok, State}

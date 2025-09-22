@@ -153,7 +153,8 @@ handle_query_result(Result, State) ->
                 Result
             )
     end,
-    dog_ipset_update_agent:queue_update(),
+    ?LOG_INFO("dog_ipset_update_agent:queue_update()"),
+    dog_ipset_update_agent:queue_update(<<"link">>),
     {noreply, [Result | State]}.
 
 handle_query_done(State) ->

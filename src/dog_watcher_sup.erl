@@ -52,8 +52,8 @@ init([]) ->
 
             {host_config_watcher, {dog_host_config_watcher, start_link, []}, permanent, 5000,
                 worker, [dog_host_config_watcher]},
-            {host_interfaces_watcher, {dog_host_interfaces_watcher, start_link, []}, permanent,
-                5000, worker, [dog_host_interfaces_watcher]},
+            %{host_interfaces_watcher, {dog_host_interfaces_watcher, start_link, []}, permanent,
+            %    5000, worker, [dog_host_interfaces_watcher]},
             {host_active_watcher, {dog_host_active_watcher, start_link, []}, permanent, 5000,
                 worker, [dog_host_active_watcher]},
             {link_watcher, {dog_link_watcher, start_link, []}, permanent, 5000, worker, [

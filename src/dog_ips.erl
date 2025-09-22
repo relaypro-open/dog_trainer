@@ -89,12 +89,12 @@ loop(_RoutingKey, _CType, Payload, State) ->
                     force ->
                         ?LOG_INFO("got force: ~p", [Hostkey]),
                         dog_host:update_by_hostkey(Hostkey, Config),
-                        dog_ipset_update_agent:queue_update(), %ignoring force
+                        dog_ipset_update_agent:queue_update(Hostkey), %ignoring force
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     update ->
                         ?LOG_INFO("got update: ~p", [Hostkey]),
                         dog_host:update_by_hostkey(Hostkey, Config),
-                        dog_ipset_update_agent:queue_update(),
+                        dog_ipset_update_agent:queue_update(Hostkey),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     keepalive ->
                         ?LOG_INFO("got keepalive: ~p", [Hostkey]),
@@ -160,12 +160,12 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
                     force ->
                         ?LOG_INFO("got force: ~p", [Hostkey]),
                         dog_host:update_by_hostkey(Hostkey, Config),
-                        dog_ipset_update_agent:queue_update(), %ignoring force
+                        dog_ipset_update_agent:queue_update(Hostkey), %ignoring force
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     update ->
                         ?LOG_INFO("got update: ~p", [Hostkey]),
                         dog_host:update_by_hostkey(Hostkey, Config),
-                        dog_ipset_update_agent:queue_update(),
+                        dog_ipset_update_agent:queue_update(Hostkey),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     keepalive ->
                         ?LOG_INFO("got keepalive: ~p", [Hostkey]),
