@@ -134,12 +134,14 @@ handle_query_result(Result, State) ->
                         end,
                     NewEnabledState = maps:get(new_enabled_state, NewState),
                     OldEnabledState = maps:get(old_enabled_state, NewState),
-                    %EnvName = maps:get(env_name,NewState),
+                    EnvName = maps:get(env_name,NewState),
                     ?LOG_DEBUG("{OldEnabledState,NewEnabledState}: ~p", [
                         {OldEnabledState, NewEnabledState}
                     ]),
                     dog_external_agent:set_link_state(NewState),
                     %,
+                    ?LOG_INFO("dog_ipset_update_agent:queue_update()"),
+                    dog_ipset_update_agent:queue_update(dog_common:concat([<<"link->">>,EnvName],binary)),
                     imetrics:add_m(watcher, link_update)
                 %case {OldEnabledState,NewEnabledState} of
                 %  {false,true} ->
@@ -153,8 +155,6 @@ handle_query_result(Result, State) ->
                 Result
             )
     end,
-    ?LOG_INFO("dog_ipset_update_agent:queue_update()"),
-    dog_ipset_update_agent:queue_update(<<"link">>),
     {noreply, [Result | State]}.
 
 handle_query_done(State) ->

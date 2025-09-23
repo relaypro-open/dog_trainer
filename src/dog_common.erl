@@ -3,12 +3,14 @@
 -include("dog_trainer.hrl").
 
 -export([
-    inverse_map_of_lists/1,
+    concat/2,
     create_hash/1,
     eel_test/0,
+    eq_join/4,
     format_value/1,
     format_var/1,
     format_vars/1,
+    inverse_map_of_lists/1,
     list_of_maps_to_map/2,
     lmm/2,
     merge_lists_in_tuples/1,
@@ -17,11 +19,10 @@
     re_filter/2,
     rekey_map_of_maps/3,
     rkmm/3,
-    to_list/1,
     to_binary/1,
-    tuple_pairs_to_map_of_lists/1,
+    to_list/1,
     to_terraform_name/1,
-    eq_join/4
+    tuple_pairs_to_map_of_lists/1
 ]).
 
 -spec to_list(Item :: iolist() | atom() | tuple() | map() | binary() | integer() | float()) ->
@@ -287,3 +288,16 @@ eq_join(Table1Name, Table2Name, Key1, Key2) ->
         OneResult
     ),
     JoinedResult.
+
+%% EXTERNAL
+
+concat(Words, string) ->
+    internal_concat(Words);
+concat(Words, binary) ->
+    list_to_binary(internal_concat(Words)).
+
+%% INTERNAL
+
+internal_concat(Elements) ->
+    NonBinaryElements = [case Element of _ when is_binary(Element) -> binary_to_list(Element); _ -> Element end || Element <- Elements],
+    lists:concat(NonBinaryElements).

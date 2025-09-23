@@ -53,6 +53,7 @@ periodic_publish() ->
 
 -spec queue_update(Source :: iolist) -> ok.
 queue_update(Source) ->
+    imetrics:add_m(ipset_queue_add, Source),
     gen_server:cast(?MODULE, {add_to_queue, [Source]}).
 
 -spec queue_force() -> ok.
