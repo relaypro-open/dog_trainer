@@ -178,7 +178,8 @@ do_periodic_publish(State) ->
             %  false ->
             %    dog_ipset:update_ipsets(local_env)
             %end,
-            dog_ipset:update_ipsets(all_envs),
+            %?LOG_INFO("dog_ipset_update_agent:queue_update()"),
+            %dog_ipset_update_agent:queue_update(<<"dog_profile_update_agent">>),
             % Deliberately set to empty set, so agent will not update ipsets.
             EmptyIpsets = [],
             GroupsWithoutEmptyProfiles = ordsets:subtract(ordsets:from_list(Groups), [<<>>]),
@@ -210,6 +211,7 @@ do_periodic_publish(State) ->
                                 {Group,
                                     dog_iptables:publish_to_queue(
                                         RoutingKey,
+                                        Group,
                                         R4IpsetsIptablesRuleset,
                                         R6IpsetsIptablesRuleset,
                                         R4IptablesIptablesRuleset,

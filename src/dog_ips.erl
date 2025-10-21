@@ -72,6 +72,7 @@ loop(_RoutingKey, _CType, Payload, State) ->
         Hostkey = maps:get(<<"hostkey">>, Config),
         ?LOG_DEBUG(#{hostname => Hostname, hostkey => Hostkey}),
         dog_config:update_host_keepalive(Hostkey),
+        UpdateSource = dog_common:concat([<<"host_group->">>,GroupName],binary),
         case dog_host:get_by_hostkey(Hostkey) of
             {ok, HostExists} ->
                 %HostId = maps:get(<<"id">>, HostExists),
@@ -89,12 +90,12 @@ loop(_RoutingKey, _CType, Payload, State) ->
                     force ->
                         ?LOG_INFO("got force: ~p", [Hostkey]),
                         dog_host:update_by_hostkey(Hostkey, Config),
-                        dog_ipset_update_agent:queue_force(),
+                        dog_ipset_update_agent:queue_update(UpdateSource), %ignoring force
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     update ->
                         ?LOG_INFO("got update: ~p", [Hostkey]),
                         dog_host:update_by_hostkey(Hostkey, Config),
-                        dog_ipset_update_agent:queue_update(),
+                        dog_ipset_update_agent:queue_update(UpdateSource),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     keepalive ->
                         ?LOG_INFO("got keepalive: ~p", [Hostkey]),
@@ -160,12 +161,12 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
                     force ->
                         ?LOG_INFO("got force: ~p", [Hostkey]),
                         dog_host:update_by_hostkey(Hostkey, Config),
-                        dog_ipset_update_agent:queue_force(),
+                        dog_ipset_update_agent:queue_update(Hostkey), %ignoring force
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     update ->
                         ?LOG_INFO("got update: ~p", [Hostkey]),
                         dog_host:update_by_hostkey(Hostkey, Config),
-                        dog_ipset_update_agent:queue_update(),
+                        dog_ipset_update_agent:queue_update(Hostkey),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     keepalive ->
                         ?LOG_INFO("got keepalive: ~p", [Hostkey]),

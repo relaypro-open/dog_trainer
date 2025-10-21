@@ -1,4 +1,4 @@
--module(dog_ipset_update_agent).
+-module(dog_external_update_agent).
 -behaviour(gen_server).
 
 %% ------------------------------------------------------------------
@@ -12,11 +12,13 @@
 %% ------------------------------------------------------------------
 
 -export([
-    start_link/0,
-    queue_force/0,
+    periodic_publish/0,
+    publish_to_external/1,
+    publish_to_outbound_exchange/2,
+    publish_to_outbound_exchanges/1,
     queue_length/0,
     queue_update/1,
-    periodic_publish/0
+    start_link/0
 ]).
 
 %% ------------------------------------------------------------------
@@ -51,14 +53,10 @@ periodic_publish() ->
     ?LOG_INFO("function"),
     gen_server:call(?MODULE, periodic_publish).
 
--spec queue_update(Source :: iolist) -> ok.
-queue_update(Source) ->
-    imetrics:add_m(ipset_queue_add, Source),
-    gen_server:cast(?MODULE, {add_to_queue, [Source]}).
-
--spec queue_force() -> ok.
-queue_force() ->
-    gen_server:cast(?MODULE, {add_to_queue, [force]}).
+-spec queue_update(Ipsets :: list) -> ok.
+queue_update(Ipsets) ->
+    imetrics:add(external_queue_add),
+    gen_server:cast(?MODULE, {add_to_queue, [Ipsets]}).
 
 queue_length() ->
     gen_server:call(?MODULE, queue_length).
@@ -79,8 +77,8 @@ init(_Args) ->
     %CurrentIpset = dog_ipset:read_current_ipset(),
     %{ok, CurrentIpsetHashes} = dog_ipset:get_hashes(),
     %dog_ipset:create(CurrentIpsetHashes),
-    {ok, PeriodicPublishInterval} = application:get_env(
-        dog_trainer, ipset_periodic_publish_interval_seconds
+    PeriodicPublishInterval = application:get_env(
+        dog_trainer, external_ipset_periodic_publish_interval_seconds, 5
     ),
     _PublishTimer = erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     State = ordsets:new(),
@@ -111,8 +109,8 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(_, _) -> {'noreply', _}.
 handle_cast(stop, State) ->
     {stop, normal, State};
-handle_cast({add_to_queue, Sources}, State) ->
-    NewState = ordsets:union(ordsets:from_list(Sources), State),
+handle_cast({add_to_queue, Ipsets}, State) ->
+    NewState = Ipsets,
     {noreply, NewState};
 handle_cast(Msg, State) ->
     ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
@@ -128,8 +126,8 @@ handle_cast(Msg, State) ->
 -spec handle_info(_, _) -> {'noreply', _}.
 handle_info(periodic_publish, State) ->
     {ok, NewState} = do_periodic_publish(State),
-    {ok, PeriodicPublishInterval} = application:get_env(
-        dog_trainer, ipset_periodic_publish_interval_seconds
+    PeriodicPublishInterval = application:get_env(
+        dog_trainer, external_ipset_periodic_publish_interval_seconds, 5
     ),
     erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     {noreply, NewState};
@@ -157,18 +155,68 @@ code_change(_OldVsn, State, _Extra) ->
 -spec do_periodic_publish(_) -> OldServers :: {ok, list()}.
 do_periodic_publish(State) ->
     ?LOG_INFO("do_periodic_publish"),
-    case dog_agent_checker:check() of
-        true ->
-            case State of
-                [] ->
-                    {ok, []};
-                _ ->
-                    ?LOG_INFO("ipset queue: ~p", [State]),
-                    ?LOG_INFO("length of ipset queue: ~p", [length(State)]),
-                    dog_ipset:update_ipsets(),
-                    {ok, []}
-            end;
-        false ->
-            ?LOG_INFO("Skipping, dog_agent_checker:check() false"),
-            {ok, State}
+    case State of
+        [] ->
+            {ok, []};
+        _ ->
+            ?LOG_INFO("ipset queue: ~p", [State]),
+            ?LOG_INFO("length of ipset queue: ~p", [length(State)]),
+            LatestInternalIpsets = lists:last(State),
+            publish_to_external(LatestInternalIpsets),
+            dog_ipset:update_ipsets(),
+            {ok, []}
     end.
+
+-spec publish_to_outbound_exchanges(IpsetExternalMap :: map()) -> any().
+publish_to_outbound_exchanges(IpsetExternalMap) ->
+    {ok, ExternalEnvs} = dog_link:get_all_active_outbound(),
+    IdsByGroup = dog_group:get_all_internal_ec2_security_group_ids(),
+    %dog_common:merge_maps_of_lists([IdsByGroupMap,AllActiveUnionEc2Sgs]).
+    lists:foreach(
+        fun(Env) ->
+            EnvName = maps:get(<<"name">>, Env),
+            ExternalMap = maps:put(<<"ec2">>, IdsByGroup, IpsetExternalMap),
+            %ExternalMap = maps:put(<<"ec2">>,jsx:encode(#{}),IpsetExternalMap),
+            ?LOG_DEBUG("ExternalMap: ~p~n", [ExternalMap]),
+            publish_to_outbound_exchange(EnvName, ExternalMap)
+        end,
+        ExternalEnvs
+    ).
+
+-spec publish_to_outbound_exchange(TargetEnvName :: binary(), IpsetExternalMap :: map()) -> any().
+publish_to_outbound_exchange(TargetEnvName, IpsetExternalMap) ->
+    ?LOG_INFO("IpsetExternalMap: ~p", [IpsetExternalMap]),
+    {ok, LocalEnvName} = application:get_env(dog_trainer, env),
+    UserData = #{
+        ipsets => jsx:encode(IpsetExternalMap),
+        name => LocalEnvName
+    },
+    Count = 1,
+    Pid = erlang:self(),
+    Message = term_to_binary([
+        {count, Count},
+        {local_time, calendar:local_time()},
+        {pid, Pid},
+        {user_data, UserData}
+    ]),
+    RoutingKey = binary:list_to_bin(LocalEnvName),
+    BrokerConfigName = list_to_atom(binary:bin_to_list(TargetEnvName)),
+    %thumper:start_link(BrokerConfigName),
+    ?LOG_INFO("~p, ~p, ~p, ~p", [BrokerConfigName, Message, <<"inbound">>, RoutingKey]),
+    %Response = thumper:publish_to(BrokerConfigName, Message, <<"inbound">>, RoutingKey),
+    PublisherName = erlang:binary_to_atom(<<TargetEnvName/binary, <<"_publisher">>/binary>>),
+    Response = turtle:publish(
+        PublisherName,
+        <<"inbound">>,
+        RoutingKey,
+        <<"text/json">>,
+        Message,
+        #{delivery_mode => persistent}
+    ),
+    imetrics:add(ipset_outbound_publish),
+    Response.
+
+-spec publish_to_external(InternalIpsetsMap :: map()) -> any().
+publish_to_external(InternalIpsetsMap) ->
+    ?LOG_INFO("publishing to external"),
+    publish_to_outbound_exchanges(InternalIpsetsMap).

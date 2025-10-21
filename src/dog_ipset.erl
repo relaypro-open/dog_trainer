@@ -3,11 +3,7 @@
 -include("dog_trainer.hrl").
 
 -export([
-    %,
     create/1
-    %delete/1,
-    %replace/2,
-    %update/2
 ]).
 
 -export([
@@ -16,24 +12,17 @@
     create_ipsets/0,
     create_ipsets/2,
     delete_old/0,
-    force_update_ipsets/0,
-    %generate_ipsets/0,
     get_hashes/0,
     get_ipsets/0,
     hash_check/1,
     id_maps/0,
     ipsets_map/0,
     latest_hash/0,
-    %ipsets_map/4,
     normalize_ipset/1,
     persist_ipset/0,
-    publish_to_outbound_exchanges/1,
-    publish_to_outbound_exchange/2,
-    publish_to_external/1,
     read_current_ipset/0,
     read_hash/0,
-    %set_hash/1,
-    %update_ipsets/0,
+    update_ipsets/0,
     update_ipsets/1
 ]).
 
@@ -436,11 +425,6 @@ create_internal_ipsets(
     },
     InternalIpsetsMap.
 
--spec publish_to_external(InternalIpsetsMap :: map()) -> any().
-publish_to_external(InternalIpsetsMap) ->
-    ?LOG_INFO("publishing to external"),
-    publish_to_outbound_exchanges(InternalIpsetsMap).
-
 -spec publish_to_queue(Ipsets :: list()) -> any().
 publish_to_queue(Ipsets) ->
     ?LOG_INFO("local publish"),
@@ -468,55 +452,6 @@ publish_to_queue(Ipsets) ->
     imetrics:add(ipset_publish),
     Response.
 
--spec publish_to_outbound_exchanges(IpsetExternalMap :: map()) -> any().
-publish_to_outbound_exchanges(IpsetExternalMap) ->
-    {ok, ExternalEnvs} = dog_link:get_all_active_outbound(),
-    IdsByGroup = dog_group:get_all_internal_ec2_security_group_ids(),
-    %dog_common:merge_maps_of_lists([IdsByGroupMap,AllActiveUnionEc2Sgs]).
-    lists:foreach(
-        fun(Env) ->
-            EnvName = maps:get(<<"name">>, Env),
-            ExternalMap = maps:put(<<"ec2">>, IdsByGroup, IpsetExternalMap),
-            %ExternalMap = maps:put(<<"ec2">>,jsx:encode(#{}),IpsetExternalMap),
-            ?LOG_DEBUG("ExternalMap: ~p~n", [ExternalMap]),
-            publish_to_outbound_exchange(EnvName, ExternalMap)
-        end,
-        ExternalEnvs
-    ).
-
--spec publish_to_outbound_exchange(TargetEnvName :: binary(), IpsetExternalMap :: map()) -> any().
-publish_to_outbound_exchange(TargetEnvName, IpsetExternalMap) ->
-    ?LOG_INFO("IpsetExternalMap: ~p", [IpsetExternalMap]),
-    {ok, LocalEnvName} = application:get_env(dog_trainer, env),
-    UserData = #{
-        ipsets => jsx:encode(IpsetExternalMap),
-        name => LocalEnvName
-    },
-    Count = 1,
-    Pid = erlang:self(),
-    Message = term_to_binary([
-        {count, Count},
-        {local_time, calendar:local_time()},
-        {pid, Pid},
-        {user_data, UserData}
-    ]),
-    RoutingKey = binary:list_to_bin(LocalEnvName),
-    BrokerConfigName = list_to_atom(binary:bin_to_list(TargetEnvName)),
-    %thumper:start_link(BrokerConfigName),
-    ?LOG_INFO("~p, ~p, ~p, ~p", [BrokerConfigName, Message, <<"inbound">>, RoutingKey]),
-    %Response = thumper:publish_to(BrokerConfigName, Message, <<"inbound">>, RoutingKey),
-    PublisherName = erlang:binary_to_atom(<<TargetEnvName/binary, <<"_publisher">>/binary>>),
-    Response = turtle:publish(
-        PublisherName,
-        <<"inbound">>,
-        RoutingKey,
-        <<"text/json">>,
-        Message,
-        #{delivery_mode => persistent}
-    ),
-    imetrics:add(ipset_outbound_publish),
-    Response.
-
 -spec hash_check(AgentIpsetHash :: binary()) -> boolean().
 hash_check(AgentIpsetHash) ->
     %{ok, IpsetHashes} = get_hashes(),
@@ -530,6 +465,10 @@ hash_check(AgentIpsetHash) ->
         true ->
             true
     end.
+
+-spec update_ipsets() -> ok.
+update_ipsets() ->
+    update_ipsets(all_envs).
 
 -spec update_ipsets(Env :: atom()) -> ok.
 update_ipsets(Env) ->
@@ -551,7 +490,7 @@ update_ipsets(Env) ->
                     pass;
                 all_envs ->
                     ?LOG_INFO("all_envs"),
-                    publish_to_external(InternalIpsetsMap)
+                    dog_external_update_agent:queue_update(InternalIpsetsMap)
             end;
         true ->
             ?LOG_DEBUG("true"),
@@ -563,7 +502,7 @@ force_update_ipsets() ->
     ?LOG_INFO("publishing: force_update_ipsets"),
     {MergedIpsets, InternalIpsets} = create_ipsets(),
     publish_to_queue(MergedIpsets),
-    publish_to_external(InternalIpsets),
+    dog_external_update_agent:queue_update(InternalIpsets),
     ok.
 
 -spec persist_ipset() -> ok | {error, list()}.

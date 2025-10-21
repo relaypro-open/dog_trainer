@@ -34,6 +34,8 @@ init([]) ->
                 worker, [dog_profile_update_agent]},
             {ipset_update_agent, {dog_ipset_update_agent, start_link, []}, permanent, 5000, worker,
                 [dog_ipset_update_agent]},
+            {external_update_agent, {dog_external_update_agent, start_link, []}, permanent, 5000, worker,
+                [dog_external_update_agent]},
             {dog_agent_checker, {dog_agent_checker, start_link, []}, permanent, 5000, worker, [
                 dog_agent_checker
             ]},
