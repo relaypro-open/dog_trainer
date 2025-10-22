@@ -211,13 +211,19 @@ latest_hash() ->
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, ipset),
-            reql:order_by(X, reql:desc(<<"timestamp">>)),
+            reql:order_by(X, reql:desc(<<"timestamp">>))
             %reql:order_by(X,<<"timestamp">>,#{index => <<"timestamp">>}),
             %reql:desc(X),
-            reql:nth(X, 0)
+            %reql:nth(X, 0)
         end
     ),
-    {ok, maps:get(<<"hash">>, R)}.
+    case R of
+        [] ->
+            {ok, <<"empty">>};
+        _ ->
+            Hash = lists:nth(1, R),
+            {ok, maps:get(<<"hash">>, Hash, <<"empty">>)}
+    end.
 
 -spec create(IpsetHash :: binary()) -> {ok, pid()}.
 create(Hash) ->
