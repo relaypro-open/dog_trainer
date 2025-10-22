@@ -4,3 +4,4 @@ awscli 2.11.26
 aws-vault 6.6.2
 erlang 25.3.2.11
 elixir 1.14.3-otp-25
+python 3.12.7

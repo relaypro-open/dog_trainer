@@ -16,12 +16,7 @@ init([]) ->
             lists:map(
                 fun(Link) ->
                     LinkName = maps:get(<<"name">>, Link),
-                    %EnvName = LinkName,
                     ?LOG_DEBUG("LinkName: ~p", [LinkName]),
-                    %[
-                    % dog_external_agent:inbound_service_spec(LinkName),
-                    %dog_external_agent:outbound_publisher_spec(LinkName)
-                    %]
                     {LinkName, {dog_external_agent, start_link, [Link]}, permanent, 5000, worker, [
                         dog_external_agent
                     ]}

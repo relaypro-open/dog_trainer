@@ -23,7 +23,7 @@
         {rethink_timeout_ms, 10000},
         {rethink_squash_sec, 1.0},
         {profile_periodic_publish_interval_seconds, 5},
-        {ipset_periodic_publish_interval_seconds, 5},
+        {ipset_periodic_publish_interval_seconds, 15},
         {check_v6_hashes, true},
         {generate_unset_tables, false},
         {max_interval_since_last_agent_update,2},

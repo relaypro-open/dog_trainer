@@ -32,7 +32,6 @@
         observer_cli,
         erlcloud,
         erlsom,
-        cache_tab,
         flatlog,
         eel,
         cowboy_access_log,
