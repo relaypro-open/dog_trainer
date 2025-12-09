@@ -20,15 +20,10 @@
 
 -spec config(Region :: binary()) -> tuple().
 config(Region) ->
-    {ok, Key} = application:get_env(dog_trainer, aws_key),
-    {ok, Secret} = application:get_env(dog_trainer, aws_secret),
-    Url = "ec2." ++ binary:bin_to_list(Region) ++ ".amazonaws.com",
-    ?LOG_DEBUG("Url: ~s~n", [Url]),
-    erlcloud_ec2:new(
-        Key,
-        Secret,
-        Url
-    ).
+    {ok, AutoConfig} = erlcloud_aws:auto_config(),
+    {ok, AwsConfig} = erlcloud_aws:update_config(AutoConfig),
+    ServiceConfig = erlcloud_aws:service_config( <<"ec2">>, Region, AwsConfig ),
+    ServiceConfig.
 
 default_ingress_spps_rules(Ec2SecurityGroupId) ->
     [
@@ -130,6 +125,7 @@ diff_sg_ingress(Ec2SecurityGroupId, Region, DogGroupId) ->
 update_sg_ingress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
     Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),
     Config = config(Region),
+
     NewAddVpcIngressSpecs = maps:get(<<"Add">>, AddRemoveMap),
     ?LOG_DEBUG("NewAddVpcIngressSpecs: ~p~n", [NewAddVpcIngressSpecs]),
     AddResults =
@@ -343,6 +339,7 @@ ppps_to_spps(Ppps, Accum) ->
     IpPermisions :: list().
 ip_permissions_ingress(Ec2Region, Ec2SecurityGroupId) ->
     Config = config(Ec2Region),
+
     case erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId], [], [], Config) of
         {ok, Permissions} ->
             IpPermissions = maps:get(ip_permissions, maps:from_list(hd(Permissions))),

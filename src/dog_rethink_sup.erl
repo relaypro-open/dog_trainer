@@ -28,16 +28,17 @@ start_link() ->
 
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
-    RethinkdbHost = application:get_env(dog_trainer, rethinkdb_host, "localhost"),
-    RethinkdbPort = application:get_env(dog_trainer, rethinkdb_port, 28015),
-    RethinkdbUser = application:get_env(dog_trainer, rethinkdb_username, "admin"),
-    RethinkdbPassword = application:get_env(dog_trainer, rethinkdb_password, ""),
-    RethinkTimeoutMs = application:get_env(dog_trainer, rethink_timeout_ms, 1000),
-    %?LOG_ERROR("RethinkdbHost: ~p,RethinkdbPort: ~p,RethinkdbUser: ~p,RethinkdbPassword: ~p",[RethinkdbHost,RethinkdbPort,RethinkdbUser,RethinkdbPassword]),
-    %DbSetupResult = rethink_db_setup:setup_rethinkdb(
-    %    RethinkdbHost, RethinkdbPort, RethinkdbUser, RethinkdbPassword
-    %),
-    %?LOG_INFO("RethinkDB setup: ~p~n", [DbSetupResult]),
+    application:load(dog_trainer),
+    {ok, RethinkdbHost} = application:get_env(dog_trainer, rethinkdb_host),
+    {ok, RethinkdbPort} = application:get_env(dog_trainer, rethinkdb_port),
+    {ok, RethinkdbUser} = application:get_env(dog_trainer, rethinkdb_username),
+    {ok, RethinkdbPassword} = application:get_env(dog_trainer, rethinkdb_password),
+    {ok, RethinkTimeoutMs} = application:get_env(dog_trainer, rethink_timeout_ms),
+    ?LOG_ERROR("RethinkdbHost: ~p,RethinkdbPort: ~p,RethinkdbUser: ~p,RethinkdbPassword: ~p",[RethinkdbHost,RethinkdbPort,RethinkdbUser,RethinkdbPassword]),
+    DbSetupResult = rethink_db_setup:setup_rethinkdb(
+        RethinkdbHost, RethinkdbPort, RethinkdbUser, RethinkdbPassword
+    ),
+    ?LOG_INFO("RethinkDB setup: ~p~n", [DbSetupResult]),
     ConnectOptions = #{
         host => RethinkdbHost,
         port => RethinkdbPort,

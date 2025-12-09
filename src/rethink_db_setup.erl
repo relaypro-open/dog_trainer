@@ -8,8 +8,8 @@
 
 -export([
     get_connection/4,
-    ensure_db_exists/2,
-    create_initial_global_hash/1
+    ensure_db_exists/2
+    %create_initial_global_hash/1
 ]).
 
 -spec table_schema() -> map().
@@ -57,8 +57,8 @@ setup_rethinkdb(Hostname, Port, Username, Password) ->
             )
         end,
         table_schema()
-    ),
-    create_initial_global_hash(Connection).
+    ).
+    %create_initial_global_hash(Connection).
 
 -spec get_connection(
     Hostname :: string(), Port :: integer(), Username :: string(), Password :: string()
@@ -163,31 +163,31 @@ create_index(Connection, TableName, FieldName) ->
         end
     ).
 
--spec create_initial_global_hash(Connection :: pid()) -> {ok, map()}.
-create_initial_global_hash(Connection) ->
-    {ok, R} = dog_rethink:run(
-        fun(X) ->
-            reql:db(X, dog),
-            reql:table(X, ipset)
-        end
-    ),
-    {ok, Result} = rethink_cursor:all(R),
-    ?LOG_DEBUG("Result: ~p", [Result]),
-    case lists:flatten(Result) of
-        [] ->
-            Record = #{
-                <<"hash">> => <<"initial">>,
-                <<"name">> => <<"global">>,
-                <<"timestamp">> => dog_time:timestamp()
-            },
-            gen_rethink:run(
-                Connection,
-                fun(X) ->
-                    reql:db(X, dog),
-                    reql:table(X, <<"ipset">>),
-                    reql:insert(X, Record)
-                end
-            );
-        _ ->
-            pass
-    end.
+%-spec create_initial_global_hash(Connection :: pid()) -> {ok, map()}.
+%create_initial_global_hash(Connection) ->
+%    {ok, R} = dog_rethink:run(
+%        fun(X) ->
+%            reql:db(X, dog),
+%            reql:table(X, ipset)
+%        end
+%    ),
+%    {ok, Result} = rethink_cursor:all(R),
+%    ?LOG_DEBUG("Result: ~p", [Result]),
+%    case lists:flatten(Result) of
+%        [] ->
+%            Record = #{
+%                <<"hash">> => <<"initial">>,
+%                <<"name">> => <<"global">>,
+%                <<"timestamp">> => dog_time:timestamp()
+%            },
+%            gen_rethink:run(
+%                Connection,
+%                fun(X) ->
+%                    reql:db(X, dog),
+%                    reql:table(X, <<"ipset">>),
+%                    reql:insert(X, Record)
+%                end
+%            );
+%        _ ->
+%            pass
+%    end.

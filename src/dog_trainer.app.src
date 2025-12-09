@@ -30,14 +30,13 @@
         poolboy,
         jsn,
         observer_cli,
-        erlcloud,
         erlsom,
-        cache_tab,
         flatlog,
         eel,
         cowboy_access_log,
         logger_logstash_formatter,
-        entropy_string
+        entropy_string,
+        erlcloud
         ]
     },
     {env, []},
