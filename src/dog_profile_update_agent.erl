@@ -66,8 +66,8 @@ periodic_publish() ->
 
 -spec init(_) -> {'ok', []}.
 init(_Args) ->
-    {ok, PeriodicPublishInterval} = application:get_env(
-        dog_trainer, profile_periodic_publish_interval_seconds
+    PeriodicPublishInterval = application:get_env(
+        dog_trainer, profile_periodic_publish_interval_seconds, 5
     ),
     _PublishTimer = erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     State = ordsets:new(),
