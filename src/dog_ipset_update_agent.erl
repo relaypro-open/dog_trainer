@@ -64,7 +64,7 @@ queue_add(Source) ->
 
 -spec flush_queue() -> ok.
 flush_queue() ->
-    gen_server:cast(?MODULE, {flush_queue, [Source]}).
+    gen_server:cast(?MODULE, flush_queue).
 
 queue_length() ->
     gen_server:call(?MODULE, queue_length).

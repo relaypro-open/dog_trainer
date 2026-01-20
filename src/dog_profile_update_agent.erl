@@ -178,8 +178,8 @@ do_periodic_publish(State) ->
             %  false ->
             %    dog_ipset:update_ipsets(local_env)
             %end,
-            %?LOG_INFO("dog_ipset_update_agent:queue_update()"),
-            %dog_ipset_update_agent:queue_update(<<"dog_profile_update_agent">>),
+            %?LOG_INFO("dog_ipset_update_agent:queue_add()"),
+            %dog_ipset_update_agent:queue_add(<<"dog_profile_update_agent">>),
             % Deliberately set to empty set, so agent will not update ipsets.
             EmptyIpsets = [],
             GroupsWithoutEmptyProfiles = ordsets:subtract(ordsets:from_list(Groups), [<<>>]),
