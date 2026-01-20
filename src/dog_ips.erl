@@ -90,7 +90,7 @@ loop(_RoutingKey, _CType, Payload, State) ->
                     force ->
                         ?LOG_INFO("got force: ~p", [Hostkey]),
                         dog_host:update_by_hostkey(Hostkey, Config),
-                        dog_ipset_update_agent:queue_add_force(Hostkey),
+                        dog_ipset_update_agent:queue_add_force(UpdateSource),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     update ->
                         ?LOG_INFO("got update: ~p", [Hostkey]),
