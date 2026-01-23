@@ -502,7 +502,6 @@ host_alert_active(HostMap) ->
         false -> false
     end.
 
-
 -spec send_hash_alert(Host :: binary(), HashStatus :: map()) -> ok.
 send_hash_alert(Host, HashStatus) ->
     HashAlertEnabled = application:get_env(dog_trainer, hash_alert_enabled, true),
@@ -795,6 +794,7 @@ update(Id, UpdateMap) ->
             NewHost = maps:merge(OldHost, UpdateMap),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewHost) of
                 ok ->
+                    ?LOG_DEBUG(#{newhost => NewHost}),
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
@@ -927,7 +927,6 @@ get_all_active_interfaces() ->
         [] -> {ok, []};
         _ -> {ok, Interfaces@1}
     end.
-
 
 -spec get_schema() -> binary().
 get_schema() ->
