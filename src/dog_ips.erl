@@ -74,11 +74,11 @@ loop(_RoutingKey, _CType, Payload, State) ->
         dog_config:update_host_keepalive(Hostkey),
         UpdateSource = dog_common:concat([<<"host_group->">>,GroupName],binary),
         ConfigClean = maps:remove(<<"updatetype">>, Config),
-        ConfigSanitized = sanitize_config(ConfigClean),
+        ok = check_config(ConfigClean),
         case dog_host:get_by_hostkey(Hostkey) of
             {ok, HostExists} ->
                 %HostId = maps:get(<<"id">>, HostExists),
-                Host = maps:merge(HostExists, ConfigSanitized),
+                Host = maps:merge(HostExists, ConfigClean),
                 %Host = dog_state:to_map(dog_state:from_map(UpdatedHost)),
                 case dog_host:hash_check(Host) of
                     {error, notfound} ->
@@ -91,17 +91,17 @@ loop(_RoutingKey, _CType, Payload, State) ->
                 case UpdateType of
                     force ->
                         ?LOG_INFO("got force: ~p", [Hostkey]),
-                        dog_host:update_by_hostkey(Hostkey, ConfigSanitized),
+                        dog_host:update_by_hostkey(Hostkey, ConfigClean),
                         dog_ipset_update_agent:queue_add_force(UpdateSource),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     update ->
                         ?LOG_INFO("got update: ~p", [Hostkey]),
-                        dog_host:update_by_hostkey(Hostkey, ConfigSanitized),
+                        dog_host:update_by_hostkey(Hostkey, ConfigClean),
                         dog_ipset_update_agent:queue_add(UpdateSource),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     keepalive ->
                         ?LOG_INFO("got keepalive: ~p", [Hostkey]),
-                        dog_host:update_by_hostkey(Hostkey, ConfigSanitized)
+                        dog_host:update_by_hostkey(Hostkey, ConfigClean)
                 end;
             {error, Reason} ->
                 case UpdateType of
@@ -109,7 +109,7 @@ loop(_RoutingKey, _CType, Payload, State) ->
                         case application:get_env(dog_trainer, auto_register_hosts, true) of
                             true ->
                                 ?LOG_INFO("New host reporting: ~p", [Hostkey]),
-                                dog_host:create(ConfigSanitized);
+                                dog_host:create(ConfigClean);
                             false ->
                                 ?LOG_ERROR("Auto Host registration disabled - Unknown host reporting: ~p", [Hostkey])
                         end;
@@ -149,11 +149,11 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
         ?LOG_INFO(#{hostname => Hostname, hostkey => Hostkey}),
         dog_config:update_host_keepalive(Hostkey),
         ConfigClean = maps:remove(<<"updatetype">>, Config),
-        ConfigSanitized = sanitize_config(ConfigClean),
+        ok = check_config(ConfigClean),
         case dog_host:get_by_hostkey(Hostkey) of
             {ok, HostExists} ->
                 %HostId = maps:get(<<"id">>, HostExists),
-                Host = maps:merge(HostExists, ConfigSanitized),
+                Host = maps:merge(HostExists, ConfigClean),
                 %Host = dog_state:to_map(dog_state:from_map(UpdatedHost)),
                 case dog_host:hash_check(Host) of
                     {pass, HashStatus} ->
@@ -164,17 +164,17 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
                 case UpdateType of
                     force ->
                         ?LOG_INFO("got force: ~p", [Hostkey]),
-                        dog_host:update_by_hostkey(Hostkey, ConfigSanitized),
+                        dog_host:update_by_hostkey(Hostkey, ConfigClean),
                         dog_ipset_update_agent:queue_add_force(Hostkey),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     update ->
                         ?LOG_INFO("got update: ~p", [Hostkey]),
-                        dog_host:update_by_hostkey(Hostkey, ConfigSanitized),
+                        dog_host:update_by_hostkey(Hostkey, ConfigClean),
                         dog_ipset_update_agent:queue_add(Hostkey),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     keepalive ->
                         ?LOG_INFO("got keepalive: ~p", [Hostkey]),
-                        dog_host:update_by_hostkey(Hostkey, ConfigSanitized)
+                        dog_host:update_by_hostkey(Hostkey, ConfigClean)
                 end;
             {error, Reason} ->
                 case UpdateType of
@@ -182,7 +182,7 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
                         case application:get_env(dog_trainer, auto_register_hosts, true) of
                             true ->
                                 ?LOG_INFO("New host reporting: ~p", [Hostkey]),
-                                dog_host:create(ConfigSanitized);
+                                dog_host:create(ConfigClean);
                             false ->
                                 ?LOG_ERROR("Auto Host registration disabled - Unknown host reporting: ~p", [Hostkey])
                         end;
@@ -314,6 +314,13 @@ remove_local_ips(IPs) ->
     NonLocalhostIPs@0 = remove_local_ipv4_ips(IPs),
     NonLocalhostIPs@1 = remove_local_ipv6_ips(NonLocalhostIPs@0),
     NonLocalhostIPs@1.
+
+-spec check_config(Config :: map()) -> boolean().
+check_config(Config) ->
+  case is_map(Config) of
+    true -> ok;
+    false -> error
+  end.
 
 sanitize_config(Config) ->
     maps:fold(fun(K, V, Acc) ->
