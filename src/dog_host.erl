@@ -17,7 +17,9 @@
     get_id_by_hostkey/1,
     get_schema/0,
     update/2,
-    update_by_hostkey/2
+    update_agent/2,
+    update_by_hostkey/2,
+    update_by_hostkey_agent/2
 ]).
 
 -export([
@@ -786,6 +788,38 @@ create(HostMap@0) ->
             end
     end.
 
+-spec update_agent(Id :: binary(), UpdateMap :: map()) ->
+    {ok, iolist()} | {false, iolist()} | {false, no_updated} | {validation_error, iolist()}.
+update_agent(Id, UpdateMap) ->
+    case get_by_id(Id) of
+        {ok, OldHost} ->
+            NewHost = maps:merge(OldHost, UpdateMap),
+            case dog_json_schema:validate_hostupdate(NewHost) of
+                ok ->
+                    ?LOG_DEBUG(#{newhost => NewHost}),
+                    {ok, R} = dog_rethink:run(
+                        fun(X) ->
+                            reql:db(X, dog),
+                            reql:table(X, ?TYPE_TABLE),
+                            reql:get(X, Id),
+                            reql:replace(X, NewHost, #{return_changes => always})
+                        end
+                    ),
+                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    Replaced = maps:get(<<"replaced">>, R),
+                    Unchanged = maps:get(<<"unchanged">>, R),
+                    case {Replaced, Unchanged} of
+                        {1, 0} -> {true, Id};
+                        {0, 1} -> {false, Id};
+                        _ -> {false, no_updated}
+                    end;
+                {error, Error} ->
+                    {validation_error, Error}
+            end;
+        {error, Error} ->
+            {false, Error}
+    end.
+
 -spec update(Id :: binary(), UpdateMap :: map()) ->
     {ok, iolist()} | {false, iolist()} | {false, no_updated} | {validation_error, iolist()}.
 update(Id, UpdateMap) ->
@@ -823,6 +857,15 @@ update_by_hostkey(HostKey, UpdateMap) ->
     case get_id_by_hostkey(HostKey) of
         {ok, Id} ->
             update(Id, UpdateMap);
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+-spec update_by_hostkey_agent(HostKey :: binary(), UpdateMap :: map()) -> no_return().
+update_by_hostkey_agent(HostKey, UpdateMap) ->
+    case get_id_by_hostkey(HostKey) of
+        {ok, Id} ->
+            update_agent(Id, UpdateMap);
         {error, Reason} ->
             {error, Reason}
     end.

@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "dog host full Schema",
+  "type": "object",
+  "required": [
+    "environment",
+    "group",
+    "hash4_ipsets",
+    "hash4_iptables",
+    "hash6_ipsets",
+    "hash6_iptables",
+    "hostkey",
+    "interfaces",
+    "ipset_hash",
+    "location",
+    "name",
+    "updatetype"
+  ],
+  "properties": {
+    "docker_container_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "ec2_availability_zone": {
+      "type": "string",
+      "pattern": "^[a-z]{2}-[a-z]+-[0-9][a-z]$"
+    },
+    "ec2_instance_id": { "type": "string", "pattern": "^i-[a-z0-9]+$" },
+    "ec2_instance_tags": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "ec2_owner_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+    "ec2_region": { "type": "string", "pattern": "^[a-z]{2}-[a-z]+-[0-9]$" },
+    "ec2_security_group_ids": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^sg-[a-z0-9]+$" }
+    },
+    "ec2_subnet_id": { "type": "string", "pattern": "^subnet-[a-z0-9]+$" },
+    "ec2_vpc_id": { "type": "string", "pattern": "^vpc-[a-z0-9]+$" },
+    "environment": { "type": "string" },
+    "group": { "type": "string" },
+    "hash4_ipsets": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "hash4_iptables": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "hash6_ipsets": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "hash6_iptables": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "hostkey": { "type": "string", "pattern": "^[a-f0-9]+$", "minLength": 10 },
+    "interfaces": { "type": "string" },
+    "ipset_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "location": { "type": "string" },
+    "name": { "type": "string", "format": "hostname" },
+    "os_distribution": { "type": "string" },
+    "os_version": { "type": "string" },
+    "provider": {
+      "type": "string"
+    },
+    "updatetype": { "type": "string", "enum": ["update", "keepalive", "force"] },
+    "version": { "type": "string" }
+  }
+}
