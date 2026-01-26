@@ -12,6 +12,7 @@
     create_ipsets/0,
     create_ipsets/2,
     delete_old/0,
+    force_update_ipsets/0,
     get_hashes/0,
     get_ipsets/0,
     hash_check/1,

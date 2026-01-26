@@ -66,8 +66,8 @@ periodic_publish() ->
 
 -spec init(_) -> {'ok', []}.
 init(_Args) ->
-    {ok, PeriodicPublishInterval} = application:get_env(
-        dog_trainer, profile_periodic_publish_interval_seconds
+    PeriodicPublishInterval = application:get_env(
+        dog_trainer, profile_periodic_publish_interval_seconds, 5
     ),
     _PublishTimer = erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     State = ordsets:new(),
@@ -178,8 +178,8 @@ do_periodic_publish(State) ->
             %  false ->
             %    dog_ipset:update_ipsets(local_env)
             %end,
-            %?LOG_INFO("dog_ipset_update_agent:queue_update()"),
-            %dog_ipset_update_agent:queue_update(<<"dog_profile_update_agent">>),
+            %?LOG_INFO("dog_ipset_update_agent:queue_add()"),
+            %dog_ipset_update_agent:queue_add(<<"dog_profile_update_agent">>),
             % Deliberately set to empty set, so agent will not update ipsets.
             EmptyIpsets = [],
             GroupsWithoutEmptyProfiles = ordsets:subtract(ordsets:from_list(Groups), [<<>>]),

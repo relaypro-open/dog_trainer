@@ -13,9 +13,10 @@
 
 -export([
     start_link/0,
-    queue_force/0,
+    flush_queue/0,
     queue_length/0,
-    queue_update/1,
+    queue_add/1,
+    queue_add_force/1,
     periodic_publish/0
 ]).
 
@@ -51,14 +52,19 @@ periodic_publish() ->
     ?LOG_INFO("function"),
     gen_server:call(?MODULE, periodic_publish).
 
--spec queue_update(Source :: iolist) -> ok.
-queue_update(Source) ->
+-spec queue_add_force(Source :: iolist) -> ok.
+queue_add_force(Source) ->
+    imetrics:add_m(ipset_queue_add_force, Source),
+    gen_server:cast(?MODULE, {add_to_queue, [force]}).
+
+-spec queue_add(Source :: iolist) -> ok.
+queue_add(Source) ->
     imetrics:add_m(ipset_queue_add, Source),
     gen_server:cast(?MODULE, {add_to_queue, [Source]}).
 
--spec queue_force() -> ok.
-queue_force() ->
-    gen_server:cast(?MODULE, {add_to_queue, [force]}).
+-spec flush_queue() -> ok.
+flush_queue() ->
+    gen_server:cast(?MODULE, flush_queue).
 
 queue_length() ->
     gen_server:call(?MODULE, queue_length).
@@ -76,11 +82,8 @@ queue_length() ->
 
 -spec init(_) -> {'ok', []}.
 init(_Args) ->
-    %CurrentIpset = dog_ipset:read_current_ipset(),
-    %{ok, CurrentIpsetHashes} = dog_ipset:get_hashes(),
-    %dog_ipset:create(CurrentIpsetHashes),
-    {ok, PeriodicPublishInterval} = application:get_env(
-        dog_trainer, ipset_periodic_publish_interval_seconds
+    PeriodicPublishInterval = application:get_env(
+        dog_trainer, ipset_periodic_publish_interval_seconds, 5
     ),
     _PublishTimer = erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     State = ordsets:new(),
@@ -113,6 +116,9 @@ handle_cast(stop, State) ->
     {stop, normal, State};
 handle_cast({add_to_queue, Sources}, State) ->
     NewState = ordsets:union(ordsets:from_list(Sources), State),
+    {noreply, NewState};
+handle_cast(flush_queue, _State) ->
+    NewState = {ok, []},
     {noreply, NewState};
 handle_cast(Msg, State) ->
     ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
@@ -165,7 +171,13 @@ do_periodic_publish(State) ->
                 _ ->
                     ?LOG_INFO("ipset queue: ~p", [State]),
                     ?LOG_INFO("length of ipset queue: ~p", [length(State)]),
-                    dog_ipset:update_ipsets(),
+                    case lists:member(force,State) of
+                      true ->
+                        ?LOG_DEBUG("force ipset update"),
+                        dog_ipset:force_update_ipsets();
+                      false ->
+                        dog_ipset:update_ipsets()
+                    end,
                     {ok, []}
             end;
         false ->
