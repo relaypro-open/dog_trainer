@@ -100,7 +100,7 @@ handle_query_result(Result, State) ->
         _ ->
             imetrics:add_m(watcher, host_config_update),
             ?LOG_INFO("dog_ipset_update_agent:queue_add()"),
-            dog_ipset_update_agent:queue_add(<<"dog_host_interface_watcher">>)
+            dog_ipset_update_agent:queue_add("dog_host_interface_watcher")
     end,
     {noreply, [Result | State]}.
 

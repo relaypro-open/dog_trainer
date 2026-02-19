@@ -4,6 +4,7 @@
 
 -export([
     concat/2,
+    concat2/1,
     create_hash/1,
     eel_test/0,
     eq_join/4,
@@ -71,9 +72,11 @@ re_filter(List, Re) ->
         List
     ).
 
+-spec merge_maps_of_lists(maybe_improper_list()) -> #{_=>[any()]}.
 merge_maps_of_lists(ListOfMapsOfLists) ->
     merge_maps_of_lists(ListOfMapsOfLists, #{}).
 
+-spec merge_maps_of_lists(maybe_improper_list(),#{_=>[any()]}) -> #{_=>[any()]}.
 merge_maps_of_lists([], Acc) ->
     Acc;
 merge_maps_of_lists(ListOfMapsOfLists, Acc) ->
@@ -91,12 +94,15 @@ merge_maps_of_lists(ListOfMapsOfLists, Acc) ->
     ),
     merge_maps_of_lists(Rest, maps:from_list(NewAcc)).
 
+-spec lmm(maybe_improper_list(),_) -> #{_=>map()}.
 lmm(ListOfMaps, Key) ->
     list_of_maps_to_map(ListOfMaps, Key).
 
+-spec list_of_maps_to_map(maybe_improper_list(),_) -> #{_=>map()}.
 list_of_maps_to_map(ListOfMaps, Key) ->
     list_of_maps_to_map(ListOfMaps, Key, #{}).
 
+-spec list_of_maps_to_map(maybe_improper_list(),_,#{_=>map()}) -> #{_=>map()}.
 list_of_maps_to_map([], _Key, MapAcc) ->
     MapAcc;
 list_of_maps_to_map(ListOfMaps, Key, MapAcc) ->
@@ -110,14 +116,17 @@ list_of_maps_to_map(ListOfMaps, Key, MapAcc) ->
 % #{b => #{name => drew,test => rest},
 %   c => #{name => bob,test => zest}}
 
+-spec rekey_map_of_maps(map(),_,_) -> #{_=>map()}.
 rekey_map_of_maps(MapOfMaps, NewKey, OldKeysNewKey) ->
     rkmm(MapOfMaps, NewKey, OldKeysNewKey).
 
+-spec rkmm(map(),_,_) -> #{_=>map()}.
 rkmm(MapOfMaps, NewKey, OldKeysNewKey) ->
     Iterator = maps:iterator(MapOfMaps),
     Next = maps:next(Iterator),
     rekey_map_of_maps(Next, NewKey, OldKeysNewKey, #{}).
 
+-spec rekey_map_of_maps('none' | {_,map(),maps:iterator(_,_)},_,_,#{_=>map()}) -> #{_=>map()}.
 rekey_map_of_maps(none, _NewKey, _OldKeysNewKey, MapAcc) ->
     MapAcc;
 rekey_map_of_maps(Iterator, NewKey, OldKeysNewKey, MapAcc) ->
@@ -130,6 +139,7 @@ rekey_map_of_maps(Iterator, NewKey, OldKeysNewKey, MapAcc) ->
     NewIterator = maps:next(ThisIterator),
     rekey_map_of_maps(NewIterator, NewKey, OldKeysNewKey, MapAcc@1).
 
+-spec merge_lists_in_tuples([any()]) -> [{_,[any()]}].
 merge_lists_in_tuples(List) ->
     Map = lists:foldl(fun fun_merge_lists_in_tuples/2, maps:new(), List),
     lists:map(
@@ -140,6 +150,7 @@ merge_lists_in_tuples(List) ->
         maps:to_list(Map)
     ).
 
+-spec fun_merge_lists_in_tuples(tuple(),map()) -> map().
 fun_merge_lists_in_tuples(H, A) ->
     K = element(1, H),
     case maps:is_key(K, A) of
@@ -150,6 +161,7 @@ fun_merge_lists_in_tuples(H, A) ->
             maps:put(K, element(2, H), A)
     end.
 
+-spec inverse_map_of_lists(map()) -> [{_,_}].
 inverse_map_of_lists(Map) ->
     MapList = maps:to_list(Map),
     Tuplelist = lists:map(
@@ -160,9 +172,11 @@ inverse_map_of_lists(Map) ->
     ),
     lists:flatten(Tuplelist).
 
+-spec tuple_pairs_to_map_of_lists([{_,_}]) -> #{_=>[any(),...]}.
 tuple_pairs_to_map_of_lists(TupleList) ->
     tuple_pairs_to_map_of_lists(TupleList, #{}).
 
+-spec tuple_pairs_to_map_of_lists([{_,_}],#{_=>[any(),...]}) -> #{_=>[any(),...]}.
 tuple_pairs_to_map_of_lists([], Accum) ->
     Accum;
 tuple_pairs_to_map_of_lists(TupleList, Accum) ->
@@ -196,6 +210,7 @@ to_terraform_name(Name) ->
     NoColons = string:replace(NoSpaces, ":", "_", all),
     NoColons.
 
+-spec eel_test() -> 'ok'.
 eel_test() ->
     Bindings = #{
         'Title' => <<"title">>,
@@ -223,6 +238,7 @@ eel_test() ->
     {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
     io:format("~s", [erlang:iolist_to_binary(IoData)]).
 
+-spec format_vars([] | map()) -> #{_=>[any()]}.
 format_vars(Vars) ->
     VarsList =
         case Vars of
@@ -238,9 +254,11 @@ format_vars(Vars) ->
         end,
     maps:from_list(VarsList).
 
+-spec format_var({_,_}) -> {_,[any()]}.
 format_var({Key, Value}) ->
     {Key, format_value(Value)}.
 
+-spec format_value(_) -> [any()].
 format_value(Value) ->
     case is_list(Value) of
         false ->
@@ -259,7 +277,7 @@ format_value(Value) ->
 quoted_comma_delimited(List) ->
     string:join([io_lib:format("\"~s\"", [X]) || X <- List], ",").
 
--spec eq_join(Table1Name :: string(), Table2Name :: string(), Key1 :: string(), Key2 :: string()) ->
+-spec eq_join(Table1Name :: binary(), Table2Name :: binary(), Key1 :: binary(), Key2 :: binary()) ->
     JoinTable :: list().
 eq_join(Table1Name, Table2Name, Key1, Key2) ->
     {ok, OneR} = dog_rethink:run(
@@ -291,6 +309,7 @@ eq_join(Table1Name, Table2Name, Key1, Key2) ->
 
 %% EXTERNAL
 
+-spec concat([any()],atom()) -> [any()].
 concat(Words, string) ->
     internal_concat(Words);
 concat(Words, binary) ->
@@ -298,6 +317,16 @@ concat(Words, binary) ->
 
 %% INTERNAL
 
+-spec internal_concat(list(atom() | integer() | float() | string() | binary())) -> iodata().
 internal_concat(Elements) ->
     NonBinaryElements = [case Element of _ when is_binary(Element) -> binary_to_list(Element); _ -> Element end || Element <- Elements],
     lists:concat(NonBinaryElements).
+
+-spec concat2([binary()] | [string()]) -> binary() | string().
+concat2(List) ->
+      case List of
+                [H | _] when is_binary(H) ->
+                      list_to_binary(List);
+                _ ->
+                      lists:concat(List)
+                          end.

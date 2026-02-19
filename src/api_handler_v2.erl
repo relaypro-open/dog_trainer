@@ -344,7 +344,7 @@ to_text(Req, State) ->
                 error;
             Id ->
                 case HandlerPath of
-                    <<"ruleset">> ->
+                    "ruleset" ->
                         case Sub of
                             undefined ->
                                 case cowboy_req:match_qs([{diff, [], plain}], Req) of

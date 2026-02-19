@@ -128,16 +128,16 @@ update(Id, UpdateMap@0) ->
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec to_hcl_by_id(ZoneId :: iolist()) -> iolist().
+-spec to_hcl_by_id(ZoneId :: binary()) -> binary().
 to_hcl_by_id(ZoneId) ->
     {ok, Zone} = get_by_id(ZoneId),
-    to_hcl(Zone). 
+    to_hcl(Zone).
 
 -spec to_hcl(Zone :: map()) -> binary().
 to_hcl(Zone) ->
     Bindings = #{
-                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Zone)), 
-                 'Name' => maps:get(<<"name">>, Zone), 
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Zone)),
+                 'Name' => maps:get(<<"name">>, Zone),
                  'Environment' => <<"qa">>,
                  'IPv4Addresses' =>
                      dog_common:format_value(maps:get(<<"ipv4_addresses">>,Zone)),

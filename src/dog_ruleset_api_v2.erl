@@ -25,7 +25,8 @@
     to_text/1,
     where_used/1,
     rule_names_to_ids/4,
-    ids_to_names/1,
+    ids_list_to_names/1,
+    ids_map_to_names/1,
     nti/1,
     names_to_ids/1,
     to_hcl/1,
@@ -95,12 +96,11 @@ get_all_names() ->
         end,
     RulesReplaced = lists:map(
         fun(Rule) ->
-            ids_to_names(Rule)
+            ids_map_to_names(Rule)
         end,
         Rules
     ),
     {ok, RulesReplaced}.
-
 
 -spec get_by_name(Name :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_name(Name) ->
@@ -327,20 +327,20 @@ where_used(RulesId) ->
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec ids_to_names(Rulesets :: list()) -> {'ok', Rulesests :: list()}.
-ids_to_names(Rulesets) when is_list(Rulesets)->
+-spec ids_list_to_names(Rulesets :: list()) -> {'ok', Rulesests :: list()}.
+ids_list_to_names(Rulesets) when is_list(Rulesets)->
     RulesReplaced = lists:map(
         fun(Ruleset) ->
-            ids_to_names(Ruleset)
+            ids_map_to_names(Ruleset)
         end,
         Rulesets
     ),
-    {ok, RulesReplaced};
-ids_to_names(Profile) when is_map(Profile) ->
+    {ok, RulesReplaced}.
+
+-spec ids_map_to_names(Rulesets :: map()) -> Rulesests :: map().
+ids_map_to_names(Profile) when is_map(Profile) ->
     ?LOG_DEBUG("Profile: ~p",[Profile]),
     case Profile of
-        _ when not is_map(Profile) ->
-            Profile;
         _ ->
             Inbound = nested:get([<<"rules">>, <<"inbound">>], Profile, []),
             Outbound = nested:get([<<"rules">>, <<"outbound">>], Profile, []),
@@ -422,7 +422,7 @@ nti(ProfileId) ->
     %Itn = ids_to_names(Profile),
     names_to_ids(Profile).
 
--spec names_to_ids(Profile :: map()) -> Profile :: {ok | error, map()}.
+-spec names_to_ids(Profile :: map()) -> Profile :: map().
 names_to_ids(Profile) ->
     Inbound = nested:get([<<"rules">>, <<"inbound">>], Profile, []),
     Outbound = nested:get([<<"rules">>, <<"outbound">>], Profile, []),
@@ -497,19 +497,19 @@ rule_names_to_ids(Rules, ServicesByName, ZonesByName, GroupsByName) ->
         Rules
     ).
 
--spec to_hcl_by_id(RulesetId :: iolist()) -> iolist().
+-spec to_hcl_by_id(RulesetId :: binary()) -> binary().
 to_hcl_by_id(RulesetId) ->
     {ok, RulesetWithIds} = get_by_id(RulesetId),
-    Ruleset = ids_to_names(RulesetWithIds),
-    to_hcl(Ruleset). 
+    Ruleset = ids_map_to_names(RulesetWithIds),
+    to_hcl(Ruleset).
 
 -spec to_hcl(Ruleset :: map()) -> binary().
 to_hcl(Ruleset) ->
     InboundRules = rules_to_hcl(nested:get([<<"rules">>,<<"inbound">>],Ruleset)),
     OutboundRules = rules_to_hcl(nested:get([<<"rules">>,<<"outbound">>],Ruleset)),
     Bindings = #{
-                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Ruleset)), 
-                 'Name' => maps:get(<<"name">>, Ruleset), 
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Ruleset)),
+                 'Name' => maps:get(<<"name">>, Ruleset),
                  'Environment' => <<"qa">>,
                  'InboundRules' => InboundRules,
                  'OutboundRules' => OutboundRules
@@ -533,7 +533,7 @@ to_hcl(Ruleset) ->
     {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
     erlang:iolist_to_binary(IoData).
 
--spec rules_to_hcl(Rules :: map()) -> binary().
+-spec rules_to_hcl(Rules :: [any()]) -> [binary()].
 rules_to_hcl(Rules) ->
     lists:map(fun(Rule) ->
                       Group = case maps:get(<<"group">>,Rule) of
@@ -601,7 +601,7 @@ end, Rules).
 -spec get_all_active_names() -> {ok, list()}.
 get_all_active_names() ->
     {ok, AllActive} = get_all_active(),
-    ids_to_names(AllActive).
+    ids_list_to_names(AllActive).
 
 -spec get_all_active() -> {ok, list()}.
 get_all_active() ->
@@ -631,7 +631,7 @@ get_all_active() ->
     ProfileToRulesetMap = maps:from_list(ProfileToRulesetList),
 
     Rulesets = lists:flatten(
-                 lists:map(fun(GroupProfileId) -> 
+                 lists:map(fun(GroupProfileId) ->
                           maps:get(GroupProfileId, ProfileToRulesetMap,[])
                  end, ActiveGroupProfileIds)
                 ),

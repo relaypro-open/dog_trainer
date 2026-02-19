@@ -307,11 +307,11 @@ get_by_profile_id(ProfileId) ->
             {ok, Rules}
     end.
 
--spec get_id_by_profile_id(ProfileId :: iolist()) -> RulesetId :: iolist() | {error, notfound}.
+-spec get_id_by_profile_id(ProfileId :: iolist()) -> {ok, RulesetId :: iolist()} | {error, notfound}.
 get_id_by_profile_id(ProfileId) ->
     case get_by_profile_id(ProfileId) of
         {ok, Profile} ->
-            maps:get(<<"id">>, Profile);
+          {ok, maps:get(<<"id">>, Profile)};
         {error, notfound} ->
             {error, notfound}
     end.
@@ -320,7 +320,7 @@ get_id_by_profile_id(ProfileId) ->
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec to_hcl_by_id(RulesetId :: iolist()) -> iolist().
+-spec to_hcl_by_id(RulesetId :: binary()) -> binary().
 to_hcl_by_id(RulesetId) ->
     dog_ruleset_api_v2:to_hcl_by_id(RulesetId).
 

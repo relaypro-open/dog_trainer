@@ -78,9 +78,9 @@ handle_connection_up(Connection, State) ->
     {ok, RethinkSquashSec} = application:get_env(dog_trainer, rethink_squash_sec),
     ?LOG_INFO("handle_connection_up"),
     ?LOG_INFO("Connection: ~p", [Connection]),
-    Reql = reql:db(<<"dog">>),
-    reql:table(Reql, <<"zone">>),
-    reql:changes(Reql, #{<<"include_initial">> => false, <<"squash">> => RethinkSquashSec}),
+    Reql0 = reql:db(<<"dog">>),
+    Reql1 = reql:table(Reql0, <<"zone">>),
+    Reql = reql:changes(Reql1, #{<<"include_initial">> => false, <<"squash">> => RethinkSquashSec}),
     {noreply, Reql, State}.
 
 %% @doc handle_connection_down/1 is called when the managed connection goes
@@ -97,7 +97,7 @@ handle_query_result(Result, State) ->
         [] ->
             pass;
         _ ->
-            lists:foreach(
+            ok = lists:foreach(
                 fun(Entry) ->
                     ZoneName =
                         case maps:get(<<"new_val">>, Entry) of
@@ -108,7 +108,7 @@ handle_query_result(Result, State) ->
                         end,
                     imetrics:add_m(watcher, zone_update),
                     ?LOG_INFO("dog_ipset_update_agent:queue_add()"),
-                    dog_ipset_update_agent:queue_add(dog_common:concat([<<"zone->">>,ZoneName],binary)),
+                    ok = dog_ipset_update_agent:queue_add(dog_common:concat2([<<"zone->">>,ZoneName])),
                     GroupType = <<"zone">>,
                     dog_iptables:update_group_iptables(ZoneName, GroupType)
                 end,

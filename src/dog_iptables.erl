@@ -53,7 +53,7 @@ update_group_iptables(GroupZoneName, GroupType) ->
 update_group_ec2_sgs(GroupZoneName) ->
     {ok, GroupList} = dog_group:role_group_effects_groups(GroupZoneName),
     ?LOG_DEBUG("GroupList: ~p~n", [GroupList]),
-    plists:map(
+    plists:foreach(
         fun(Group) ->
             dog_ec2_sg:publish_ec2_sg_by_name(Group)
         end,
@@ -86,7 +86,6 @@ chunk_list(List, Len) when Len > length(List) ->
 chunk_list(List, Len) ->
     {Head, Tail} = lists:split(Len, List),
     [Head | chunk_list(Tail, Len)].
-
 
 -spec publish_to_queue(
     RoutingKey :: binary(),

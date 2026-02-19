@@ -345,8 +345,10 @@ to_text(Req, State) ->
                 "profile" ->
                     case Sub of
                         <<"hcl">> ->
-                            RulesetId = dog_ruleset:get_id_by_profile_id(Id),
-                            dog_ruleset_api_v2:to_hcl_by_id(RulesetId);
+                            case dog_ruleset:get_id_by_profile_id(Id) of
+                              {ok, RulesetId} ->
+                                    dog_ruleset_api_v2:to_hcl_by_id(iolist_to_binary(RulesetId))
+                            end;
                         undefined ->
                             case cowboy_req:match_qs([{diff, [], plain}], Req) of
                                 #{diff := plain} ->

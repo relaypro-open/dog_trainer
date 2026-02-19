@@ -205,10 +205,10 @@ update(Id, UpdateMap) ->
             {false, Error}
     end.
 
--spec to_hcl_by_id(GroupId :: iolist()) -> iolist().
+-spec to_hcl_by_id(GroupId :: binary()) -> binary().
 to_hcl_by_id(GroupId) ->
     {ok, Group} = get_by_id(GroupId),
-    to_hcl(Group). 
+    to_hcl(Group).
 
 -spec to_hcl(Group :: map()) -> binary().
 to_hcl(Group) ->
@@ -219,12 +219,12 @@ to_hcl(Group) ->
                             V
                      end,
     Bindings = #{
-                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Group)), 
-                 'Name' => maps:get(<<"name">>, Group), 
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Group)),
+                 'Name' => maps:get(<<"name">>, Group),
                  'Environment' => <<"qa">>,
-                 'ProfileName' => maps:get(<<"profile_name">>, Group), 
+                 'ProfileName' => maps:get(<<"profile_name">>, Group),
                  'ProfileVersion' => ProfileVersion,
-                 'Vars' => dog_common:format_vars(maps:get(<<"vars">>, Group,[])), 
+                 'Vars' => dog_common:format_vars(maps:get(<<"vars">>, Group,[])),
                  'Ec2SecurityGroupIds' => regionsgid_output(maps:get(<<"ec2_security_group_ids">>,
                                                                      Group))
                 },
@@ -256,7 +256,7 @@ to_hcl(Group) ->
 regionsgid_output(Ec2SecurityGroupIds) ->
     lists:map(fun(RegionSgid) ->
                       Bindings = #{
-                                   'Region' => maps:get(<<"region">>, RegionSgid), 
+                                   'Region' => maps:get(<<"region">>, RegionSgid),
                                    'SgId' => maps:get(<<"sgid">>, RegionSgid)
                                   },
                       {ok, Snapshot} = eel:compile(<<

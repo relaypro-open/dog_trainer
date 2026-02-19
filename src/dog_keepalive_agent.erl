@@ -119,12 +119,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
--spec do_host_active_state_metrics() -> null.
+-spec do_host_active_state_metrics() -> ok.
 do_host_active_state_metrics() ->
     {ok, {grouped, States}} = dog_host:get_grouped_active_states(),
     lists:foreach(fun([State,Count]) ->
                           imetrics:set_gauge_m(<<"host_active_state">>, State, Count)
-                  end, 
+                  end,
                   States).
 %% @doc Makes a call to the nif to add a resource to
 %% watch. Logs on error

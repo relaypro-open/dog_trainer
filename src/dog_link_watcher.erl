@@ -141,7 +141,7 @@ handle_query_result(Result, State) ->
                     dog_external_agent:set_link_state(NewState),
                     %,
                     ?LOG_INFO("dog_ipset_update_agent:queue_add()"),
-                    dog_ipset_update_agent:queue_add(dog_common:concat([<<"link->">>,EnvName],binary)),
+                    dog_ipset_update_agent:queue_add(dog_common:concat2([<<"link->">>,EnvName])),
                     imetrics:add_m(watcher, link_update)
                 %case {OldEnabledState,NewEnabledState} of
                 %  {false,true} ->

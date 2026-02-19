@@ -82,7 +82,7 @@ value() ->
 %%          {stop, Reason}
 %%----------------------------------------------------------------------
 
--spec init(_) -> {'ok', []}.
+-spec init(_) -> {ok, integer()}.
 init(_Args) ->
     LastAgentUpdateCheckIntervalSeconds = application:get_env(
         dog_trainer, last_agent_update_check_interval_seconds, 60

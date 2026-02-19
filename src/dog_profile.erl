@@ -774,7 +774,7 @@ update(Id, UpdateMap) ->
                             Response = dog_parse:validation_error(Error),
                             {validation_error, Response}
                     end;
-                RulesetId ->
+              {ok, RulesetId} ->
                     ProfileName = maps:get(<<"name">>, OldProfile),
                     {Rules, UpdateMap@0} = maps:take(<<"rules">>, UpdateMap),
                     RulesMap@0 = #{
@@ -1296,7 +1296,7 @@ split(String, Delimiter) ->
 
 -spec to_hcl_by_id(ProfileId :: iolist()) -> iolist().
 to_hcl_by_id(ProfileId) ->
-    RulesetId = dog_ruleset:get_id_by_profile_id(ProfileId),
+  {ok, RulesetId} = dog_ruleset:get_id_by_profile_id(ProfileId),
     dog_ruleset_api_v2:to_hcl_by_id(RulesetId).
 
 -spec to_hcl(Profile :: map()) -> binary().

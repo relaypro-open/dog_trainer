@@ -191,21 +191,21 @@ update_by_hostkey(HostKey, UpdateMap) ->
             create(UpdateMap)
     end.
 
--spec to_hcl_by_id(HostId :: iolist()) -> iolist().
+-spec to_hcl_by_id(HostId :: binary()) -> binary().
 to_hcl_by_id(HostId) ->
     {ok, Host} = get_by_id(HostId),
-    to_hcl(Host). 
+    to_hcl(Host).
 
 -spec to_hcl(Host :: map()) -> binary().
 to_hcl(Host) ->
     Bindings = #{
-                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Host)), 
-                 'Name' => maps:get(<<"name">>, Host), 
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Host)),
+                 'Name' => maps:get(<<"name">>, Host),
                  'Environment' => <<"qa">>,
-                 'Group' => maps:get(<<"group">>, Host), 
-                 'HostKey' => maps:get(<<"hostkey">>, Host), 
-                 'Location' => maps:get(<<"location">>, Host), 
-                 'Vars' => dog_common:format_vars(maps:get(<<"vars">>, Host,[])), 
+                 'Group' => maps:get(<<"group">>, Host),
+                 'HostKey' => maps:get(<<"hostkey">>, Host),
+                 'Location' => maps:get(<<"location">>, Host),
+                 'Vars' => dog_common:format_vars(maps:get(<<"vars">>, Host,[])),
                  'Provider' => <<"dog">>
                 },
     {ok, Snapshot} = eel:compile(<<

@@ -130,16 +130,16 @@ update(Id, UpdateMap@0) ->
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec to_hcl_by_id(FactId :: iolist()) -> iolist().
+-spec to_hcl_by_id(FactId :: binary()) -> binary().
 to_hcl_by_id(FactId) ->
     {ok, Fact} = get_by_id(FactId),
-    to_hcl(Fact). 
+    to_hcl(Fact).
 
 -spec to_hcl(Fact :: map()) -> binary().
 to_hcl(Fact) ->
     Bindings = #{
-                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Fact)), 
-                 'Name' => maps:get(<<"name">>, Fact), 
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Fact)),
+                 'Name' => maps:get(<<"name">>, Fact),
                  'Environment' => <<"qa">>,
                  'Groups' => to_hcl_group(maps:get(<<"groups">>, Fact))
                 },
@@ -158,7 +158,7 @@ to_hcl(Fact) ->
 to_hcl_group(Group) ->
     All = maps:get(<<"all">>, Group),
     Bindings = #{
-                 'Children' => dog_common:format_value(maps:get(<<"children">>, All)), 
+                 'Children' => dog_common:format_value(maps:get(<<"children">>, All)),
                  'Hosts' => dog_common:format_vars(maps:get(<<"hosts">>, All)),
                  'Vars' => dog_common:format_vars(maps:get(<<"vars">>, All, []))
                 },

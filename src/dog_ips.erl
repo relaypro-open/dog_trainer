@@ -72,9 +72,8 @@ loop(_RoutingKey, _CType, Payload, State) ->
         Hostkey = maps:get(<<"hostkey">>, Config),
         ?LOG_DEBUG(#{hostname => Hostname, hostkey => Hostkey}),
         dog_config:update_host_keepalive(Hostkey),
-        UpdateSource = dog_common:concat([<<"host_group->">>,GroupName],binary),
+        UpdateSource = dog_common:concat2([<<"host_group->">>,GroupName]),
         ConfigClean = maps:remove(<<"updatetype">>, Config),
-        ok = check_config(ConfigClean),
         case dog_host:get_by_hostkey(Hostkey) of
             {ok, HostExists} ->
                 %HostId = maps:get(<<"id">>, HostExists),
@@ -149,7 +148,6 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
         ?LOG_INFO(#{hostname => Hostname, hostkey => Hostkey}),
         dog_config:update_host_keepalive(Hostkey),
         ConfigClean = maps:remove(<<"updatetype">>, Config),
-        ok = check_config(ConfigClean),
         case dog_host:get_by_hostkey(Hostkey) of
             {ok, HostExists} ->
                 %HostId = maps:get(<<"id">>, HostExists),
@@ -314,25 +312,3 @@ remove_local_ips(IPs) ->
     NonLocalhostIPs@0 = remove_local_ipv4_ips(IPs),
     NonLocalhostIPs@1 = remove_local_ipv6_ips(NonLocalhostIPs@0),
     NonLocalhostIPs@1.
-
--spec check_config(Config :: map()) -> boolean().
-check_config(Config) ->
-  case is_map(Config) of
-    true -> ok;
-    false -> error
-  end.
-
-sanitize_config(Config) ->
-    maps:fold(fun(K, V, Acc) ->
-                      maps:put(K, sanitize_val(V), Acc)
-              end, #{}, Config).
-
-sanitize_val(V) when is_map(V) -> sanitize_config(V);
-sanitize_val(V) when is_list(V) -> [sanitize_val(I) || I <- V];
-sanitize_val(V) when is_tuple(V) -> [sanitize_val(I) || I <- tuple_to_list(V)];
-sanitize_val(true) -> true;
-sanitize_val(false) -> false;
-sanitize_val(null) -> null;
-sanitize_val(undefined) -> null;
-sanitize_val(V) when is_atom(V) -> atom_to_binary(V, utf8);
-sanitize_val(V) -> V.

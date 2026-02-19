@@ -179,17 +179,17 @@ update(Id, UpdateMap) ->
             {false, Error}
     end.
 
--spec to_hcl_by_id(LinkId :: iolist()) -> iolist().
+-spec to_hcl_by_id(LinkId :: binary()) -> binary().
 to_hcl_by_id(LinkId) ->
     {ok, Link} = get_by_id(LinkId),
-    to_hcl(Link). 
+    to_hcl(Link).
 
 -spec to_hcl(Link :: map()) -> binary().
 to_hcl(Link) ->
     DogConnection = maps:get(<<"connection">>,Link),
     SSLOptions = maps:get(<<"ssl_options">>,DogConnection),
     Bindings = #{
-                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Link)), 
+                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Link)),
                  'Environment' => <<"qa">>,
                  'AddressHandling' => maps:get(<<"address_handling">>,Link),
                  'ConnectionApiPort' => maps:get(<<"api_port">>,DogConnection),
@@ -211,28 +211,28 @@ to_hcl(Link) ->
                 },
     {ok, Snapshot} = eel:compile(<<
         "resource \"dog_link\" \"<%= TerraformName .%>\" {\n"
-        "  address_handling = \"<%= AddressHandling .%>\"\n" 
+        "  address_handling = \"<%= AddressHandling .%>\"\n"
         "  dog_connection = {\n"
-        "    api_port = <%= ConnectionApiPort .%>\n" 
-        "    host = \"<%= ConnectionHost  .%>\"\n" 
-        "    password = \"<%= ConnectionPassword .%>\"\n" 
-        "    port = <%= ConnectionPort .%>\n" 
-        "    ssl_options = {\n" 
-        "        cacertfile = \"<%= ConnectionSSLOptionsCaCertFile .%>\"\n" 
-        "        certfile = \"<%= ConnectionSSLOptionsCertFile .%>\"\n" 
-        "        fail_if_no_peer_cert = <%= ConnectionSSLOptionsFailIfNoPeerCert .%>\n" 
-        "        keyfile = \"<%= ConnectionSSLOptionsKeyFile .%>\"\n" 
-        "        server_name_indication = \"<%= ConnectionSSLOptionsServerNameIndication .%>\"\n" 
-        "        verify = \"<%= ConnectionSSLOptionsVerify .%>\"\n" 
-        "      }\n" 
-        "    user = \"<%= ConnectionUser .%>\"\n" 
-        "    virtual_host = \"<%= ConnectionVirtualHost .%>\"\n" 
-        "  }\n" 
-        "  connection_type = \"<%= ConnectionType .%>\"\n" 
-        "  direction = \"<%= Direction .%>\"\n" 
-        "  enabled = <%= Enabled .%>\n" 
-        "  name = \"<%= Name .%>\"\n" 
-        "  provider = dog.<%= Environment .%>\n" 
+        "    api_port = <%= ConnectionApiPort .%>\n"
+        "    host = \"<%= ConnectionHost  .%>\"\n"
+        "    password = \"<%= ConnectionPassword .%>\"\n"
+        "    port = <%= ConnectionPort .%>\n"
+        "    ssl_options = {\n"
+        "        cacertfile = \"<%= ConnectionSSLOptionsCaCertFile .%>\"\n"
+        "        certfile = \"<%= ConnectionSSLOptionsCertFile .%>\"\n"
+        "        fail_if_no_peer_cert = <%= ConnectionSSLOptionsFailIfNoPeerCert .%>\n"
+        "        keyfile = \"<%= ConnectionSSLOptionsKeyFile .%>\"\n"
+        "        server_name_indication = \"<%= ConnectionSSLOptionsServerNameIndication .%>\"\n"
+        "        verify = \"<%= ConnectionSSLOptionsVerify .%>\"\n"
+        "      }\n"
+        "    user = \"<%= ConnectionUser .%>\"\n"
+        "    virtual_host = \"<%= ConnectionVirtualHost .%>\"\n"
+        "  }\n"
+        "  connection_type = \"<%= ConnectionType .%>\"\n"
+        "  direction = \"<%= Direction .%>\"\n"
+        "  enabled = <%= Enabled .%>\n"
+        "  name = \"<%= Name .%>\"\n"
+        "  provider = dog.<%= Environment .%>\n"
         "}\n"
         "\n"
     >>),
