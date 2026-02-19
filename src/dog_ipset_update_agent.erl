@@ -162,7 +162,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 -spec do_periodic_publish(_) -> OldServers :: {ok, list()}.
 do_periodic_publish(State) ->
-    ?LOG_INFO("do_periodic_publish"),
+    ?LOG_DEBUG("do_periodic_publish"),
     case dog_agent_checker:check() of
         true ->
             case State of
@@ -181,6 +181,6 @@ do_periodic_publish(State) ->
                     {ok, []}
             end;
         false ->
-            ?LOG_INFO("Skipping, dog_agent_checker:check() false"),
+            ?LOG_ERROR("Skipping, dog_agent_checker:check() false"),
             {ok, State}
     end.

@@ -179,6 +179,6 @@ do_watch_keepalives(_State) ->
         false ->
             imetrics:set_gauge_m(<<"host_keepalive">>, <<"retirement">>, 0),
             imetrics:set_gauge_m(<<"host_keepalive">>, <<"inactive">>, 0),
-            ?LOG_INFO("Skipping, dog_agent_checker:check() false"),
+            ?LOG_ERROR("Skipping, dog_agent_checker:check() false"),
             ok
     end.

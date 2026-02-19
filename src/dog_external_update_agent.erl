@@ -154,7 +154,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 -spec do_periodic_publish(_) -> OldServers :: {ok, list()}.
 do_periodic_publish(State) ->
-    ?LOG_INFO("do_periodic_publish"),
+    ?LOG_DEBUG("do_periodic_publish"),
     case State of
         [] ->
             {ok, []};

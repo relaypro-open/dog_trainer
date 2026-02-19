@@ -232,6 +232,6 @@ do_periodic_publish(State) ->
             ?LOG_INFO("PublishList: ~p", [PublishList]),
             {ok, ordsets:from_list(LeftoverGroups)};
         false ->
-            ?LOG_INFO("Skipping, dog_agent_checker:check() false"),
+            ?LOG_ERROR("Skipping, dog_agent_checker:check() false"),
             {ok, State}
     end.
