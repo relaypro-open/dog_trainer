@@ -152,7 +152,7 @@ role_groups_in_groups_profiles() ->
     ?LOG_DEBUG("GroupNamesInGroups: ~p", [GroupNamesInGroups]),
     maps:from_list(GroupNamesInGroups).
 
--spec role_group_effects_groups(GroupName :: binary()) -> ({ok, list()} | error).
+-spec role_group_effects_groups(GroupName :: binary()) -> ({ok, binary() | list()} | error).
 role_group_effects_groups(GroupName) ->
     GroupsInGroups = role_groups_in_groups_profiles(),
     TupleList = dog_common:inverse_map_of_lists(GroupsInGroups),
@@ -811,7 +811,7 @@ get_group_interfaces_by_id(GroupId) ->
 -spec get_all_group_interfaces() -> {'ok', [any()]}.
 get_all_group_interfaces() ->
     get_all_group_interfaces(true).
--spec get_all_group_interfaces(OnlyActive :: boolean()) -> {'ok', [any()]}.
+-spec get_all_group_interfaces(OnlyActive :: any()) -> {'ok', [any()]}.
 get_all_group_interfaces(OnlyActive) ->
     case OnlyActive of
         true ->
@@ -853,7 +853,7 @@ get_all_group_interfaces(OnlyActive) ->
 -spec get_group_interfaces_by_name(GroupName :: iolist()) -> {'ok', [any()]}.
 get_group_interfaces_by_name(GroupName) ->
     get_group_interfaces_by_name(GroupName, true).
--spec get_group_interfaces_by_name(GroupName :: iolist(), OnlyActive :: boolean()) ->
+-spec get_group_interfaces_by_name(GroupName :: iolist(), OnlyActive :: any()) ->
     {'ok', [any()]}.
 get_group_interfaces_by_name(GroupName, OnlyActive) ->
     case OnlyActive of
