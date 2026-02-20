@@ -35,7 +35,7 @@
     state_event/3
 ]).
 
--spec get_all_joined_with_group() -> HostsGroups :: map().
+-spec get_all_joined_with_group() -> [map()].
 get_all_joined_with_group() ->
     dog_common:eq_join(<<"host">>, <<"group">>, <<"name">>, <<"group">>).
 
@@ -94,7 +94,7 @@ retirement_check(TimeCutoff) ->
     {ok, OldAgents}.
 
 -spec hash_fail_count_check(HostId :: binary(), HashCheck :: (true | false), HashStatus :: map()) ->
-    {true | false, map()}.
+    {pass | fail, map()}.
 hash_fail_count_check(HostId, HashCheck, HashStatus) ->
     case HashCheck of
         true ->
@@ -128,7 +128,10 @@ hash_fail_count(HostId) ->
         end
     ),
     ?LOG_DEBUG("HostHashFailCount: ~p", [HostHashFailCount]),
-    HostHashFailCount.
+    case HostHashFailCount of
+        null -> 0;
+        _ -> HostHashFailCount
+    end.
 
 -spec hash_fail_count_update(HostId :: binary(), Count :: number()) ->
     {true, binary()} | {false, atom()}.
@@ -150,7 +153,7 @@ hash_fail_count_update(HostId, Count) ->
         _ -> {false, no_updated}
     end.
 
--spec hash_check(HostId :: binary()) -> {pass, map()} | {fail, map()}.
+-spec hash_check(Host :: map()) -> {pass, map()} | {fail, map()} | {error, notfound}.
 hash_check(Host) ->
     HostId = maps:get(<<"id">>, Host),
     HostName = maps:get(<<"name">>, Host),
@@ -243,6 +246,10 @@ ipset_hash_age_check(HostId, TimeCutoff) ->
     ),
     ?LOG_DEBUG("IpsetHashTimestamp, TimeCutoff: ~p, ~p", [IpsetHashTimestamp, TimeCutoff]),
     case IpsetHashTimestamp of
+        null ->
+            Now = erlang:system_time(second),
+            ipset_hash_age_update(HostId, Now),
+            false;
         <<>> ->
             Now = erlang:system_time(second),
             ipset_hash_age_update(HostId, Now),
@@ -272,6 +279,10 @@ iptables_hash_age_check(HostId, TimeCutoff) ->
     ),
     ?LOG_DEBUG("IptablesHashTimestamp: ~p", [IptablesHashTimestamp]),
     case IptablesHashTimestamp of
+        null ->
+            Now = erlang:system_time(second),
+            iptables_hash_age_update(HostId, Now),
+            false;
         <<>> ->
             Now = erlang:system_time(second),
             iptables_hash_age_update(HostId, Now),
@@ -359,7 +370,7 @@ iptables_hash_logic(HashCheck4Ipsets, HashCheck6Ipsets, HashCheck4Iptables, Hash
             HashCheck4Ipsets and HashCheck4Iptables
     end.
 
--spec send_retirement_alert(Host :: binary()) -> ok.
+-spec send_retirement_alert(Host :: map()) -> ok.
 send_retirement_alert(Host) ->
     RetirementAlertEnabled = application:get_env(dog_trainer, retirement_alert_enabled, true),
     HostAlertActive = host_alert_active(Host),
@@ -405,7 +416,7 @@ send_retirement_alert(Host) ->
             ok
     end.
 
--spec send_keepalive_alert(Host :: binary()) -> ok.
+-spec send_keepalive_alert(Host :: map()) -> ok.
 send_keepalive_alert(Host) ->
     KeepaliveAlertEnabled = application:get_env(dog_trainer, keepalive_alert_enabled, true),
     HostAlertActive = host_alert_active(Host),
@@ -495,14 +506,14 @@ send_keepalive_recover(Host) ->
             ok
     end.
 
--spec host_alert_active(HostMap :: map()) -> boolean.
+-spec host_alert_active(HostMap :: map()) -> boolean().
 host_alert_active(HostMap) ->
     case maps:get(<<"alert_enable">>,HostMap, true) of
         true -> true;
         false -> false
     end.
 
--spec send_hash_alert(Host :: binary(), HashStatus :: map()) -> ok.
+-spec send_hash_alert(Host :: map(), HashStatus :: map()) -> ok.
 send_hash_alert(Host, HashStatus) ->
     HashAlertEnabled = application:get_env(dog_trainer, hash_alert_enabled, true),
     HostAlertActive = host_alert_active(Host),
@@ -550,7 +561,7 @@ send_hash_alert(Host, HashStatus) ->
             ok
     end.
 
--spec send_hash_recover(Host :: binary(), HashStatus :: map()) -> ok.
+-spec send_hash_recover(Host :: map(), HashStatus :: map()) -> ok.
 send_hash_recover(Host, HashStatus) ->
     imetrics:add_m(alert, "hash_recover"),
     HashAlertEnabled = application:get_env(dog_trainer, hash_alert_enabled, true),
@@ -685,7 +696,7 @@ get_all_active() ->
         end,
     {ok, Hosts}.
 
--spec get_grouped_active_states() -> {ok, {grouped, list() }}.
+-spec get_grouped_active_states() -> {ok, any()}.
 get_grouped_active_states() ->
     {ok, Result} = dog_rethink:run(
         fun(X) ->
@@ -703,7 +714,7 @@ get_names_by_ips() ->
 get_hostkeys_by_ips() ->
     get_by_ips(<<"hostkey">>).
 
--spec get_by_ips(Key :: iolist()) -> map().
+-spec get_by_ips(Key :: binary()) -> map().
 get_by_ips(Key) ->
     {ok, R} =
         dog_rethink:run(fun(X) ->
@@ -742,7 +753,7 @@ get_by_ips(Key) ->
         lists:flatten(IpHost)
     ).
 
--spec interfaces_to_ips(InterfacesString :: iolist()) -> Ips :: list().
+-spec interfaces_to_ips(InterfacesString :: binary()) -> Ips :: list().
 interfaces_to_ips(InterfacesString) ->
     Interfaces = jsx:decode(InterfacesString),
     lists:delete(<<"127.0.0.1">>, lists:flatten([element(2, I) || I <- Interfaces])).
@@ -933,7 +944,7 @@ get_schema() ->
     dog_json_schema:get_file(<<"host">>).
 
 -spec state_event(
-    Id :: binary(),
+    HostMap :: map(),
     Event :: keepalive | keepalive_timeout | retirement_timeout | fail_hashcheck | pass_hashcheck,
     HashStatus :: map()
 ) -> NewState :: binary().
