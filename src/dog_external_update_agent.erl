@@ -53,7 +53,7 @@ periodic_publish() ->
     ?LOG_INFO("function"),
     gen_server:call(?MODULE, periodic_publish).
 
--spec queue_update(Ipsets :: list) -> ok.
+-spec queue_update(Ipsets :: list()) -> ok.
 queue_update(Ipsets) ->
     imetrics:add(external_queue_add),
     gen_server:cast(?MODULE, {add_to_queue, [Ipsets]}).

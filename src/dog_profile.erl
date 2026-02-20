@@ -132,7 +132,8 @@ generate_ipv4_iptables_ruleset_by_group_name(
 
 -spec generate_ipv6_iptables_ruleset_by_group_id(GroupId :: binary()) -> {iolist(), iolist()}.
 generate_ipv6_iptables_ruleset_by_group_id(GroupId) ->
-    SelfGroupName = maps:get(<<"Name">>, dog_group:get_by_id(GroupId)),
+    {ok, Group} = dog_group:get_by_id(GroupId),
+    SelfGroupName = maps:get(<<"name">>, Group),
     ProfileId =
         case dog_group:get_profile_by_id(GroupId) of
             {'error', 'notfound'} -> profile_not_found(GroupId);
@@ -212,7 +213,8 @@ generate_ipv6_iptables_ruleset_by_group_name(
 
 -spec generate_ipv4_iptables_ruleset_by_group_id(GroupId :: binary()) -> {iolist(), iolist()}.
 generate_ipv4_iptables_ruleset_by_group_id(GroupId) ->
-    SelfGroupName = maps:get(<<"Name">>, dog_group:get_by_id(GroupId)),
+    {ok, Group} = dog_group:get_by_id(GroupId),
+    SelfGroupName = maps:get(<<"name">>, Group),
     ProfileId =
         case dog_group:get_profile_by_id(GroupId) of
             {'error', 'notfound'} -> profile_not_found(GroupId);
@@ -783,7 +785,7 @@ update(Id, UpdateMap) ->
                         <<"profile_id">> => ProfileId
                     },
                     NewProfile = maps:merge(OldProfile, UpdateMap@0),
-                    {_, _NewRulesetId} = dog_ruleset:update(RulesetId, RulesMap@0),
+                    {_, _NewRulesetId} = dog_ruleset:update(iolist_to_binary(RulesetId), RulesMap@0),
                     case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
                         ok ->
                             {ok, R} = dog_rethink:run(
@@ -1054,8 +1056,7 @@ get_all_inbound_ports_by_protocol(ProfileJson) ->
 %NOTE: erlcloud encodes 'all services' as an atom '-1'
 %encodes 'all ports as integers from_port = 0, to_port = 0
 %encodes icmp as type in from_port as integer, and to_port as integer -1
--spec expand_services(Source :: binary(), Services :: binary()) ->
-    {Protocol :: binary(), FromPort :: binary(), ToPort :: binary(), Source :: binary()}.
+-spec expand_services(Source :: any(), Services :: list()) -> list().
 expand_services(Source, Services) ->
     lists:nth(
         1,
@@ -1294,10 +1295,10 @@ split(String, Delimiter, all) ->
 split(String, Delimiter) ->
     re:split(String, Delimiter, [{return, list}]).
 
--spec to_hcl_by_id(ProfileId :: iolist()) -> iolist().
+-spec to_hcl_by_id(ProfileId :: iolist()) -> binary().
 to_hcl_by_id(ProfileId) ->
   {ok, RulesetId} = dog_ruleset:get_id_by_profile_id(ProfileId),
-    dog_ruleset_api_v2:to_hcl_by_id(RulesetId).
+    dog_ruleset_api_v2:to_hcl_by_id(iolist_to_binary(RulesetId)).
 
 -spec to_hcl(Profile :: map()) -> binary().
 to_hcl(Profile) ->

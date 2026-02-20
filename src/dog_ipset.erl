@@ -161,7 +161,7 @@ ip_ipset_format(Ip) ->
             Ip
     end.
 
--spec get_hashes() -> {ok, binary()}.
+-spec get_hashes() -> {ok, [binary()]}.
 get_hashes() ->
     Now = erlang:system_time(second),
     IpsetHashValidSeconds = application:get_env(dog_trainer, ipset_hash_valid_seconds, 600),
@@ -173,7 +173,7 @@ get_hashes() ->
             reql:order_by(X, reql:desc(<<"timestamp">>))
         end
     ),
-    Result = R,
+    {ok, Result} = rethink_cursor:all(R),
     Hashes = lists:flatten(Result),
     LastHash = maps:get(<<"hash">>, hd(Hashes)),
     ValidIpsets = lists:filter(
@@ -467,11 +467,11 @@ hash_check(AgentIpsetHash) ->
             true
     end.
 
--spec update_ipsets() -> ok.
+-spec update_ipsets() -> ok | pass.
 update_ipsets() ->
     update_ipsets(all_envs).
 
--spec update_ipsets(Env :: atom()) -> ok.
+-spec update_ipsets(Env :: atom()) -> ok | pass.
 update_ipsets(Env) ->
     {ok, LatestHash} = latest_hash(),
     {MergedIpsetsList, InternalIpsetsMap} = create_ipsets(),
@@ -491,7 +491,7 @@ update_ipsets(Env) ->
                     pass;
                 all_envs ->
                     ?LOG_INFO("all_envs"),
-                    dog_external_update_agent:queue_update(InternalIpsetsMap)
+                    dog_external_update_agent:queue_update([InternalIpsetsMap])
             end;
         true ->
             ?LOG_DEBUG("true"),
@@ -503,7 +503,7 @@ force_update_ipsets() ->
     ?LOG_INFO("publishing: force_update_ipsets"),
     {MergedIpsets, InternalIpsets} = create_ipsets(),
     publish_to_queue(MergedIpsets),
-    dog_external_update_agent:queue_update(InternalIpsets),
+    dog_external_update_agent:queue_update([InternalIpsets]),
     ok.
 
 -spec persist_ipset() -> ok | {error, list()}.

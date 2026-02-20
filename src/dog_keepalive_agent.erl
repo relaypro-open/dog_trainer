@@ -121,7 +121,10 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec do_host_active_state_metrics() -> ok.
 do_host_active_state_metrics() ->
-    {ok, {grouped, States}} = dog_host:get_grouped_active_states(),
+    States = case dog_host:get_grouped_active_states() of
+                 {ok, #{<<"data">> := Data}} -> Data;
+                 _ -> []
+             end,
     lists:foreach(fun([State,Count]) ->
                           imetrics:set_gauge_m(<<"host_active_state">>, State, Count)
                   end,
@@ -147,7 +150,7 @@ do_watch_keepalives(_State) ->
                     lists:foreach(
                         fun(HostId) ->
                             {ok, Host} = dog_host:get_by_id(HostId),
-                            dog_host:state_event(Host, retirement_timeout, [])
+                            dog_host:state_event(Host, retirement_timeout, #{})
                         end,
                         RetiredHostIds
                     )
@@ -169,7 +172,7 @@ do_watch_keepalives(_State) ->
                     lists:foreach(
                         fun(HostId) ->
                             {ok, Host} = dog_host:get_by_id(HostId),
-                            dog_host:state_event(Host, keepalive_timeout, [])
+                            dog_host:state_event(Host, keepalive_timeout, #{})
                         end,
                         HostsFailedKeepaliveCheckIds
                     )

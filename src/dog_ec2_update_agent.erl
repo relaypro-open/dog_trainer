@@ -123,7 +123,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
--spec get_ec2_security_groups(Region :: binary()) -> {ok, Ec2Sgs :: map()}.
+-spec get_ec2_security_groups(Region :: binary()) -> {ok, Ec2Sgs :: list()} | {error, map()}.
 get_ec2_security_groups(Region) ->
     Config = dog_ec2_sg:config(Region),
     Result = erlcloud_ec2:describe_security_groups([], [], [], Config),
@@ -135,7 +135,7 @@ get_ec2_security_groups(Region) ->
             {error, #{}}
     end.
 
--spec ec2_security_groups(Region :: binary()) -> Ec2Sgs :: list().
+-spec ec2_security_groups(Region :: binary()) -> Ec2Sgs :: map().
 ec2_security_groups(Region) ->
     case cache_tab:lookup(ec2_sgs, Region, fun() -> get_ec2_security_groups(Region) end) of
         {ok, Ec2Sgs} ->
@@ -159,7 +159,7 @@ ec2_security_group_ids(Region) ->
     SgIds = maps:keys(Ec2Sgs),
     SgIds.
 
--spec ec2_classic_security_groups(Region :: binary()) -> Ec2Sgs :: list().
+-spec ec2_classic_security_groups(Region :: binary()) -> Ec2Sgs :: map().
 ec2_classic_security_groups(Region) ->
     case cache_tab:lookup(ec2_sgs, Region, fun() -> get_ec2_security_groups(Region) end) of
         {ok, Ec2Sgs} ->
