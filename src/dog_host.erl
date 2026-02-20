@@ -112,7 +112,7 @@ hash_fail_count_check(HostId, HashCheck, HashStatus) ->
             end
     end.
 
--spec hash_fail_count_increment(HostId :: binary()) -> {true, binary()} | {false, atom() | binary()}.
+-spec hash_fail_count_increment(HostId :: binary()) -> {'true', binary()} | {'false', atom()}.
 hash_fail_count_increment(HostId) ->
     Count = hash_fail_count(HostId),
     hash_fail_count_update(HostId, Count + 1).
