@@ -112,7 +112,7 @@ hash_fail_count_check(HostId, HashCheck, HashStatus) ->
             end
     end.
 
--spec hash_fail_count_increment(HostId :: binary()) -> number().
+-spec hash_fail_count_increment(HostId :: binary()) -> {true, binary()} | {false, atom() | binary()}.
 hash_fail_count_increment(HostId) ->
     Count = hash_fail_count(HostId),
     hash_fail_count_update(HostId, Count + 1).
@@ -513,7 +513,7 @@ host_alert_active(HostMap) ->
         false -> false
     end.
 
--spec send_hash_alert(Host :: map(), HashStatus :: map()) -> ok.
+-spec send_hash_alert(Host :: map(), HashStatus :: any()) -> ok.
 send_hash_alert(Host, HashStatus) ->
     HashAlertEnabled = application:get_env(dog_trainer, hash_alert_enabled, true),
     HostAlertActive = host_alert_active(Host),
@@ -561,7 +561,7 @@ send_hash_alert(Host, HashStatus) ->
             ok
     end.
 
--spec send_hash_recover(Host :: map(), HashStatus :: map()) -> ok.
+-spec send_hash_recover(Host :: map(), HashStatus :: any()) -> ok.
 send_hash_recover(Host, HashStatus) ->
     imetrics:add_m(alert, "hash_recover"),
     HashAlertEnabled = application:get_env(dog_trainer, hash_alert_enabled, true),
@@ -696,9 +696,9 @@ get_all_active() ->
         end,
     {ok, Hosts}.
 
--spec get_grouped_active_states() -> {ok, any()}.
+-spec get_grouped_active_states() -> {ok, {grouped, list()}}.
 get_grouped_active_states() ->
-    {ok, Result} = dog_rethink:run(
+    {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, ?TYPE_TABLE),
@@ -706,7 +706,8 @@ get_grouped_active_states() ->
             reql:count(X)
         end
     ),
-    {ok, Result}.
+    {ok, States} = rethink_cursor:all(R),
+    {ok, {grouped, States}}.
 
 get_names_by_ips() ->
     get_by_ips(<<"name">>).
@@ -946,7 +947,7 @@ get_schema() ->
 -spec state_event(
     HostMap :: map(),
     Event :: keepalive | keepalive_timeout | retirement_timeout | fail_hashcheck | pass_hashcheck,
-    HashStatus :: map()
+    HashStatus :: any()
 ) -> NewState :: binary().
 state_event(HostMap, Event, HashStatus) ->
     Id = maps:get(<<"id">>, HostMap),
@@ -965,7 +966,7 @@ state_event(HostMap, Event, HashStatus) ->
     HostMap :: map(),
     OldState :: binary(),
     Event :: keepalive | keepalive_timeout | retirement_timeout | fail_hashcheck | pass_hashcheck,
-    HashStatus :: map()
+    HashStatus :: any()
 ) -> NewState :: binary().
 new_state(_HostMap, <<"active">>, pass_hashcheck, _HashStatus) ->
     <<"active">>;

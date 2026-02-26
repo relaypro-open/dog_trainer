@@ -287,7 +287,7 @@ get_all_grouped_by_id() ->
     {ok, All} = dog_ruleset_api_v2:get_all(),
     maps:from_list([{maps:get(<<"id">>, Ruleset), Ruleset} || Ruleset <- All]).
 
--spec get_by_profile_id(ProfileId :: iolist()) -> {ok, Ruleset :: map()} | {error, notfound}.
+-spec get_by_profile_id(ProfileId :: binary()) -> {ok, Ruleset :: map()} | {error, notfound}.
 get_by_profile_id(ProfileId) ->
     {ok, R} = dog_rethink:run(
         fun(X) ->
@@ -307,7 +307,7 @@ get_by_profile_id(ProfileId) ->
             {ok, Rules}
     end.
 
--spec get_id_by_profile_id(ProfileId :: iolist()) -> {ok, RulesetId :: iolist()} | {error, notfound}.
+-spec get_id_by_profile_id(ProfileId :: binary()) -> {ok, RulesetId :: binary()} | {error, notfound}.
 get_id_by_profile_id(ProfileId) ->
     case get_by_profile_id(ProfileId) of
         {ok, Profile} ->

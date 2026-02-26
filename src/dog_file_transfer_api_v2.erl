@@ -17,6 +17,9 @@
 -export([resource_exists/2]).
 -export([delete_resource/2]).
 
+%% PLT limitation: binary() file paths are valid in OTP 24 but PLT types some file operations as string()-only.
+-dialyzer({nowarn_function, [acc_multipart/4]}).
+
 init(Req, Opts) ->
     {cowboy_rest, Req, Opts}.
 
@@ -85,7 +88,7 @@ from_post_json(Req, State) ->
             end
     end.
 
--spec handle_command(Hostkey :: binary(), Message :: binary(), ApiUserName :: binary() ) -> {ok | error, iolist()}.
+-spec handle_command(Hostkey :: binary(), Message :: map(), ApiUserName :: binary()) -> {ok | error, iolist()}.
 handle_command(Hostkey, Message, ApiUserName) ->
     ?LOG_DEBUG("Message: ~p", [Message]),
     Command = maps:get(<<"command">>, Message),

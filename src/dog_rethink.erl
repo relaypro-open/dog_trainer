@@ -5,9 +5,7 @@
 -export([run/1]).
 
 -spec run(Fun :: fun()) ->
-    {ok, Response :: pid()}
-    | {ok, Response :: map()}
-    | {ok, null}
+    {ok, Response :: any()}
     | {error, Error :: atom()}
     | {error, {atom(), Reason :: binary()}}.
 run(Fun) ->

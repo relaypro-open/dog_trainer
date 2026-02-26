@@ -1107,7 +1107,7 @@ expand_services(Source, Services) ->
 
 %TODO: Add security group source to rules
 %protocol port port source
--spec get_ppps_inbound_ec2(ProfileJson :: map(), DestinationRegion :: string()) ->
+-spec get_ppps_inbound_ec2(ProfileJson :: map(), DestinationRegion :: binary()) ->
     SourcePortProtocol :: list().
 get_ppps_inbound_ec2(ProfileJson, DestinationRegion) ->
     Inbound = nested:get([<<"rules">>, <<"inbound">>], ProfileJson),
@@ -1209,7 +1209,7 @@ get_ppps_inbound_ec2(ProfileJson, DestinationRegion) ->
 %merge_lists_in_tuples(lists:flatten(RawPortsProtocols)).
 %dog_common:merge_lists_in_tuples(lists:flatten(SourceProtocolPorts)).
 
--spec get_ppps_outbound_ec2(ProfileJson :: map(), DestinationRegion :: string()) ->
+-spec get_ppps_outbound_ec2(ProfileJson :: map(), DestinationRegion :: binary()) ->
     SourcePortProtocol :: list().
 get_ppps_outbound_ec2(ProfileJson, DestinationRegion) ->
     Outbound = nested:get([<<"rules">>, <<"outbound">>], ProfileJson),
@@ -1295,7 +1295,7 @@ split(String, Delimiter, all) ->
 split(String, Delimiter) ->
     re:split(String, Delimiter, [{return, list}]).
 
--spec to_hcl_by_id(ProfileId :: iolist()) -> binary().
+-spec to_hcl_by_id(ProfileId :: binary()) -> binary().
 to_hcl_by_id(ProfileId) ->
   {ok, RulesetId} = dog_ruleset:get_id_by_profile_id(ProfileId),
     dog_ruleset_api_v2:to_hcl_by_id(iolist_to_binary(RulesetId)).

@@ -386,7 +386,7 @@ external_active() ->
         <<"external_ipv6_addresses">> => ExternalIpv6s
     }.
 
--spec get_id_by_name(GroupName :: binary()) -> {ok, binary()}.
+-spec get_id_by_name(GroupName :: binary()) -> {ok, binary()} | {error, atom()}.
 get_id_by_name(GroupName) ->
     case GroupName of
         <<"self">> ->
@@ -807,6 +807,7 @@ get_group_interfaces_by_id(GroupId) ->
     GroupName = maps:get(<<"name">>, Group),
     get_group_interfaces_by_name(GroupName).
 
+-dialyzer({no_match, get_all_group_interfaces/1}).
 -spec get_all_group_interfaces() -> {'ok', [any()]}.
 get_all_group_interfaces() ->
     get_all_group_interfaces(true).
@@ -831,7 +832,7 @@ get_all_group_interfaces(OnlyActive) ->
                 [] -> {ok, []};
                 _ -> {ok, Interfaces@1}
             end;
-        false ->
+        _ ->
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
@@ -848,6 +849,7 @@ get_all_group_interfaces(OnlyActive) ->
             end
     end.
 
+-dialyzer({no_match, get_group_interfaces_by_name/2}).
 -spec get_group_interfaces_by_name(GroupName :: iolist()) -> {'ok', [any()]}.
 get_group_interfaces_by_name(GroupName) ->
     get_group_interfaces_by_name(GroupName, true).
@@ -872,7 +874,7 @@ get_group_interfaces_by_name(GroupName, OnlyActive) ->
                 [] -> {ok, []};
                 _ -> {ok, Interfaces@1}
             end;
-        false ->
+        _ ->
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
@@ -1111,7 +1113,7 @@ get_ids_with_profile_id(Id) ->
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec get_all_inbound_ports_by_protocol(GroupName :: string()) -> ProtocolPorts :: list().
+-spec get_all_inbound_ports_by_protocol(GroupName :: binary()) -> ProtocolPorts :: list().
 get_all_inbound_ports_by_protocol(GroupName) ->
     case get_profile_by_name(GroupName) of
         {error, _Error} ->
@@ -1121,7 +1123,7 @@ get_all_inbound_ports_by_protocol(GroupName) ->
             dog_profile:get_all_inbound_ports_by_protocol(ProfileJson)
     end.
 
--spec get_ppps_inbound_ec2(Group :: map(), Region :: string()) -> list().
+-spec get_ppps_inbound_ec2(Group :: map(), Region :: binary()) -> list().
 get_ppps_inbound_ec2(Group, Region) ->
     Ec2SecurityGroupList = maps:get(<<"ec2_security_group_ids">>, Group, []),
     Ec2SecurityGroupMap = dog_common:lmm(Ec2SecurityGroupList, <<"region">>),
@@ -1135,7 +1137,7 @@ get_ppps_inbound_ec2(Group, Region) ->
             dog_profile:get_ppps_inbound_ec2(ProfileJson, Region)
     end.
 
--spec get_ppps_outbound_ec2(Group :: map(), Region :: string()) -> list().
+-spec get_ppps_outbound_ec2(Group :: map(), Region :: binary()) -> list().
 get_ppps_outbound_ec2(Group, Region) ->
     Ec2SecurityGroupList = maps:get(<<"ec2_security_group_ids">>, Group, []),
     Ec2SecurityGroupMap = dog_common:lmm(Ec2SecurityGroupList, <<"region">>),
@@ -1300,8 +1302,8 @@ update_group_ec2_security_groups(GroupZoneIdentifier, GroupType) ->
     Groups =
         case GroupType of
             G when G =:= <<"role">>; G =:= <<"group">> ->
-                {ok, G} = dog_group:role_group_effects_groups(GroupZoneIdentifier),
-                G;
+                {ok, GroupList} = dog_group:role_group_effects_groups(GroupZoneIdentifier),
+                GroupList;
             <<"zone">> ->
                 %TODO: Zone support in Ec2
                 %{ok, G} = dog_group:zone_group_effects_groups(GroupZoneIdentifier),
@@ -1334,10 +1336,11 @@ update_group_ec2_security_groups(GroupZoneIdentifier, GroupType) ->
     ok.
 
 
--spec group_alert_active(GroupName :: string()) -> boolean.
+-spec group_alert_active(GroupName :: binary()) -> boolean().
 group_alert_active(GroupName) ->
-    GroupMap = get_by_name(GroupName),
-    case maps:get(<<"alert_enable">>, GroupMap, true) of
-        true -> true;
-        false -> false
+    case get_by_name(GroupName) of
+        {ok, GroupMap} ->
+            maps:get(<<"alert_enable">>, GroupMap, true);
+        {error, _} ->
+            false
     end.

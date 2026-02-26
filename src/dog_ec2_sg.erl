@@ -18,6 +18,22 @@
     ip_permissions_ingress/2
 ]).
 
+%% PLT type limitations with erlcloud: describe_security_groups is typed as always returning
+%% {ok, []} in the PLT, causing false positives for non-empty list patterns and downstream functions.
+-dialyzer({nowarn_function, [
+    ip_permissions_ingress/2,
+    ip_permissions_egress/2,
+    from_describe_tuple_to_ingress_records/1,
+    from_describe_tuple_to_egress_records/1,
+    ingress_record_to_ppps/1,
+    egress_record_to_ppps/1,
+    ingress_records_to_ppps/1,
+    egress_records_to_ppps/1,
+    parse_authorize_response/1,
+    update_sg_ingress/3,
+    update_sg_egress/3
+]}).
+
 -spec config(Region :: binary()) -> tuple().
 config(Region) ->
     {ok, Key} = application:get_env(dog_trainer, aws_key),
@@ -47,7 +63,7 @@ publish_ec2_sg_by_name(DogGroupName) ->
             []
     end.
 
--spec publish_ec2_sgs(DogGroup :: map()) -> {ok | error, DetailedResults :: list()}.
+-spec publish_ec2_sgs(DogGroup :: map()) -> [any()].
 publish_ec2_sgs(DogGroup) ->
     Ec2SecurityGroupList = maps:get(<<"ec2_security_group_ids">>, DogGroup, []),
     DogGroupName = maps:get(<<"name">>, DogGroup),
@@ -68,8 +84,8 @@ publish_ec2_sgs(DogGroup) ->
     ),
     Results.
 
--spec publish_ec2_sg({DogGroup :: map(), Region :: string(), SgId :: string()}) ->
-    {ok | error, DetailedResults :: list()}.
+-spec publish_ec2_sg({DogGroup :: map(), Region :: binary(), SgId :: binary()}) ->
+    [any()].
 publish_ec2_sg({DogGroup, Region, SgId}) ->
     DogGroupId = maps:get(<<"id">>, DogGroup),
     AddRemoveMapIngress = diff_sg_ingress(SgId, Region, DogGroupId),
@@ -125,8 +141,8 @@ diff_sg_ingress(Ec2SecurityGroupId, Region, DogGroupId) ->
             SgDiff
     end.
 
--spec update_sg_ingress(Ec2SecurityGroupId :: string(), Region :: string(), AddRemoveMap :: map()) ->
-    {ok, tuple()} | {error, tuple()}.
+-spec update_sg_ingress(Ec2SecurityGroupId :: binary(), Region :: binary(), AddRemoveMap :: map()) ->
+    {ok | error, ingress, tuple()}.
 update_sg_ingress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
     Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),
     Config = config(Region),
@@ -200,8 +216,8 @@ diff_sg_egress(Ec2SecurityGroupId, Region, DogGroupId) ->
             SgDiff
     end.
 
--spec update_sg_egress(Ec2SecurityGroupId :: string(), Region :: string(), AddRemoveMap :: map()) ->
-    {ok, tuple()} | {error, tuple()}.
+-spec update_sg_egress(Ec2SecurityGroupId :: binary(), Region :: binary(), AddRemoveMap :: map()) ->
+    {ok | error, egress, tuple()}.
 update_sg_egress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
     Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),
     Config = config(Region),
@@ -241,7 +257,7 @@ update_sg_egress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
         end,
     {AllResult, egress, {{add_results, AddResults}, {remove_results, RemoveResults}}}.
 
--spec parse_authorize_response(AuthorizeResponse :: tuple()) -> ok | string().
+-spec parse_authorize_response(AuthorizeResponse :: tuple()) -> ok | {string(), string()} | any().
 parse_authorize_response(AuthorizeResponse) ->
     ?LOG_DEBUG("AuthorizeResponse: ~p~n", [AuthorizeResponse]),
     case AuthorizeResponse of
@@ -339,26 +355,26 @@ ppps_to_spps(Ppps, Accum) ->
     AccumNew = maps:put(Key, NewValue, Accum),
     ppps_to_spps(Rest, AccumNew).
 
--spec ip_permissions_ingress(Ec2Region :: string(), Ec2SecurityGroupId :: string()) ->
+-spec ip_permissions_ingress(Ec2Region :: binary(), Ec2SecurityGroupId :: binary()) ->
     IpPermisions :: list().
 ip_permissions_ingress(Ec2Region, Ec2SecurityGroupId) ->
     Config = config(Ec2Region),
     case erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId], [], [], Config) of
-        {ok, Permissions} ->
-            IpPermissions = maps:get(ip_permissions, maps:from_list(hd(Permissions))),
+        {ok, [Permission | _]} ->
+            IpPermissions = maps:get(ip_permissions, maps:from_list(Permission)),
             IpPermissionSpecs = [from_describe_tuple_to_ingress_records(T) || T <- IpPermissions],
             lists:flatten(IpPermissionSpecs);
         _ ->
             []
     end.
 
--spec ip_permissions_egress(Ec2Region :: string(), Ec2SecurityGroupId :: string()) ->
+-spec ip_permissions_egress(Ec2Region :: binary(), Ec2SecurityGroupId :: binary()) ->
     IpPermisions :: list().
 ip_permissions_egress(Ec2Region, Ec2SecurityGroupId) ->
     Config = config(Ec2Region),
     case erlcloud_ec2:describe_security_groups([Ec2SecurityGroupId], [], [], Config) of
-        {ok, Permissions} ->
-            IpPermissions = maps:get(ip_permissions_egress, maps:from_list(hd(Permissions))),
+        {ok, [Permission | _]} ->
+            IpPermissions = maps:get(ip_permissions_egress, maps:from_list(Permission)),
             IpPermissionSpecs = [from_describe_tuple_to_egress_records(T) || T <- IpPermissions],
             lists:flatten(IpPermissionSpecs);
         _ ->

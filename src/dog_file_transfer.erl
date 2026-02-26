@@ -24,24 +24,28 @@
     number_blocks/2
 ]).
 
+%% PLT limitation: OTP 24's file:open and file:read_file_info PLT types expect string()
+%% but binary() paths are valid in OTP 24. Suppress warnings for these functions.
+-dialyzer({nowarn_function, [send_file/5, send_data/6, send_data/8, number_blocks/2]}).
+
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
 hostkey_to_routing_key(Hostkey) ->
     erlang:iolist_to_binary(["*.*.*.", Hostkey]).
 
--spec execute_command(Hostkey :: string(), ExecuteCommand :: string()) ->
+-spec execute_command(Hostkey :: binary(), ExecuteCommand :: binary()) ->
     {ok | error, iolist()}.
 execute_command(ExecuteCommand, Hostkey) ->
     execute_command(ExecuteCommand, Hostkey, []).
 
--spec execute_command(Hostkey :: string(), ExecuteCommand :: string(), Opts :: list()) ->
+-spec execute_command(Hostkey :: binary(), ExecuteCommand :: binary(), Opts :: list()) ->
     {ok | error, iolist()}.
 execute_command(ExecuteCommand, Hostkey, Opts) ->
     imetrics:add_m(file_transfer, execute_command),
     publish_execute_command(Hostkey, ExecuteCommand, Opts).
 
--spec publish_execute_command(Hostkey :: string(), ExecuteCommand :: string(), Opts :: list()) ->
+-spec publish_execute_command(Hostkey :: binary(), ExecuteCommand :: binary(), Opts :: list()) ->
     {ok | error, iolist()}.
 publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
     ExecuteCommandBase64 = base64:encode(ExecuteCommand),
@@ -167,7 +171,7 @@ publish_file_send(
     Response.
 
 -spec send_file(
-    HostFilePath :: string(), LocalFilePath :: string(), RemoteFilePath :: string(), Hostkey :: string(), Opts :: list()
+    HostFilePath :: binary(), LocalFilePath :: binary(), RemoteFilePath :: binary(), Hostkey :: binary(), Opts :: list()
 ) -> ok | error.
 send_file(HostFilePath, LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
     imetrics:add_m(file_transfer, send_file),
@@ -208,7 +212,7 @@ send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBloc
             ok
     end.
 
--spec number_blocks(LocalFilePath :: string(), MaxBlockSizeBytes :: integer()) ->
+-spec number_blocks(LocalFilePath :: binary(), MaxBlockSizeBytes :: integer()) ->
     FileSize :: integer().
 number_blocks(LocalFilePath, MaxBlockSizeBytes) ->
     {ok, FileInfo} = file:read_file_info(LocalFilePath),
