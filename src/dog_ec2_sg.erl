@@ -12,6 +12,7 @@
 ]).
 
 -export([
+    diff_sg_by_name/3,
     diff_sg_egress/3,
     diff_sg_ingress/3,
     ip_permissions_egress/2,
@@ -20,15 +21,7 @@
 
 -spec config(Region :: binary()) -> tuple().
 config(Region) ->
-    {ok, Key} = application:get_env(dog_trainer, aws_key),
-    {ok, Secret} = application:get_env(dog_trainer, aws_secret),
-    Url = "ec2." ++ binary:bin_to_list(Region) ++ ".amazonaws.com",
-    ?LOG_DEBUG("Url: ~s~n", [Url]),
-    erlcloud_ec2:new(
-        Key,
-        Secret,
-        Url
-    ).
+    #aws_config{aws_region = Region}.
 
 default_ingress_spps_rules(Ec2SecurityGroupId) ->
     [
@@ -89,6 +82,19 @@ publish_ec2_sg({DogGroup, Region, SgId}) ->
         )},
     ?LOG_DEBUG("Egress Results: ~p~n", [ResultsEgress]),
     [ResultsIngress, ResultsEgress].
+
+-spec diff_sg_by_name(DogGroupName :: string(), Region :: string(), SgId :: string()) -> map().
+diff_sg_by_name(DogGroupName, Region, SgId) ->
+    case dog_group:get_by_name(DogGroupName) of
+        {ok, DogGroup} ->
+            DogGroupId = maps:get(<<"id">>, DogGroup),
+            AddRemoveMapIngress = diff_sg_ingress(SgId, Region, DogGroupId),
+            AddRemoveMapEgress = diff_sg_egress(SgId, Region, DogGroupId),
+            #{<<"ingress">> => AddRemoveMapIngress,
+              <<"egress">> => AddRemoveMapEgress};
+        _ ->
+            #{}
+    end.
 
 diff_sg_ingress(Ec2SecurityGroupId, Region, DogGroupId) ->
     {ok, DogGroup} = dog_group:get_by_id(DogGroupId),
