@@ -57,7 +57,11 @@
                                                                       [cowboy_access_log]}}},
                               {non_filter, {fun logger_filters:domain/2, {stop, undefined, []}}}
                               ],
-                    formatter => {logger_logstash_formatter, #{}}
+                    formatter => {flatlog,
+                        #{
+                            map_depth => 3,
+                            term_depth => 50
+                        }
             }},
             {handler, default, logger_std_h,
                 #{
@@ -70,7 +74,11 @@
                     level => error,
                     legacy_header => false,
                     single_line => false,
-                    formatter => {logger_logstash_formatter, #{}}
+                    formatter => {flatlog,
+                        #{
+                            map_depth => 3,
+                            term_depth => 50
+                        }
             }},
             {handler, disk_log_debug, logger_disk_log_h,
                 #{
