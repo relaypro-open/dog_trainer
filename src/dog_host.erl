@@ -44,7 +44,7 @@
 ]).
 -endif.
 
--spec get_all_joined_with_group() -> HostsGroups :: map().
+-spec get_all_joined_with_group() -> HostsGroups :: [map()].
 get_all_joined_with_group() ->
     dog_common:eq_join(<<"host">>, <<"group">>, <<"name">>, <<"group">>).
 
@@ -102,8 +102,8 @@ retirement_check(TimeCutoff) ->
     ?LOG_INFO(#{oldagents => OldAgents}, #{domain => [dog_trainer]}),
     {ok, OldAgents}.
 
--spec hash_fail_count_check(HostId :: binary(), HashCheck :: (true | false), HashStatus :: map()) ->
-    {true | false, map()}.
+-spec hash_fail_count_check(HostId :: binary(), HashCheck :: boolean(), HashStatus :: map()) ->
+    {pass | fail, map()}.
 hash_fail_count_check(HostId, HashCheck, HashStatus) ->
     case HashCheck of
         true ->
@@ -126,7 +126,7 @@ hash_fail_count_increment(HostId) ->
     Count = hash_fail_count(HostId),
     hash_fail_count_update(HostId, Count + 1).
 
--spec hash_fail_count(HostId :: binary()) -> number().
+-spec hash_fail_count(HostId :: binary()) -> null | pid() | map() | number().
 hash_fail_count(HostId) ->
     {ok, HostHashFailCount} = dog_rethink:run(
         fun(X) ->
@@ -159,7 +159,7 @@ hash_fail_count_update(HostId, Count) ->
         _ -> {false, no_updated}
     end.
 
--spec hash_check(HostId :: binary()) -> {pass, map()} | {fail, map()}.
+-spec hash_check(Host :: map()) -> {error, notfound} | {pass, map()} | {fail, map()}.
 hash_check(Host) ->
     HostId = maps:get(<<"id">>, Host),
     HostName = maps:get(<<"name">>, Host),
@@ -366,7 +366,7 @@ iptables_hash_logic(HashCheck4Ipsets, HashCheck6Ipsets, HashCheck4Iptables, Hash
             HashCheck4Ipsets and HashCheck4Iptables
     end.
 
--spec send_retirement_alert(Host :: binary()) -> ok.
+-spec send_retirement_alert(Host :: map()) -> ok.
 send_retirement_alert(Host) ->
     RetirementAlertEnabled = application:get_env(dog_trainer, retirement_alert_enabled, true),
     HostAlertActive = host_alert_active(Host),
@@ -412,7 +412,7 @@ send_retirement_alert(Host) ->
             ok
     end.
 
--spec send_keepalive_alert(Host :: binary()) -> ok.
+-spec send_keepalive_alert(Host :: map()) -> ok.
 send_keepalive_alert(Host) ->
     KeepaliveAlertEnabled = application:get_env(dog_trainer, keepalive_alert_enabled, true),
     HostAlertActive = host_alert_active(Host),
@@ -502,14 +502,14 @@ send_keepalive_recover(Host) ->
             ok
     end.
 
--spec host_alert_active(HostMap :: map()) -> boolean.
+-spec host_alert_active(HostMap :: map()) -> boolean().
 host_alert_active(HostMap) ->
     case maps:get(<<"alert_enable">>,HostMap, true) of
         true -> true;
         false -> false
     end.
 
--spec send_hash_alert(Host :: binary(), HashStatus :: map()) -> ok.
+-spec send_hash_alert(Host :: map(), HashStatus :: map()) -> ok.
 send_hash_alert(Host, HashStatus) ->
     HashAlertEnabled = application:get_env(dog_trainer, hash_alert_enabled, true),
     HostAlertActive = host_alert_active(Host),
@@ -557,7 +557,7 @@ send_hash_alert(Host, HashStatus) ->
             ok
     end.
 
--spec send_hash_recover(Host :: binary(), HashStatus :: map()) -> ok.
+-spec send_hash_recover(Host :: map(), HashStatus :: map()) -> ok.
 send_hash_recover(Host, HashStatus) ->
     imetrics:add_m(alert, "hash_recover"),
     HashAlertEnabled = application:get_env(dog_trainer, hash_alert_enabled, true),
@@ -692,7 +692,7 @@ get_all_active() ->
         end,
     {ok, Hosts}.
 
--spec get_grouped_active_states() -> {ok, {grouped, list() }}.
+-spec get_grouped_active_states() -> {ok, null | pid() | map()}.
 get_grouped_active_states() ->
     {ok, Result} = dog_rethink:run(
         fun(X) ->
@@ -710,7 +710,7 @@ get_names_by_ips() ->
 get_hostkeys_by_ips() ->
     get_by_ips(<<"hostkey">>).
 
--spec get_by_ips(Key :: iolist()) -> map().
+-spec get_by_ips(Key :: binary()) -> map().
 get_by_ips(Key) ->
     {ok, R} =
         dog_rethink:run(fun(X) ->
@@ -749,7 +749,7 @@ get_by_ips(Key) ->
         lists:flatten(IpHost)
     ).
 
--spec interfaces_to_ips(InterfacesString :: iolist()) -> Ips :: list().
+-spec interfaces_to_ips(InterfacesString :: binary()) -> Ips :: list().
 interfaces_to_ips(InterfacesString) ->
     Interfaces = jsx:decode(InterfacesString),
     lists:delete(<<"127.0.0.1">>, lists:flatten(maps:values(Interfaces))).
@@ -940,7 +940,7 @@ get_schema() ->
     dog_json_schema:get_file(<<"host">>).
 
 -spec state_event(
-    Id :: binary(),
+    HostMap :: map(),
     Event :: keepalive | keepalive_timeout | retirement_timeout | fail_hashcheck | pass_hashcheck,
     HashStatus :: map()
 ) -> NewState :: binary().

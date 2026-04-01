@@ -212,7 +212,7 @@ update_in_place(Id, UpdateMap) ->
             {false, Error}
     end.
 
--spec to_hcl_by_id(ProfileId :: iolist()) -> iolist().
+-spec to_hcl_by_id(ProfileId :: binary()) -> binary().
 to_hcl_by_id(ProfileId) ->
     {ok, Profile} = get_by_id(ProfileId),
     to_hcl(Profile). 

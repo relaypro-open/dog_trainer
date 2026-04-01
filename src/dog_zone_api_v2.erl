@@ -128,7 +128,7 @@ update(Id, UpdateMap@0) ->
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec to_hcl_by_id(ZoneId :: iolist()) -> iolist().
+-spec to_hcl_by_id(ZoneId :: binary()) -> binary().
 to_hcl_by_id(ZoneId) ->
     {ok, Zone} = get_by_id(ZoneId),
     to_hcl(Zone). 

@@ -27,7 +27,7 @@ table_schema() ->
         <<"fact">> => [<<"name">>]
     }.
 
--spec wait_on_rethinkdb(Connection :: pid(), DatabaseName :: binary()) -> ok | change.
+-spec wait_on_rethinkdb(Connection :: pid(), DatabaseName :: binary()) -> {ok, any()}.
 wait_on_rethinkdb(Connection, DatabaseName) ->
     {ok, _Databases} = gen_rethink:run(
         Connection,

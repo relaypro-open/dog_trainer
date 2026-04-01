@@ -130,7 +130,7 @@ update(Id, UpdateMap@0) ->
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec to_hcl_by_id(FactId :: iolist()) -> iolist().
+-spec to_hcl_by_id(FactId :: binary()) -> binary().
 to_hcl_by_id(FactId) ->
     {ok, Fact} = get_by_id(FactId),
     to_hcl(Fact). 

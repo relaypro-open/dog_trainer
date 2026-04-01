@@ -7,7 +7,7 @@
     get_all/0
 ]).
 
--spec get_all() -> {ok, list()}.
+-spec get_all() -> {ok, map()}.
 get_all() ->
     Ipsets = dog_ipset:ipsets_map(),
     {ok, #{<<"ipsets">> => Ipsets}}.

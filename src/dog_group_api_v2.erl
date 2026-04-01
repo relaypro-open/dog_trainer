@@ -205,7 +205,7 @@ update(Id, UpdateMap) ->
             {false, Error}
     end.
 
--spec to_hcl_by_id(GroupId :: iolist()) -> iolist().
+-spec to_hcl_by_id(GroupId :: binary()) -> binary().
 to_hcl_by_id(GroupId) ->
     {ok, Group} = get_by_id(GroupId),
     to_hcl(Group). 

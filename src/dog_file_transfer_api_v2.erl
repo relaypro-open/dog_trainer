@@ -85,7 +85,7 @@ from_post_json(Req, State) ->
             end
     end.
 
--spec handle_command(Hostkey :: binary(), Message :: binary(), ApiUserName :: binary() ) -> {ok | error, iolist()}.
+-spec handle_command(Hostkey :: binary(), Message :: map(), ApiUserName :: binary() | undefined) -> {ok | error, iolist()}.
 handle_command(Hostkey, Message, ApiUserName) ->
     ?LOG_DEBUG(#{message => Message}, #{domain => [dog_trainer]}),
     Command = maps:get(<<"command">>, Message),

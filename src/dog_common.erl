@@ -259,7 +259,7 @@ format_value(Value) ->
 quoted_comma_delimited(List) ->
     string:join([io_lib:format("\"~s\"", [X]) || X <- List], ",").
 
--spec eq_join(Table1Name :: string(), Table2Name :: string(), Key1 :: string(), Key2 :: string()) ->
+-spec eq_join(Table1Name :: binary(), Table2Name :: binary(), Key1 :: binary(), Key2 :: binary()) ->
     JoinTable :: list().
 eq_join(Table1Name, Table2Name, Key1, Key2) ->
     {ok, OneR} = dog_rethink:run(

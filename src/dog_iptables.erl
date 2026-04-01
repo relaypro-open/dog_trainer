@@ -49,7 +49,7 @@ update_group_iptables(GroupZoneName, GroupType) ->
     dog_profile_update_agent:add_to_queue(Groups),
     ok.
 
--spec update_group_ec2_sgs(GroupZoneName :: binary()) -> 'ok'.
+-spec update_group_ec2_sgs(GroupZoneName :: binary()) -> [any()].
 update_group_ec2_sgs(GroupZoneName) ->
     {ok, GroupList} = dog_group:role_group_effects_groups(GroupZoneName),
     ?LOG_DEBUG(#{grouplist => GroupList}, #{domain => [dog_trainer]}),

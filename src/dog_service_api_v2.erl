@@ -134,7 +134,7 @@ update(Id, UpdateMap) ->
             {false, Error}
     end.
 
--spec to_hcl_by_id(ServiceId :: iolist()) -> iolist().
+-spec to_hcl_by_id(ServiceId :: binary()) -> binary().
 to_hcl_by_id(ServiceId) ->
     {ok, Service} = get_by_id(ServiceId),
     to_hcl(Service). 
@@ -163,7 +163,7 @@ to_hcl(Service) ->
     {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
     erlang:iolist_to_binary(IoData).
 
--spec portprotocols_output(PortProtocol :: map()) -> binary().
+-spec portprotocols_output(PortProtocols :: [map()]) -> binary().
 portprotocols_output(PortProtocols) ->
     PPs = lists:map(fun(PP) -> 
         Ports = maps:get(<<"ports">>, PP), 

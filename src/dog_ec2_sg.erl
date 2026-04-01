@@ -19,7 +19,7 @@
     ip_permissions_ingress/2
 ]).
 
--spec config(Region :: binary()) -> tuple().
+-spec config(Region :: undefined | string()) -> tuple().
 config(Region) ->
     #aws_config{aws_region = Region}.
 
@@ -40,7 +40,7 @@ publish_ec2_sg_by_name(DogGroupName) ->
             []
     end.
 
--spec publish_ec2_sgs(DogGroup :: map()) -> {ok | error, DetailedResults :: list()}.
+-spec publish_ec2_sgs(DogGroup :: map()) -> [any()].
 publish_ec2_sgs(DogGroup) ->
     Ec2SecurityGroupList = maps:get(<<"ec2_security_group_ids">>, DogGroup, []),
     DogGroupName = maps:get(<<"name">>, DogGroup),
@@ -83,7 +83,7 @@ publish_ec2_sg({DogGroup, Region, SgId}) ->
     ?LOG_DEBUG(#{resultsegress => ResultsEgress}, #{domain => [dog_trainer]}),
     [ResultsIngress, ResultsEgress].
 
--spec diff_sg_by_name(DogGroupName :: string(), Region :: string(), SgId :: string()) -> map().
+-spec diff_sg_by_name(DogGroupName :: binary(), Region :: any(), SgId :: any()) -> map().
 diff_sg_by_name(DogGroupName, Region, SgId) ->
     case dog_group:get_by_name(DogGroupName) of
         {ok, DogGroup} ->
@@ -131,8 +131,8 @@ diff_sg_ingress(Ec2SecurityGroupId, Region, DogGroupId) ->
             SgDiff
     end.
 
--spec update_sg_ingress(Ec2SecurityGroupId :: string(), Region :: string(), AddRemoveMap :: map()) ->
-    {ok, tuple()} | {error, tuple()}.
+-spec update_sg_ingress(Ec2SecurityGroupId :: binary(), Region :: undefined | string(), AddRemoveMap :: map()) ->
+    {ok, ingress, tuple()} | {error, ingress, tuple()}.
 update_sg_ingress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
     Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),
     Config = config(Region),
@@ -206,8 +206,8 @@ diff_sg_egress(Ec2SecurityGroupId, Region, DogGroupId) ->
             SgDiff
     end.
 
--spec update_sg_egress(Ec2SecurityGroupId :: string(), Region :: string(), AddRemoveMap :: map()) ->
-    {ok, tuple()} | {error, tuple()}.
+-spec update_sg_egress(Ec2SecurityGroupId :: binary(), Region :: undefined | string(), AddRemoveMap :: map()) ->
+    no_return().
 update_sg_egress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
     Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),
     Config = config(Region),

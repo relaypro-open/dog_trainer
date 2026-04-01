@@ -1111,7 +1111,7 @@ get_ids_with_profile_id(Id) ->
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec get_all_inbound_ports_by_protocol(GroupName :: string()) -> ProtocolPorts :: list().
+-spec get_all_inbound_ports_by_protocol(GroupName :: binary()) -> ProtocolPorts :: list().
 get_all_inbound_ports_by_protocol(GroupName) ->
     case get_profile_by_name(GroupName) of
         {error, _Error} ->
@@ -1334,7 +1334,7 @@ update_group_ec2_security_groups(GroupZoneIdentifier, GroupType) ->
     ok.
 
 
--spec group_alert_active(GroupName :: string()) -> boolean.
+-spec group_alert_active(GroupName :: binary()) -> boolean().
 group_alert_active(GroupName) ->
     GroupMap = get_by_name(GroupName),
     case maps:get(<<"alert_enable">>, GroupMap, true) of

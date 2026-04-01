@@ -320,7 +320,7 @@ get_id_by_profile_id(ProfileId) ->
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec to_hcl_by_id(RulesetId :: iolist()) -> iolist().
+-spec to_hcl_by_id(RulesetId :: binary()) -> binary().
 to_hcl_by_id(RulesetId) ->
     dog_ruleset_api_v2:to_hcl_by_id(RulesetId).
 

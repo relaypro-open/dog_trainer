@@ -327,7 +327,7 @@ where_used(RulesId) ->
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
 
--spec ids_to_names(Rulesets :: list()) -> {'ok', Rulesests :: list()}.
+-spec ids_to_names(Rulesets :: list() | map()) -> {'ok', list()} | map().
 ids_to_names(Rulesets) when is_list(Rulesets)->
     RulesReplaced = lists:map(
         fun(Ruleset) ->
@@ -422,7 +422,7 @@ nti(ProfileId) ->
     %Itn = ids_to_names(Profile),
     names_to_ids(Profile).
 
--spec names_to_ids(Profile :: map()) -> Profile :: {ok | error, map()}.
+-spec names_to_ids(Profile :: map()) -> map().
 names_to_ids(Profile) ->
     Inbound = nested:get([<<"rules">>, <<"inbound">>], Profile, []),
     Outbound = nested:get([<<"rules">>, <<"outbound">>], Profile, []),
@@ -497,7 +497,7 @@ rule_names_to_ids(Rules, ServicesByName, ZonesByName, GroupsByName) ->
         Rules
     ).
 
--spec to_hcl_by_id(RulesetId :: iolist()) -> iolist().
+-spec to_hcl_by_id(RulesetId :: binary()) -> binary().
 to_hcl_by_id(RulesetId) ->
     {ok, RulesetWithIds} = get_by_id(RulesetId),
     Ruleset = ids_to_names(RulesetWithIds),
@@ -533,7 +533,7 @@ to_hcl(Ruleset) ->
     {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
     erlang:iolist_to_binary(IoData).
 
--spec rules_to_hcl(Rules :: map()) -> binary().
+-spec rules_to_hcl(Rules :: [map()]) -> [binary()].
 rules_to_hcl(Rules) ->
     lists:map(fun(Rule) ->
                       Group = case maps:get(<<"group">>,Rule) of

@@ -191,7 +191,7 @@ update_by_hostkey(HostKey, UpdateMap) ->
             create(UpdateMap)
     end.
 
--spec to_hcl_by_id(HostId :: iolist()) -> iolist().
+-spec to_hcl_by_id(HostId :: binary()) -> binary().
 to_hcl_by_id(HostId) ->
     {ok, Host} = get_by_id(HostId),
     to_hcl(Host). 

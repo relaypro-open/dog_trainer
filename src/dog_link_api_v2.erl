@@ -179,7 +179,7 @@ update(Id, UpdateMap) ->
             {false, Error}
     end.
 
--spec to_hcl_by_id(LinkId :: iolist()) -> iolist().
+-spec to_hcl_by_id(LinkId :: binary()) -> binary().
 to_hcl_by_id(LinkId) ->
     {ok, Link} = get_by_id(LinkId),
     to_hcl(Link). 

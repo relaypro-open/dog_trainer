@@ -30,18 +30,18 @@
 hostkey_to_routing_key(Hostkey) ->
     erlang:iolist_to_binary(["*.*.*.", Hostkey]).
 
--spec execute_command(ExecuteCommand :: string(), Hostkey :: string()) ->
+-spec execute_command(ExecuteCommand :: iodata(), Hostkey :: iodata()) ->
     {ok | error, iolist()}.
 execute_command(ExecuteCommand, Hostkey) ->
     execute_command(ExecuteCommand, Hostkey, []).
 
--spec execute_command(ExecuteCommand :: string(), Hostkey :: string(), Opts :: list()) ->
+-spec execute_command(ExecuteCommand :: iodata(), Hostkey :: iodata(), Opts :: list()) ->
     {ok | error, iolist()}.
 execute_command(ExecuteCommand, Hostkey, Opts) ->
     imetrics:add_m(file_transfer, execute_command),
     publish_execute_command(Hostkey, ExecuteCommand, Opts).
 
--spec publish_execute_command(Hostkey :: string(), ExecuteCommand :: string(), Opts :: list()) ->
+-spec publish_execute_command(Hostkey :: iodata(), ExecuteCommand :: iodata(), Opts :: list()) ->
     {ok | error, iolist()}.
 publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
     ExecuteCommandBase64 = base64:encode(ExecuteCommand),
@@ -91,7 +91,7 @@ delete_file(FilePath, Hostkey, Opts) ->
     imetrics:add_m(file_transfer, delete_file),
     publish_file_delete(Hostkey, FilePath, Opts).
 
--spec publish_file_delete(Hostkey :: string(), Filename :: string(), Opts :: list()) -> any().
+-spec publish_file_delete(Hostkey :: iodata(), Filename :: iodata(), Opts :: list()) -> any().
 publish_file_delete(Hostkey, Filename, Opts) ->
     FileDeleteTimeout = application:get_env(dog_trainer, file_delete_timeout_ms, 5000),
     Pid = erlang:self(),
@@ -127,9 +127,9 @@ publish_file_delete(Hostkey, Filename, Opts) ->
     end.
 
 -spec publish_file_send(
-    Hostkey :: string(),
-    RemoteFilePath :: string(),
-    Data :: string(),
+    Hostkey :: iodata(),
+    RemoteFilePath :: iodata(),
+    Data :: iodata(),
     TotalBlocks :: integer(),
     CurrentBlock :: integer(),
     MaxBlockSizeBytes :: integer(),
@@ -167,7 +167,7 @@ publish_file_send(
     Response.
 
 -spec send_file(
-    HostFilePath :: string(), LocalFilePath :: string(), RemoteFilePath :: string(), Hostkey :: string(), Opts :: list()
+    HostFilePath :: iodata(), LocalFilePath :: iodata(), RemoteFilePath :: iodata(), Hostkey :: iodata(), Opts :: list()
 ) -> ok | error.
 send_file(HostFilePath, LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
     imetrics:add_m(file_transfer, send_file),
@@ -228,7 +228,7 @@ fetch_file(FilePath, Hostkey, Opts) ->
     publish_file_fetch(Hostkey, FilePath, Opts).
 
 %Requires capability CAP_DAC_READ_SEARCH to read all files
--spec publish_file_fetch(Hostkey :: string(), Filename :: string(), Opts :: list()) -> any().
+-spec publish_file_fetch(Hostkey :: iodata(), Filename :: iodata(), Opts :: list()) -> any().
 publish_file_fetch(Hostkey, Filename, Opts) ->
     Pid = erlang:self(),
     Message = term_to_binary(

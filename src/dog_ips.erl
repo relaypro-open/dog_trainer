@@ -313,7 +313,7 @@ remove_local_ips(IPs) ->
     NonLocalhostIPs@1 = remove_local_ipv6_ips(NonLocalhostIPs@0),
     NonLocalhostIPs@1.
 
--spec check_config(Config :: map()) -> boolean().
+-spec check_config(Config :: map()) -> ok | error.
 check_config(Config) ->
   case is_map(Config) of
     true -> ok;

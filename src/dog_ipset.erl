@@ -465,11 +465,11 @@ hash_check(AgentIpsetHash) ->
             true
     end.
 
--spec update_ipsets() -> ok.
+-spec update_ipsets() -> pass.
 update_ipsets() ->
     update_ipsets(all_envs).
 
--spec update_ipsets(Env :: atom()) -> ok.
+-spec update_ipsets(Env :: atom()) -> pass.
 update_ipsets(Env) ->
     {ok, LatestHash} = latest_hash(),
     {MergedIpsetsList, InternalIpsetsMap} = create_ipsets(),

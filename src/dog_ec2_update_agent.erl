@@ -119,7 +119,7 @@ terminate(Reason, State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
--spec get_ec2_security_groups(Region :: binary()) -> {ok, Ec2Sgs :: map()}.
+-spec get_ec2_security_groups(Region :: undefined | string()) -> {ok, list()} | {error, map()}.
 get_ec2_security_groups(Region) ->
     Config = dog_ec2_sg:config(Region),
     Result = erlcloud_ec2:describe_security_groups([], [], [], Config),
@@ -134,7 +134,7 @@ get_ec2_security_groups(Region) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
--spec ec2_security_groups(Region :: binary()) -> Ec2Sgs :: list().
+-spec ec2_security_groups(Region :: undefined | string()) -> map().
 ec2_security_groups(Region) ->
     case get_ec2_security_groups(Region) of
         {ok, Ec2Sgs} ->
@@ -145,20 +145,20 @@ ec2_security_groups(Region) ->
             #{}
     end.
 
--spec ec2_security_group(Ec2SecurityGroupId :: binary(), Region :: binary()) ->
-    {ok, Ec2Sgs :: list()}.
+-spec ec2_security_group(Ec2SecurityGroupId :: binary(), Region :: undefined | string()) ->
+    any().
 ec2_security_group(Ec2SecurityGroupId, Region) ->
     Ec2SgsMap = ec2_security_groups(Region),
     Ec2Sg = maps:get(binary:bin_to_list(Ec2SecurityGroupId), Ec2SgsMap, {error, notfound}),
     Ec2Sg.
 
--spec ec2_security_group_ids(Region :: binary()) -> SgIds :: list().
+-spec ec2_security_group_ids(Region :: undefined | string()) -> SgIds :: list().
 ec2_security_group_ids(Region) ->
     Ec2Sgs = ec2_security_groups(Region),
     SgIds = maps:keys(Ec2Sgs),
     SgIds.
 
--spec ec2_classic_security_groups(Region :: binary()) -> Ec2Sgs :: list().
+-spec ec2_classic_security_groups(Region :: undefined | string()) -> map().
 ec2_classic_security_groups(Region) ->
     case get_ec2_security_groups(Region) of
         {ok, Ec2Sgs} ->
@@ -169,14 +169,14 @@ ec2_classic_security_groups(Region) ->
             #{}
     end.
 
--spec ec2_classic_security_group(Ec2SecurityGroupId :: binary(), Region :: binary()) ->
-    {ok, Ec2Sgs :: list()}.
+-spec ec2_classic_security_group(Ec2SecurityGroupId :: binary(), Region :: undefined | string()) ->
+    any().
 ec2_classic_security_group(Ec2SecurityGroupId, Region) ->
     Ec2SgsMap = ec2_classic_security_groups(Region),
     Ec2Sg = maps:get(binary:bin_to_list(Ec2SecurityGroupId), Ec2SgsMap, {error, notfound}),
     Ec2Sg.
 
--spec ec2_classic_security_group_ids(Region :: binary()) -> SgIds :: list().
+-spec ec2_classic_security_group_ids(Region :: undefined | string()) -> SgIds :: list().
 ec2_classic_security_group_ids(Region) ->
     Ec2Sgs = ec2_classic_security_groups(Region),
     SgIds = maps:keys(Ec2Sgs),

@@ -52,12 +52,12 @@ periodic_publish() ->
     ?LOG_INFO(#{message => "function"}, #{domain => [dog_trainer]}),
     gen_server:call(?MODULE, periodic_publish).
 
--spec queue_add_force(Source :: iolist) -> ok.
+-spec queue_add_force(Source :: iolist()) -> ok.
 queue_add_force(Source) ->
     imetrics:add_m(ipset_queue_add_force, Source),
     gen_server:cast(?MODULE, {add_to_queue, [force]}).
 
--spec queue_add(Source :: iolist) -> ok.
+-spec queue_add(Source :: iolist()) -> ok.
 queue_add(Source) ->
     imetrics:add_m(ipset_queue_add, Source),
     gen_server:cast(?MODULE, {add_to_queue, [Source]}).

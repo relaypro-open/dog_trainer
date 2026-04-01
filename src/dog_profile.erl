@@ -1047,8 +1047,7 @@ get_all_inbound_ports_by_protocol(ProfileJson) ->
 %NOTE: erlcloud encodes 'all services' as an atom '-1'
 %encodes 'all ports as integers from_port = 0, to_port = 0
 %encodes icmp as type in from_port as integer, and to_port as integer -1
--spec expand_services(Source :: binary(), Services :: binary()) ->
-    {Protocol :: binary(), FromPort :: binary(), ToPort :: binary(), Source :: binary()}.
+-spec expand_services(Source :: any(), Services :: [map()]) -> [any()].
 expand_services(Source, Services) ->
     lists:nth(
         1,
