@@ -60,17 +60,17 @@ loop(_RoutingKey, _CType, Payload, State) ->
     try
         Proplist = binary_to_term(Payload),
         UserData = proplists:get_value(user_data, Proplist),
-        ?LOG_DEBUG(#{userdata => UserData}),
+        ?LOG_DEBUG(#{userdata => UserData}, #{domain => [dog_trainer]}),
         Config = maps:get(config, UserData),
-        ?LOG_DEBUG(#{config => Config}),
-        ?LOG_DEBUG("dog_state:from_map(Config) : ~p", [dog_state:from_map(Config)]),
+        ?LOG_DEBUG(#{config => Config}, #{domain => [dog_trainer]}),
+        ?LOG_DEBUG(#{config => dog_state:from_map(Config)}, #{domain => [dog_trainer]}),
         GroupName = maps:get(<<"group">>, Config),
         UpdateType = maps:get(<<"updatetype">>, Config),
         imetrics:add_m(ips_update, erlang:atom_to_list(UpdateType)),
-        ?LOG_DEBUG(#{updatetype => UpdateType}),
+        ?LOG_DEBUG(#{updatetype => UpdateType}, #{domain => [dog_trainer]}),
         Hostname = maps:get(<<"name">>, Config),
         Hostkey = maps:get(<<"hostkey">>, Config),
-        ?LOG_DEBUG(#{hostname => Hostname, hostkey => Hostkey}),
+        ?LOG_DEBUG(#{hostname => Hostname, hostkey => Hostkey}, #{domain => [dog_trainer]}),
         dog_config:update_host_keepalive(Hostkey),
         UpdateSource = dog_common:concat([<<"host_group->">>,GroupName],binary),
         ConfigClean = maps:remove(<<"updatetype">>, Config),
@@ -90,17 +90,17 @@ loop(_RoutingKey, _CType, Payload, State) ->
                 end,
                 case UpdateType of
                     force ->
-                        ?LOG_INFO("got force: ~p", [Hostkey]),
+                        ?LOG_INFO(#{hostkey => Hostkey}, #{domain => [dog_trainer]}),
                         dog_host:update_by_hostkey(Hostkey, ConfigClean),
                         dog_ipset_update_agent:queue_add_force(UpdateSource),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     update ->
-                        ?LOG_INFO("got update: ~p", [Hostkey]),
+                        ?LOG_INFO(#{hostkey => Hostkey}, #{domain => [dog_trainer]}),
                         dog_host:update_by_hostkey(Hostkey, ConfigClean),
                         dog_ipset_update_agent:queue_add(UpdateSource),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     keepalive ->
-                        ?LOG_INFO("got keepalive: ~p", [Hostkey]),
+                        ?LOG_INFO(#{hostkey => Hostkey}, #{domain => [dog_trainer]}),
                         dog_host:update_by_hostkey(Hostkey, ConfigClean)
                 end;
             {error, Reason} ->
@@ -108,14 +108,13 @@ loop(_RoutingKey, _CType, Payload, State) ->
                     force ->
                         case application:get_env(dog_trainer, auto_register_hosts, true) of
                             true ->
-                                ?LOG_INFO("New host reporting: ~p", [Hostkey]),
+                                ?LOG_INFO(#{hostkey => Hostkey}, #{domain => [dog_trainer]}),
                                 dog_host:create(ConfigClean);
                             false ->
-                                ?LOG_ERROR("Auto Host registration disabled - Unknown host reporting: ~p", [Hostkey])
+                                ?LOG_ERROR(#{hostkey => Hostkey}, #{domain => [dog_trainer]})
                         end;
                     _ ->
-                        ?LOG_INFO("Host update for unknown host: ~p, Reason: ~p", [Hostkey,
-                                                                                   Reason])
+                        ?LOG_INFO(#{hostkey => Hostkey, reason => Reason}, #{domain => [dog_trainer]})
                 end
         end,
         dog_agent_checker:go()
@@ -126,7 +125,7 @@ loop(_RoutingKey, _CType, Payload, State) ->
                 exception => Exception,
                 exceptionreason => ExceptionReason,
                 stacktrace => Stacktrace
-            })
+            }, #{domain => [dog_trainer]})
     end,
     {ack, State}.
 
@@ -136,17 +135,17 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
     try
         Proplist = binary_to_term(Payload),
         UserData = proplists:get_value(user_data, Proplist),
-        ?LOG_INFO(#{userdata => UserData}),
+        ?LOG_INFO(#{userdata => UserData}, #{domain => [dog_trainer]}),
         Config = maps:get(config, UserData),
-        ?LOG_INFO(#{config => Config}),
-        ?LOG_INFO("dog_state:from_map(Config) : ~p", [dog_state:from_map(Config)]),
+        ?LOG_INFO(#{config => Config}, #{domain => [dog_trainer]}),
+        ?LOG_INFO(#{config => dog_state:from_map(Config)}, #{domain => [dog_trainer]}),
         GroupName = maps:get(<<"group">>, Config),
         UpdateType = maps:get(<<"updatetype">>, Config),
         imetrics:add_m(ips_update, erlang:atom_to_list(UpdateType)),
-        ?LOG_INFO(#{updatetype => UpdateType}),
+        ?LOG_INFO(#{updatetype => UpdateType}, #{domain => [dog_trainer]}),
         Hostname = maps:get(<<"name">>, Config),
         Hostkey = maps:get(<<"hostkey">>, Config),
-        ?LOG_INFO(#{hostname => Hostname, hostkey => Hostkey}),
+        ?LOG_INFO(#{hostname => Hostname, hostkey => Hostkey}, #{domain => [dog_trainer]}),
         dog_config:update_host_keepalive(Hostkey),
         ConfigClean = maps:remove(<<"updatetype">>, Config),
         ok = check_config(ConfigClean),
@@ -163,17 +162,17 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
                 end,
                 case UpdateType of
                     force ->
-                        ?LOG_INFO("got force: ~p", [Hostkey]),
+                        ?LOG_INFO(#{hostkey => Hostkey}, #{domain => [dog_trainer]}),
                         dog_host:update_by_hostkey(Hostkey, ConfigClean),
                         dog_ipset_update_agent:queue_add_force(Hostkey),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     update ->
-                        ?LOG_INFO("got update: ~p", [Hostkey]),
+                        ?LOG_INFO(#{hostkey => Hostkey}, #{domain => [dog_trainer]}),
                         dog_host:update_by_hostkey(Hostkey, ConfigClean),
                         dog_ipset_update_agent:queue_add(Hostkey),
                         dog_iptables:update_group_iptables(GroupName, <<"group">>);
                     keepalive ->
-                        ?LOG_INFO("got keepalive: ~p", [Hostkey]),
+                        ?LOG_INFO(#{hostkey => Hostkey}, #{domain => [dog_trainer]}),
                         dog_host:update_by_hostkey(Hostkey, ConfigClean)
                 end;
             {error, Reason} ->
@@ -181,14 +180,13 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
                     force ->
                         case application:get_env(dog_trainer, auto_register_hosts, true) of
                             true ->
-                                ?LOG_INFO("New host reporting: ~p", [Hostkey]),
+                                ?LOG_INFO(#{hostkey => Hostkey}, #{domain => [dog_trainer]}),
                                 dog_host:create(ConfigClean);
                             false ->
-                                ?LOG_ERROR("Auto Host registration disabled - Unknown host reporting: ~p", [Hostkey])
+                                ?LOG_ERROR(#{hostkey => Hostkey}, #{domain => [dog_trainer]})
                         end;
                     _ ->
-                        ?LOG_INFO("Host update for unknown host: ~p, Reason: ~p", [Hostkey,
-                                                                                   Reason])
+                        ?LOG_INFO(#{hostkey => Hostkey, reason => Reason}, #{domain => [dog_trainer]})
                 end
         end,
         dog_agent_checker:go()
@@ -199,7 +197,7 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
                          exception => Exception,
                          exceptionreason => ExceptionReason,
                          stacktrace => Stacktrace
-                        })
+                        }, #{domain => [dog_trainer]})
     end,
     ack.
 

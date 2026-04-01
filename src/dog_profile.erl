@@ -50,7 +50,7 @@ init() ->
 generate_ipv6_iptables_ruleset_by_id(Id, SelfGroupName) ->
     case get_by_id(Id) of
         {error, _Error} ->
-            ?LOG_INFO("No profile associated with group id: ~p", [Id]),
+            ?LOG_INFO(#{id => Id}, #{domain => [dog_trainer]}),
             throw(profile_not_found);
         {ok, ProfileJson} ->
             IpsetsIptablesRulesetResult = dog_iptables_ruleset:generate_iptables_ruleset(
@@ -91,7 +91,7 @@ generate_ipv4_iptables_ruleset_by_group_name(
 ) ->
     case dog_group:get_profile_by_name(GroupName) of
         {error, _Error} ->
-            ?LOG_INFO("No profile associated with group: ~p", [GroupName]),
+            ?LOG_INFO(#{groupname => GroupName}, #{domain => [dog_trainer]}),
             throw(profile_not_found);
         {ok, ProfileJson} ->
             write_profile_to_file(ProfileJson, GroupName),
@@ -145,7 +145,7 @@ generate_ipv6_iptables_ruleset_by_group_id(GroupId) ->
 
 -spec profile_not_found(GroupId :: binary()) -> no_return().
 profile_not_found(GroupId) ->
-    ?LOG_INFO("No profile associated with group id: ~p", [GroupId]),
+    ?LOG_INFO(#{groupid => GroupId}, #{domain => [dog_trainer]}),
     throw(profile_not_found).
 
 -spec generate_ipv6_iptables_ruleset_by_group_name(
@@ -171,7 +171,7 @@ generate_ipv6_iptables_ruleset_by_group_name(
     Response = dog_group:get_profile_by_name(GroupName),
     case Response of
         {error, _Reason} ->
-            ?LOG_INFO("No profile associated with group name: ~p", [GroupName]),
+            ?LOG_INFO(#{groupname => GroupName}, #{domain => [dog_trainer]}),
             throw(profile_not_found);
         {ok, ProfileJson} ->
             write_profile_to_file(ProfileJson, GroupName),
@@ -295,7 +295,7 @@ normalize_iptables_ruleset(IptablesRuleset) ->
 -spec create_hash(IptablesRuleset :: iodata()) -> binary().
 create_hash(IptablesRuleset) ->
     IptablesRulesetTrimmed = normalize_iptables_ruleset(IptablesRuleset),
-    ?LOG_INFO("IptablesRulesetTrimmed: ~p", [IptablesRulesetTrimmed]),
+    ?LOG_INFO(#{iptablesrulesettrimmed => IptablesRulesetTrimmed}, #{domain => [dog_trainer]}),
     BitString = base16:encode(crypto:hash(sha256, IptablesRulesetTrimmed)),
     Binary = binary:list_to_bin(erlang:bitstring_to_list(BitString)),
     Binary.
@@ -484,7 +484,7 @@ create_iptables_ruleset(
     ServiceIdMap,
     _Ipsets
 ) ->
-    ?LOG_INFO("creating Ipv4,Ipv6 iptables_rulesets, ipsets: ~p", [RoutingKey]),
+    ?LOG_INFO(#{routingkey => RoutingKey}, #{domain => [dog_trainer]}),
     {R4IpsetsResult, R4IptablesResult} = generate_ipv4_iptables_ruleset_by_group_name(
         Group,
         Ipv4RoleMap,
@@ -513,19 +513,12 @@ create_iptables_ruleset(
     ]),
     case AnyError of
         true ->
-            ?LOG_INFO(
-                "Error generating at least one Ipv4,Ipv6 iptables_ruleset or ipsets, not publishing: ~p",
-                [
-                    RoutingKey
-                ]
-            ),
+            ?LOG_INFO(#{routingkey => RoutingKey}, #{domain => [dog_trainer]}),
             error;
         false ->
             case AnyNull of
                 true ->
-                    ?LOG_INFO("Found null Ipset or IpIptablesRuleset, not publishing: ~p", [
-                        RoutingKey
-                    ]),
+                    ?LOG_INFO(#{routingkey => RoutingKey}, #{domain => [dog_trainer]}),
                     {false, false, false, false};
                 false ->
                     {ok, R4IpsetsIptablesRuleset} = R4IpsetsResult,
@@ -595,7 +588,7 @@ date_string() ->
 
 -spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(ProfileMap@0) ->
-    ?LOG_DEBUG(#{profilemap@0 => ProfileMap@0}),
+    ?LOG_DEBUG(#{profilemap@0 => ProfileMap@0}, #{domain => [dog_trainer]}),
     Name = maps:get(<<"name">>, ProfileMap@0),
     {RulesMap@0, ProfileMap@1} = maps:take(<<"rules">>, ProfileMap@0),
     {ok, ExistingProfiles} = get_all(),
@@ -612,7 +605,7 @@ create(ProfileMap@0) ->
                         end
                     ),
                     ProfileId = hd(maps:get(<<"generated_keys">>, R)),
-                    ?LOG_DEBUG("create R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                     {ok, _RulesetId} = dog_ruleset:create(
                         #{
                             <<"name">> => Name,
@@ -659,7 +652,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, profile name not found: ~p", [Name]),
+            ?LOG_ERROR(#{name => Name}, #{domain => [dog_trainer]}),
             {error, notfound};
         _ ->
             Profile = hd(Result),
@@ -711,7 +704,7 @@ get_by_id(Id) ->
     ),
     case R of
         {ok, null} ->
-            ?LOG_DEBUG("profile id null return value: ~p", [Id]),
+            ?LOG_DEBUG(#{id => Id}, #{domain => [dog_trainer]}),
             {error, notfound};
         {ok, Profile} ->
             add_rules(Profile)
@@ -737,7 +730,7 @@ add_rules(Profile) ->
 -spec update(Id :: binary(), UpdateMap :: map()) ->
     {false, atom()} | {validation_error, iolist()} | {true, binary()}.
 update(Id, UpdateMap) ->
-    ?LOG_INFO("update_in_place"),
+    ?LOG_INFO(#{message => "update_in_place"}, #{domain => [dog_trainer]}),
     case get_by_id(Id) of
         {ok, OldProfile} ->
             ProfileId = maps:get(<<"id">>, OldProfile),
@@ -762,7 +755,7 @@ update(Id, UpdateMap) ->
                                     reql:update(X, UpdateMap@0)
                                 end
                             ),
-                            ?LOG_DEBUG("update R: ~p~n", [R]),
+                            ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                             Replaced = maps:get(<<"replaced">>, R),
                             Unchanged = maps:get(<<"unchanged">>, R),
                             case {Replaced, Unchanged} of
@@ -794,7 +787,7 @@ update(Id, UpdateMap) ->
                                     reql:update(X, UpdateMap@0)
                                 end
                             ),
-                            ?LOG_DEBUG("update R: ~p~n", [R]),
+                            ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                             Replaced = maps:get(<<"replaced">>, R),
                             Unchanged = maps:get(<<"unchanged">>, R),
                             case {Replaced, Unchanged} of
@@ -825,14 +818,14 @@ delete(Id) ->
                     reql:delete(X)
                 end
             ),
-            ?LOG_DEBUG("delete R: ~p~n", [R]),
+            ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
             {ok, Ruleset} = dog_ruleset:get_by_name(ProfileName),
             RulesetId = maps:get(<<"id">>, Ruleset),
-            ?LOG_DEBUG(#{ruleset_id => RulesetId}),
+            ?LOG_DEBUG(#{ruleset_id => RulesetId}, #{domain => [dog_trainer]}),
             dog_ruleset:delete(RulesetId),
             ok;
         {ok, Groups} ->
-            ?LOG_INFO("profile ~p not deleted, associated with group: ~p~n", [Id, Groups]),
+            ?LOG_INFO(#{id => Id, groups => Groups}, #{domain => [dog_trainer]}),
             {error, #{<<"errors">> => #{<<"associated with group">> => Groups}}}
     end.
 
@@ -841,7 +834,7 @@ rule_to_text(Rule, Keys) ->
     Values = lists:map(
         fun(L) ->
             Value = maps:get(L, Rule),
-            ?LOG_DEBUG("Key: ~p Value: ~p~n", [L, Value]),
+            ?LOG_DEBUG(#{l => L, value => Value}, #{domain => [dog_trainer]}),
             case L of
                 <<"group">> ->
                     case Value of

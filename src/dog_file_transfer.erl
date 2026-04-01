@@ -68,16 +68,16 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
             )
         of
             {error, Reason} ->
-                ?LOG_ERROR(#{reason => Reason, routing_key => RoutingKey}),
+                ?LOG_ERROR(#{reason => Reason, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
                 {error, Reason};
             {ok, _NTime, _CType, Payload} ->
-                ?LOG_DEBUG(#{payload => Payload, routing_key => RoutingKey}),
+                ?LOG_DEBUG(#{payload => Payload, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
                 case decode_payload(Payload) of
                     {<<"error">>, StdErr} ->
-                        ?LOG_ERROR(#{stderr => StdErr, routing_key => RoutingKey}),
+                        ?LOG_ERROR(#{stderr => StdErr, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
                         {error, StdErr};
                     {<<"ok">>, StdOut} ->
-                        ?LOG_INFO(#{stdout => StdOut, routing_key => RoutingKey}),
+                        ?LOG_INFO(#{stdout => StdOut, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
                         {ok, string:trim(StdOut, trailing, "\n")}
                 end
         end,
@@ -115,7 +115,7 @@ publish_file_delete(Hostkey, Filename, Opts) ->
         )
     of
         {error, Reason} ->
-            ?LOG_ERROR(#{reason => Reason, routing_key => RoutingKey}),
+            ?LOG_ERROR(#{reason => Reason, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
             Reason;
         {ok, _NTime, _CType, Payload} ->
             case hd(jsx:decode(Payload)) of
@@ -155,7 +155,7 @@ publish_file_send(
         ] ++ Opts
     ),
     RoutingKey = hostkey_to_routing_key(Hostkey),
-    ?LOG_DEBUG(#{routing_key => RoutingKey}),
+    ?LOG_DEBUG(#{routing_key => RoutingKey}, #{domain => [dog_trainer]}),
     Response = turtle:publish_sync(
         file_transfer_publisher,
         <<"file_transfer">>,
@@ -172,11 +172,11 @@ publish_file_send(
 send_file(HostFilePath, LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
     imetrics:add_m(file_transfer, send_file),
     MaxBlockSizeBytes = application:get_env(dog_trainer, max_block_size_bytes, 134217728),
-    ?LOG_DEBUG(#{localfilepath => LocalFilePath, hostkey => Hostkey}),
+    ?LOG_DEBUG(#{localfilepath => LocalFilePath, hostkey => Hostkey}, #{domain => [dog_trainer]}),
     {ok, IoDevice} = file:open(LocalFilePath, [read, binary, read_ahead, raw]),
     ok = send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts),
     ok = file:close(IoDevice),
-    ?LOG_DEBUG("del_dir_r: ~p",[HostFilePath]),
+    ?LOG_DEBUG(#{hostfilepath => HostFilePath}, #{domain => [dog_trainer]}),
     ok = file:del_dir_r(HostFilePath).
 
 send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts) ->
@@ -191,7 +191,7 @@ send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBloc
                 maxblocksizebytes => MaxBlockSizeBytes,
                 currentblock => CurrentBlock,
                 total_blocks => TotalBlocks
-            }),
+            }, #{domain => [dog_trainer]}),
             % Write Data to Socket
             NextBlock = CurrentBlock + 1,
             {ack, _Time} = publish_file_send(
@@ -212,7 +212,7 @@ send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBloc
     FileSize :: integer().
 number_blocks(LocalFilePath, MaxBlockSizeBytes) ->
     {ok, FileInfo} = file:read_file_info(LocalFilePath),
-    ?LOG_DEBUG(#{file_info => FileInfo}),
+    ?LOG_DEBUG(#{file_info => FileInfo}, #{domain => [dog_trainer]}),
     FullBlocks = erlang:floor(FileInfo#file_info.size / MaxBlockSizeBytes),
     FileSize =
         case FileInfo#file_info.size rem MaxBlockSizeBytes of
@@ -252,21 +252,21 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
         )
     of
         {error, Reason} ->
-            ?LOG_ERROR(#{reason => Reason}),
+            ?LOG_ERROR(#{reason => Reason}, #{domain => [dog_trainer]}),
             {error, Reason};
         {ok, _NTime, CType, Response} ->
-            ?LOG_DEBUG(#{ctype => CType}),
+            ?LOG_DEBUG(#{ctype => CType}, #{domain => [dog_trainer]}),
             case CType of
                 <<"application/octet-stream">> ->
-                    ?LOG_INFO("Response size in bytes: ~p", [erlang:size(Response)]),
+                    ?LOG_INFO(#{response => erlang:size(Response)}, #{domain => [dog_trainer]}),
                     Response;
                 <<"text/json">> ->
                     case hd(jsx:decode(Response)) of
                         {<<"error">>, StdErr} ->
-                            ?LOG_ERROR(#{stderr => StdErr, routing_key => RoutingKey}),
+                            ?LOG_ERROR(#{stderr => StdErr, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
                             {error, StdErr};
                         {<<"ok">>, StdOut} ->
-                            ?LOG_INFO(#{stdout => StdOut, routing_key => RoutingKey}),
+                            ?LOG_INFO(#{stdout => StdOut, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
                             {ok, StdOut}
                     end
             end

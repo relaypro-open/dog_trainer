@@ -34,10 +34,10 @@ validate(Type, Document) ->
         Validation = jesse:validate_with_schema(SchemaMap, Document),
         case Validation of
             {ok, _Reason} ->
-                ?LOG_DEBUG(#{type => Type, name => Name, id => Id, validation => Validation}),
+                ?LOG_DEBUG(#{type => Type, name => Name, id => Id, validation => Validation}, #{domain => [dog_trainer]}),
                 ok;
             {error, Reason} ->
-                ?LOG_ERROR(#{type => Type, name => Name, id => Id, validation => Validation, reason => Reason}),
+                ?LOG_ERROR(#{type => Type, name => Name, id => Id, validation => Validation, reason => Reason}, #{domain => [dog_trainer]}),
                 {error, Reason}
         end.
     %catch
@@ -89,5 +89,5 @@ validate_all(Type) ->
         errors => ErrorDocuments,
         total_documents => TotalDocuments
     },
-    ?LOG_INFO("Validation Results: ~p", [ResultMap]),
+    ?LOG_INFO(#{resultmap => ResultMap}, #{domain => [dog_trainer]}),
     ResultMap.

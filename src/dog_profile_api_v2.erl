@@ -25,7 +25,7 @@
 
 -spec create(Profile :: map()) -> {'ok', iolist()} | {atom(), binary()}.
 create(Profile) ->
-    ?LOG_DEBUG("Profile: ~p~n", [Profile]),
+    ?LOG_DEBUG(#{profile => Profile}, #{domain => [dog_trainer]}),
     %Timestamp = dog_time:timestamp(),
     case dog_json_schema:validate(?VALIDATION_TYPE, Profile) of
         ok ->
@@ -40,7 +40,7 @@ create(Profile) ->
             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
             {ok, NewVal};
         {error, Error} ->
-            ?LOG_ERROR("~p", [Error]),
+            ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]}),
             Response = dog_parse:validation_error(Error),
             {validation_error, Response}
     end.
@@ -55,7 +55,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 ->
@@ -137,7 +137,7 @@ get_by_id(Id) ->
     ),
     case R of
         {ok, null} ->
-            ?LOG_DEBUG("profile id null return value: ~p", [Id]),
+            ?LOG_DEBUG(#{id => Id}, #{domain => [dog_trainer]}),
             {error, notfound};
         {ok, Profile} ->
             {ok, Profile}
@@ -156,7 +156,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, profile name not found: ~p", [Name]),
+            ?LOG_ERROR(#{name => Name}, #{domain => [dog_trainer]}),
             {error, notfound};
         _ ->
             Profile = hd(Result),
@@ -177,7 +177,7 @@ update(Id, UpdateMap, _InPlace) ->
 -spec update_in_place(Id :: binary(), UpdateMap :: map()) ->
     {false, atom()} | {validation_error, iolist()} | {true, binary()}.
 update_in_place(Id, UpdateMap) ->
-    ?LOG_INFO("update_in_place"),
+    ?LOG_INFO(#{message => "update_in_place"}, #{domain => [dog_trainer]}),
     case get_by_id(Id) of
         {ok, OldProfile} ->
             NewProfile = maps:merge(OldProfile, UpdateMap),
@@ -191,7 +191,7 @@ update_in_place(Id, UpdateMap) ->
                             reql:update(X, UpdateMap, #{return_changes => always})
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of

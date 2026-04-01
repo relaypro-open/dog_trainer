@@ -49,7 +49,7 @@ start_link() ->
 
 -spec periodic_publish() -> OldServer :: ok.
 periodic_publish() ->
-    ?LOG_INFO("function"),
+    ?LOG_INFO(#{message => "function"}, #{domain => [dog_trainer]}),
     gen_server:call(?MODULE, periodic_publish).
 
 -spec queue_add_force(Source :: iolist) -> ok.
@@ -121,7 +121,7 @@ handle_cast(flush_queue, _State) ->
     NewState = {ok, []},
     {noreply, NewState};
 handle_cast(Msg, State) ->
-    ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
+    ?LOG_ERROR(#{msg => Msg, state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -140,7 +140,7 @@ handle_info(periodic_publish, State) ->
     erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     {noreply, NewState};
 handle_info(Info, State) ->
-    ?LOG_ERROR("unknown_message: Info: ~p, State: ~p", [Info, State]),
+    ?LOG_ERROR(#{info => Info, state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -150,7 +150,7 @@ handle_info(Info, State) ->
 %%----------------------------------------------------------------------
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    ?LOG_INFO(#{reason => Reason, state => State}, #{domain => [dog_trainer]}),
     {close}.
 
 -spec code_change(_, State :: ips_state(), _) -> {ok, State :: ips_state()}.
@@ -162,18 +162,18 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 -spec do_periodic_publish(_) -> OldServers :: {ok, list()}.
 do_periodic_publish(State) ->
-    ?LOG_INFO("do_periodic_publish"),
+    ?LOG_INFO(#{message => "do_periodic_publish"}, #{domain => [dog_trainer]}),
     case dog_agent_checker:check() of
         true ->
             case State of
                 [] ->
                     {ok, []};
                 _ ->
-                    ?LOG_INFO("ipset queue: ~p", [State]),
-                    ?LOG_INFO("length of ipset queue: ~p", [length(State)]),
+                    ?LOG_INFO(#{state => State}, #{domain => [dog_trainer]}),
+                    ?LOG_INFO(#{state => length(State)}, #{domain => [dog_trainer]}),
                     case lists:member(force,State) of
                       true ->
-                        ?LOG_DEBUG("force ipset update"),
+                        ?LOG_DEBUG(#{message => "force ipset update"}, #{domain => [dog_trainer]}),
                         dog_ipset:force_update_ipsets();
                       false ->
                         dog_ipset:update_ipsets()
@@ -181,6 +181,6 @@ do_periodic_publish(State) ->
                     {ok, []}
             end;
         false ->
-            ?LOG_INFO("Skipping, dog_agent_checker:check() false"),
+            ?LOG_INFO(#{message => "Skipping, dog_agent_checker:check() false"}, #{domain => [dog_trainer]}),
             {ok, State}
     end.

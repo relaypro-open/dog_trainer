@@ -105,7 +105,7 @@ handle_cast({add_to_queue, Groups}, State) ->
     NewState = ordsets:union(ordsets:from_list(Groups), State),
     {noreply, NewState};
 handle_cast(Msg, State) ->
-    ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
+    ?LOG_ERROR(#{msg => Msg, state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -124,7 +124,7 @@ handle_info(periodic_publish, State) ->
     erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     {noreply, NewState};
 handle_info(Info, State) ->
-    ?LOG_ERROR("unknown_message: Info: ~p, State: ~p", [Info, State]),
+    ?LOG_ERROR(#{info => Info, state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -134,7 +134,7 @@ handle_info(Info, State) ->
 %%----------------------------------------------------------------------
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    ?LOG_INFO(#{reason => Reason, state => State}, #{domain => [dog_trainer]}),
     {close}.
 
 -spec code_change(_, State :: ips_state(), _) -> {ok, State :: ips_state()}.
@@ -152,7 +152,7 @@ do_periodic_publish([]) ->
 do_periodic_publish(State) ->
     case dog_agent_checker:check() of
         true ->
-            ?LOG_INFO("State: ~p", [State]),
+            ?LOG_INFO(#{state => State}, #{domain => [dog_trainer]}),
             Groups = ordsets:to_list(State),
             imetrics:set_gauge(publish_queue_length, length(Groups)),
             PeriodicPublishMax = application:get_env(dog_trainer, periodic_publish_max, 10),
@@ -223,15 +223,15 @@ do_periodic_publish(State) ->
                         end
                     catch
                         profile_not_found ->
-                            ?LOG_INFO("profile_not_found in group: ~p", [Group]),
+                            ?LOG_INFO(#{group => Group}, #{domain => [dog_trainer]}),
                             {Group, profile_not_found}
                     end
                 end,
                 GroupsWithoutEmptyProfiles
             ),
-            ?LOG_INFO("PublishList: ~p", [PublishList]),
+            ?LOG_INFO(#{publishlist => PublishList}, #{domain => [dog_trainer]}),
             {ok, ordsets:from_list(LeftoverGroups)};
         false ->
-            ?LOG_INFO("Skipping, dog_agent_checker:check() false"),
+            ?LOG_INFO(#{message => "Skipping, dog_agent_checker:check() false"}, #{domain => [dog_trainer]}),
             {ok, State}
     end.

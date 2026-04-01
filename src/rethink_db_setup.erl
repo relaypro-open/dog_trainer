@@ -172,7 +172,7 @@ create_initial_global_hash(Connection) ->
         end
     ),
     {ok, Result} = rethink_cursor:all(R),
-    ?LOG_DEBUG("Result: ~p", [Result]),
+    ?LOG_DEBUG(#{result => Result}, #{domain => [dog_trainer]}),
     case lists:flatten(Result) of
         [] ->
             Record = #{

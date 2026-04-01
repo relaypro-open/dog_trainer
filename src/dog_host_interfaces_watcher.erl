@@ -52,7 +52,7 @@ state(Ref) ->
     gen_requery:call(Ref, state, infinity).
 
 init([]) ->
-    ?LOG_INFO("init"),
+    ?LOG_INFO(#{message => "init"}, #{domain => [dog_trainer]}),
     % The ConnectOptions are provided to gen_rethink:connect_unlinked
     RethinkdbHost = application:get_env(dog_trainer, rethinkdb_host, "localhost"),
     RethinkdbPort = application:get_env(dog_trainer, rethinkdb_port, 28015),
@@ -76,8 +76,8 @@ init([]) ->
 %% the managed connection is newly established
 handle_connection_up(Connection, State) ->
     %{ok,RethinkSquashSec} = application:get_env(dog_trainer,rethink_squash_sec),
-    ?LOG_INFO("handle_connection_up"),
-    ?LOG_INFO("Connection: ~p", [Connection]),
+    ?LOG_INFO(#{message => "handle_connection_up"}, #{domain => [dog_trainer]}),
+    ?LOG_INFO(#{connection => Connection}, #{domain => [dog_trainer]}),
     Reql = reql:db(<<"dog">>),
     reql:table(Reql, <<"host">>),
     reql:pluck(Reql, [<<"interfaces">>]),
@@ -89,17 +89,17 @@ handle_connection_up(Connection, State) ->
 %% reconnect state with exponential backoffs. Your module can still process
 %% requests during this time.
 handle_connection_down(State) ->
-    ?LOG_INFO("handle_connection_down"),
+    ?LOG_INFO(#{message => "handle_connection_down"}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 handle_query_result(Result, State) ->
-    ?LOG_INFO("Result: ~p", [Result]),
+    ?LOG_INFO(#{result => Result}, #{domain => [dog_trainer]}),
     case Result of
         [] ->
             pass;
         _ ->
             imetrics:add_m(watcher, host_config_update),
-            ?LOG_INFO("dog_ipset_update_agent:queue_add()"),
+            ?LOG_INFO(#{message => "dog_ipset_update_agent:queue_add()"}, #{domain => [dog_trainer]}),
             dog_ipset_update_agent:queue_add(<<"dog_host_interface_watcher">>)
     end,
     {noreply, [Result | State]}.
@@ -111,15 +111,15 @@ handle_query_error(Error, State) ->
     {stop, Error, State}.
 
 handle_call(state, _From, State) ->
-    ?LOG_DEBUG("handle_call changefeed: ~p", [State]),
+    ?LOG_DEBUG(#{state => State}, #{domain => [dog_trainer]}),
     {reply, State, State}.
 
 handle_cast(_Msg, State) ->
-    ?LOG_DEBUG("handle_cast changefeed: ~p", [State]),
+    ?LOG_DEBUG(#{state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 handle_info(_Info, State) ->
-    ?LOG_DEBUG("handle_info changefeed: ~p", [State]),
+    ?LOG_DEBUG(#{state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

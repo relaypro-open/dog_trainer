@@ -81,7 +81,7 @@ handle_call(_Request, _From, State) ->
 handle_cast(stop, State) ->
     {stop, normal, State};
 handle_cast(Msg, State) ->
-    ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
+    ?LOG_ERROR(#{msg => Msg, state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -98,7 +98,7 @@ handle_info(watch_keepalives, State) ->
     erlang:send_after(PollingIntervalSeconds * 1000, self(), watch_keepalives),
     {noreply, []};
 handle_info(Info, State) ->
-    ?LOG_ERROR("unknown_message: Info: ~p, State: ~p", [Info, State]),
+    ?LOG_ERROR(#{info => Info, state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -108,7 +108,7 @@ handle_info(Info, State) ->
 %%----------------------------------------------------------------------
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    ?LOG_INFO(#{reason => Reason, state => State}, #{domain => [dog_trainer]}),
     {close}.
 
 -spec code_change(_, State :: ips_state(), _) -> {ok, State :: ips_state()}.
@@ -135,7 +135,7 @@ do_watch_keepalives(_State) ->
         true ->
             {ok, HostsRetirementCheck} = dog_host:retirement_check(),
             RetiredHostIds = [maps:get(<<"id">>, H) || H <- HostsRetirementCheck],
-            ?LOG_DEBUG("RetiredHostIds: ~p", [RetiredHostIds]),
+            ?LOG_DEBUG(#{retiredhostids => RetiredHostIds}, #{domain => [dog_trainer]}),
             case RetiredHostIds of
                 [] ->
                     imetrics:set_gauge_m(<<"host_keepalive">>, <<"retirement">>, 0),
@@ -179,6 +179,6 @@ do_watch_keepalives(_State) ->
         false ->
             imetrics:set_gauge_m(<<"host_keepalive">>, <<"retirement">>, 0),
             imetrics:set_gauge_m(<<"host_keepalive">>, <<"inactive">>, 0),
-            ?LOG_INFO("Skipping, dog_agent_checker:check() false"),
+            ?LOG_INFO(#{message => "Skipping, dog_agent_checker:check() false"}, #{domain => [dog_trainer]}),
             ok
     end.

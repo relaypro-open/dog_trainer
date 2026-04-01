@@ -36,7 +36,7 @@ publish_ec2_sg_by_name(DogGroupName) ->
         {ok, DogGroup} ->
             publish_ec2_sgs(DogGroup);
         _ ->
-            ?LOG_INFO("Group not found: ~p~n", [DogGroupName]),
+            ?LOG_INFO(#{doggroupname => DogGroupName}, #{domain => [dog_trainer]}),
             []
     end.
 
@@ -48,7 +48,7 @@ publish_ec2_sgs(DogGroup) ->
         fun(Ec2Sg) ->
             Region = maps:get(<<"region">>, Ec2Sg),
             SgId = maps:get(<<"sgid">>, Ec2Sg),
-            ?LOG_DEBUG("Region, SgId: ~p, ~p~n", [Region, SgId]),
+            ?LOG_DEBUG(#{region => Region, sgid => SgId}, #{domain => [dog_trainer]}),
             Ec2SgIds = dog_ec2_update_agent:ec2_security_group_ids(Region),
             case lists:member(binary:bin_to_list(SgId), Ec2SgIds) of
                 true ->
@@ -72,7 +72,7 @@ publish_ec2_sg({DogGroup, Region, SgId}) ->
             Region,
             AddRemoveMapIngress
         )},
-    ?LOG_DEBUG("Ingress Results: ~p~n", [ResultsIngress]),
+    ?LOG_DEBUG(#{resultsingress => ResultsIngress}, #{domain => [dog_trainer]}),
     AddRemoveMapEgress = diff_sg_egress(SgId, Region, DogGroupId),
     ResultsEgress =
         {update_sg_egress(
@@ -80,7 +80,7 @@ publish_ec2_sg({DogGroup, Region, SgId}) ->
             Region,
             AddRemoveMapEgress
         )},
-    ?LOG_DEBUG("Egress Results: ~p~n", [ResultsEgress]),
+    ?LOG_DEBUG(#{resultsegress => ResultsEgress}, #{domain => [dog_trainer]}),
     [ResultsIngress, ResultsEgress].
 
 -spec diff_sg_by_name(DogGroupName :: string(), Region :: string(), SgId :: string()) -> map().
@@ -101,33 +101,33 @@ diff_sg_ingress(Ec2SecurityGroupId, Region, DogGroupId) ->
     Ppps = dog_group:get_ppps_inbound_ec2(DogGroup, Region),
     DefaultPpps = default_ingress_spps_rules(Ec2SecurityGroupId),
     IngressRulesPpps = ordsets:to_list(ordsets:from_list(Ppps ++ DefaultPpps)),
-    ?LOG_DEBUG("IngressRulesPpps: ~p", [IngressRulesPpps]),
+    ?LOG_DEBUG(#{ingressrulesppps => IngressRulesPpps}, #{domain => [dog_trainer]}),
     IngressRulesSpps = ppps_to_spps_ingress(IngressRulesPpps),
-    ?LOG_DEBUG("IngressRulesSpecs: ~p~n", [IngressRulesSpps]),
+    ?LOG_DEBUG(#{ingressrulesspps => IngressRulesSpps}, #{domain => [dog_trainer]}),
     case dog_ec2_update_agent:ec2_security_group(Ec2SecurityGroupId, Region) of
         {error, Reason} ->
-            ?LOG_ERROR("Ec2SecurityGroupId doesn't exist: ~p~n", [Ec2SecurityGroupId]),
+            ?LOG_ERROR(#{ec2securitygroupid => Ec2SecurityGroupId}, #{domain => [dog_trainer]}),
             {error, Reason};
         _ ->
             ExistingRulesSpps = ip_permissions_ingress(Region, Ec2SecurityGroupId),
-            ?LOG_DEBUG("ExistingRulesSpps: ~p~n", [ExistingRulesSpps]),
+            ?LOG_DEBUG(#{existingrulesspps => ExistingRulesSpps}, #{domain => [dog_trainer]}),
             ExistingRulesPpps = ingress_records_to_ppps(ExistingRulesSpps),
             NewAddVpcIngressPpps = ordsets:subtract(
                 ordsets:from_list(IngressRulesPpps), ordsets:from_list(ExistingRulesPpps)
             ),
-            ?LOG_DEBUG("ExistingRulesPpps: ~p~n", [ExistingRulesPpps]),
+            ?LOG_DEBUG(#{existingrulesppps => ExistingRulesPpps}, #{domain => [dog_trainer]}),
             RemoveVpcIngressPpps = ordsets:subtract(
                 ordsets:from_list(ExistingRulesPpps), ordsets:from_list(IngressRulesPpps)
             ),
-            ?LOG_DEBUG("NewAddVpcIngressPpps: ~p~n", [NewAddVpcIngressPpps]),
-            ?LOG_DEBUG("RemoveVpcIngressPpps: ~p~n", [RemoveVpcIngressPpps]),
+            ?LOG_DEBUG(#{newaddvpcingressppps => NewAddVpcIngressPpps}, #{domain => [dog_trainer]}),
+            ?LOG_DEBUG(#{removevpcingressppps => RemoveVpcIngressPpps}, #{domain => [dog_trainer]}),
             NewAddVpcIngressSpps = ppps_to_spps_ingress(NewAddVpcIngressPpps),
             RemoveVpcIngressSpps = ppps_to_spps_ingress(RemoveVpcIngressPpps),
             SgDiff = #{
                 <<"Add">> => NewAddVpcIngressSpps,
                 <<"Remove">> => RemoveVpcIngressSpps
             },
-            ?LOG_DEBUG("SgDiff: ~p~n", [SgDiff]),
+            ?LOG_DEBUG(#{sgdiff => SgDiff}, #{domain => [dog_trainer]}),
             SgDiff
     end.
 
@@ -137,7 +137,7 @@ update_sg_ingress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
     Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),
     Config = config(Region),
     NewAddVpcIngressSpecs = maps:get(<<"Add">>, AddRemoveMap),
-    ?LOG_DEBUG("NewAddVpcIngressSpecs: ~p~n", [NewAddVpcIngressSpecs]),
+    ?LOG_DEBUG(#{newaddvpcingressspecs => NewAddVpcIngressSpecs}, #{domain => [dog_trainer]}),
     AddResults =
         case NewAddVpcIngressSpecs of
             [] ->
@@ -149,7 +149,7 @@ update_sg_ingress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
                     )
                 )
         end,
-    ?LOG_DEBUG("~p~n", [AddResults]),
+    ?LOG_DEBUG(#{addresults => AddResults}, #{domain => [dog_trainer]}),
     RemoveVpcIngressSpecs = maps:get(<<"Remove">>, AddRemoveMap),
     RemoveResults =
         case RemoveVpcIngressSpecs of
@@ -163,7 +163,7 @@ update_sg_ingress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
                 )
         end,
     AllResults = [AddResults, RemoveResults],
-    ?LOG_DEBUG("AllResults: ~p~n", [AllResults]),
+    ?LOG_DEBUG(#{allresults => AllResults}, #{domain => [dog_trainer]}),
     AllResultTrueFalse = lists:all(fun(X) -> (X == ok) or (X == []) end, AllResults),
     AllResult =
         case AllResultTrueFalse of
@@ -178,31 +178,31 @@ diff_sg_egress(Ec2SecurityGroupId, Region, DogGroupId) ->
     DefaultPpps = default_egress_spps_rules(),
     EgressRulesPpps = ordsets:to_list(ordsets:from_list(Ppps ++ DefaultPpps)),
     EgressRulesSpps = ppps_to_spps_egress(EgressRulesPpps),
-    ?LOG_DEBUG("EgressRulesSpecs: ~p~n", [EgressRulesSpps]),
+    ?LOG_DEBUG(#{egressrulesspps => EgressRulesSpps}, #{domain => [dog_trainer]}),
     case dog_ec2_update_agent:ec2_security_group(Ec2SecurityGroupId, Region) of
         {error, Reason} ->
-            ?LOG_ERROR("Ec2SecurityGroupId doesn't exist: ~p~n", [Ec2SecurityGroupId]),
+            ?LOG_ERROR(#{ec2securitygroupid => Ec2SecurityGroupId}, #{domain => [dog_trainer]}),
             {error, Reason};
         _ ->
             ExistingRulesSpps = ip_permissions_egress(Region, Ec2SecurityGroupId),
-            ?LOG_DEBUG("ExistingRulesSpps: ~p~n", [ExistingRulesSpps]),
+            ?LOG_DEBUG(#{existingrulesspps => ExistingRulesSpps}, #{domain => [dog_trainer]}),
             ExistingRulesPpps = egress_records_to_ppps(ExistingRulesSpps),
             NewAddVpcEgressPpps = ordsets:subtract(
                 ordsets:from_list(EgressRulesPpps), ordsets:from_list(ExistingRulesPpps)
             ),
-            ?LOG_DEBUG("ExistingRulesPpps: ~p~n", [ExistingRulesPpps]),
+            ?LOG_DEBUG(#{existingrulesppps => ExistingRulesPpps}, #{domain => [dog_trainer]}),
             RemoveVpcEgressPpps = ordsets:subtract(
                 ordsets:from_list(ExistingRulesPpps), ordsets:from_list(EgressRulesPpps)
             ),
-            ?LOG_DEBUG("NewAddVpcEgressPpps: ~p~n", [NewAddVpcEgressPpps]),
-            ?LOG_DEBUG("RemoveVpcEgressPpps: ~p~n", [RemoveVpcEgressPpps]),
+            ?LOG_DEBUG(#{newaddvpcegressppps => NewAddVpcEgressPpps}, #{domain => [dog_trainer]}),
+            ?LOG_DEBUG(#{removevpcegressppps => RemoveVpcEgressPpps}, #{domain => [dog_trainer]}),
             NewAddVpcEgressSpps = ppps_to_spps_egress(NewAddVpcEgressPpps),
             RemoveVpcEgressSpps = ppps_to_spps_egress(RemoveVpcEgressPpps),
             SgDiff = #{
                 <<"Add">> => NewAddVpcEgressSpps,
                 <<"Remove">> => RemoveVpcEgressSpps
             },
-            ?LOG_DEBUG("SgDiff: ~p~n", [SgDiff]),
+            ?LOG_DEBUG(#{sgdiff => SgDiff}, #{domain => [dog_trainer]}),
             SgDiff
     end.
 
@@ -212,7 +212,7 @@ update_sg_egress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
     Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),
     Config = config(Region),
     NewAddVpcIngressSpecs = maps:get(<<"Add">>, AddRemoveMap),
-    ?LOG_DEBUG("NewAddVpcIngressSpecs: ~p~n", [NewAddVpcIngressSpecs]),
+    ?LOG_DEBUG(#{newaddvpcingressspecs => NewAddVpcIngressSpecs}, #{domain => [dog_trainer]}),
     AddResults =
         case NewAddVpcIngressSpecs of
             [] ->
@@ -224,7 +224,7 @@ update_sg_egress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
                     )
                 )
         end,
-    ?LOG_DEBUG("~p~n", [AddResults]),
+    ?LOG_DEBUG(#{addresults => AddResults}, #{domain => [dog_trainer]}),
     RemoveVpcIngressSpecs = maps:get(<<"Remove">>, AddRemoveMap),
     RemoveResults =
         case RemoveVpcIngressSpecs of
@@ -238,7 +238,7 @@ update_sg_egress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
                 )
         end,
     AllResults = [AddResults, RemoveResults],
-    ?LOG_DEBUG("AllResults: ~p~n", [AllResults]),
+    ?LOG_DEBUG(#{allresults => AllResults}, #{domain => [dog_trainer]}),
     AllResultTrueFalse = lists:all(fun(X) -> (X == ok) or (X == []) end, AllResults),
     AllResult =
         case AllResultTrueFalse of
@@ -249,7 +249,7 @@ update_sg_egress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
 
 -spec parse_authorize_response(AuthorizeResponse :: tuple()) -> ok | string().
 parse_authorize_response(AuthorizeResponse) ->
-    ?LOG_DEBUG("AuthorizeResponse: ~p~n", [AuthorizeResponse]),
+    ?LOG_DEBUG(#{authorizeresponse => AuthorizeResponse}, #{domain => [dog_trainer]}),
     case AuthorizeResponse of
         {error, {_ErrorType, _ErrorCode, _ErrorHeader, ErrorDescription}} ->
             Xml = element(2, (erlsom:simple_form(ErrorDescription))),
@@ -262,7 +262,7 @@ parse_authorize_response(AuthorizeResponse) ->
                 ]},
                 {"RequestID", [], [_RequestId]}
             ]} = Xml,
-            ?LOG_ERROR(AuthorizeResponse),
+            ?LOG_ERROR(AuthorizeResponse, #{domain => [dog_trainer]}),
             case Code of
                 %Ignore duplicate entry error
                 "InvalidPermission.Duplicate" ->

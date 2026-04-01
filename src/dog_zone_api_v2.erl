@@ -55,7 +55,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -88,7 +88,7 @@ get_by_name(Name) ->
 
 -spec update(ZoneId :: binary(), UpdateMap :: map()) -> {atom(), any()}.
 update(Id, UpdateMap@0) ->
-    ?LOG_DEBUG("UpdateMap: ~p~n", [UpdateMap@0]),
+    ?LOG_DEBUG(#{'updatemap@0' => UpdateMap@0}, #{domain => [dog_trainer]}),
     {ok, UpdateMap@1} = dog_zone:cleanup(UpdateMap@0),
     case get_by_id(Id) of
         {ok, OldService} ->
@@ -103,7 +103,7 @@ update(Id, UpdateMap@0) ->
                             reql:update(X, UpdateMap@1, #{return_changes => always})
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of
