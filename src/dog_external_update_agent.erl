@@ -109,7 +109,7 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(_, _) -> {'noreply', _}.
 handle_cast(stop, State) ->
     {stop, normal, State};
-handle_cast({add_to_queue, Ipsets}, State) ->
+handle_cast({add_to_queue, Ipsets}, _State) ->
     NewState = Ipsets,
     {noreply, NewState};
 handle_cast(Msg, State) ->

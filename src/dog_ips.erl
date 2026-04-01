@@ -319,18 +319,3 @@ check_config(Config) ->
     true -> ok;
     false -> error
   end.
-
-sanitize_config(Config) ->
-    maps:fold(fun(K, V, Acc) ->
-                      maps:put(K, sanitize_val(V), Acc)
-              end, #{}, Config).
-
-sanitize_val(V) when is_map(V) -> sanitize_config(V);
-sanitize_val(V) when is_list(V) -> [sanitize_val(I) || I <- V];
-sanitize_val(V) when is_tuple(V) -> [sanitize_val(I) || I <- tuple_to_list(V)];
-sanitize_val(true) -> true;
-sanitize_val(false) -> false;
-sanitize_val(null) -> null;
-sanitize_val(undefined) -> null;
-sanitize_val(V) when is_atom(V) -> atom_to_binary(V, utf8);
-sanitize_val(V) -> V.
