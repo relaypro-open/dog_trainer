@@ -57,7 +57,7 @@ content_types_provided(Req, State) ->
 content_types_accepted(Req, State) ->
     case cowboy_req:method(Req) of
         <<"POST">> ->
-            {[{<<"application/json">>, from_post_json}], Req, State };
+            {[{<<"application/json">>, from_post_json}], Req, State};
         <<"PUT">> ->
             {[{<<"application/json">>, from_put_json}], Req, State}
     end.
@@ -163,7 +163,6 @@ from_post_json(Req@0, State) ->
     %    {error, notfound} ->
     case Handler:create(Map) of
         {validation_error, Error} ->
-
             cowboy_req:reply(
                 409,
                 #{<<"content-type">> => <<"application/json">>},
@@ -312,7 +311,9 @@ to_json(Req, State) ->
                                 {ok, ObjectHosts} = dog_group:get_hosts_by_id(Id),
                                 jsx:encode(ObjectHosts);
                             <<"ec2_security_group_ids">> ->
-                                ObjectHosts = dog_group:get_internal_ec2_security_group_ids_by_id(Id),
+                                ObjectHosts = dog_group:get_internal_ec2_security_group_ids_by_id(
+                                    Id
+                                ),
                                 jsx:encode(ObjectHosts);
                             <<"hcl">> ->
                                 Handler:to_hcl_by_id(Id)
@@ -349,7 +350,6 @@ to_text(Req, State) ->
                             undefined ->
                                 case cowboy_req:match_qs([{diff, [], plain}], Req) of
                                     #{diff := plain} ->
-
                                         case dog_profile:get_by_id(Id) of
                                             {ok, Profile} ->
                                                 {ok, T} = dog_profile:to_text(Profile),
@@ -387,7 +387,9 @@ to_text(Req, State) ->
                                                 Error_
                                         end;
                                     #{git_diff := DiffId_} ->
-                                        ?LOG_DEBUG(#{message => "here WHAT"}, #{domain => [dog_trainer]}),
+                                        ?LOG_DEBUG(#{message => "here WHAT"}, #{
+                                            domain => [dog_trainer]
+                                        }),
                                         ProfileResult1_ = dog_profile:get_by_id(Id),
                                         ProfileResult2_ = dog_profile:get_by_id(DiffId_),
                                         case {ProfileResult1_, ProfileResult2_} of

@@ -310,11 +310,14 @@ get_profile_by_id(GroupId) ->
         {badkey, _} -> {error, notfound}
     catch
         Exception:ExceptionReason:Stacktrace ->
-            ?LOG_INFO(#{
-                exception => Exception,
-                exceptionreason => ExceptionReason,
-                stacktrace => Stacktrace
-            }, #{domain => [dog_trainer]}),
+            ?LOG_INFO(
+                #{
+                    exception => Exception,
+                    exceptionreason => ExceptionReason,
+                    stacktrace => Stacktrace
+                },
+                #{domain => [dog_trainer]}
+            ),
             {error, notfound}
     end.
 
@@ -364,7 +367,7 @@ self_group() ->
         <<"external_ipv6_addresses">> => [],
         <<"internal_ipv4_addresses">> => [],
         <<"internal_ipv6_addresses">> => []
-        }.
+    }.
 
 internal_active() ->
     InternalIpv4s = all_internal_ipv4s(),
@@ -502,7 +505,9 @@ get_by_name(GroupName) ->
                     Result = hd(R4),
                     case Result of
                         {error, Error} ->
-                            ?LOG_ERROR(#{groupname => GroupName, error => Error}, #{domain => [dog_trainer]}),
+                            ?LOG_ERROR(#{groupname => GroupName, error => Error}, #{
+                                domain => [dog_trainer]
+                            }),
                             {error, Error};
                         GroupJson ->
                             {ok, GroupJson}
@@ -587,7 +592,7 @@ replace(Id, ReplaceMap) ->
 update(Id, UpdateMap) ->
     case get_by_id(Id) of
         {ok, OldGroup} ->
-            OldGroup1 = maps:remove(<<"vars">>,OldGroup),
+            OldGroup1 = maps:remove(<<"vars">>, OldGroup),
             OldGroup2 = maps:remove(<<"ec2_security_group_ids">>, OldGroup1),
             NewGroup = maps:merge(OldGroup2, UpdateMap),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewGroup) of
@@ -1078,7 +1083,9 @@ replace_profile_by_profile_id(OldId, NewId) ->
 -spec replace_profile_by_profile_id(OldId :: binary(), NewId :: binary(), ProfileName :: iolist()) ->
     list().
 replace_profile_by_profile_id(OldId, NewId, ProfileName) ->
-    ?LOG_DEBUG(#{oldid => OldId, newid => NewId, profilename => ProfileName}, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(#{oldid => OldId, newid => NewId, profilename => ProfileName}, #{
+        domain => [dog_trainer]
+    }),
     GroupIds = get_ids_with_profile_id(OldId),
     Results = lists:map(
         fun(GroupId) ->
@@ -1332,7 +1339,6 @@ update_group_ec2_security_groups(GroupZoneIdentifier, GroupType) ->
         GroupsWithEc2SgIds
     ),
     ok.
-
 
 -spec group_alert_active(GroupName :: binary()) -> boolean().
 group_alert_active(GroupName) ->

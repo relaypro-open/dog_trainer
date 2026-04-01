@@ -90,8 +90,10 @@ diff_sg_by_name(DogGroupName, Region, SgId) ->
             DogGroupId = maps:get(<<"id">>, DogGroup),
             AddRemoveMapIngress = diff_sg_ingress(SgId, Region, DogGroupId),
             AddRemoveMapEgress = diff_sg_egress(SgId, Region, DogGroupId),
-            #{<<"ingress">> => AddRemoveMapIngress,
-              <<"egress">> => AddRemoveMapEgress};
+            #{
+                <<"ingress">> => AddRemoveMapIngress,
+                <<"egress">> => AddRemoveMapEgress
+            };
         _ ->
             #{}
     end.
@@ -131,7 +133,9 @@ diff_sg_ingress(Ec2SecurityGroupId, Region, DogGroupId) ->
             SgDiff
     end.
 
--spec update_sg_ingress(Ec2SecurityGroupId :: binary(), Region :: undefined | string(), AddRemoveMap :: map()) ->
+-spec update_sg_ingress(
+    Ec2SecurityGroupId :: binary(), Region :: undefined | string(), AddRemoveMap :: map()
+) ->
     {ok, ingress, tuple()} | {error, ingress, tuple()}.
 update_sg_ingress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
     Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),
@@ -206,7 +210,9 @@ diff_sg_egress(Ec2SecurityGroupId, Region, DogGroupId) ->
             SgDiff
     end.
 
--spec update_sg_egress(Ec2SecurityGroupId :: binary(), Region :: undefined | string(), AddRemoveMap :: map()) ->
+-spec update_sg_egress(
+    Ec2SecurityGroupId :: binary(), Region :: undefined | string(), AddRemoveMap :: map()
+) ->
     no_return().
 update_sg_egress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
     Ec2SecurityGroupIdList = binary:bin_to_list(Ec2SecurityGroupId),

@@ -87,7 +87,6 @@ chunk_list(List, Len) ->
     {Head, Tail} = lists:split(Len, List),
     [Head | chunk_list(Tail, Len)].
 
-
 -spec publish_to_queue(
     RoutingKey :: binary(),
     Group :: binary(),

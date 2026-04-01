@@ -65,8 +65,10 @@ to_json(Req, State) ->
                             {jsx:encode(Profiles), Req, State}
                     end;
                 dog_ruleset_api_v2 ->
-                    #{names := Names,
-                     active := Active} =
+                    #{
+                        names := Names,
+                        active := Active
+                    } =
                         cowboy_req:match_qs(
                             [
                                 {names, [], undefined},
@@ -74,7 +76,7 @@ to_json(Req, State) ->
                             ],
                             Req
                         ),
-                    case {Names,Active} of
+                    case {Names, Active} of
                         {<<"true">>, <<"true">>} ->
                             {ok, RulesetsActiveNames} = dog_ruleset_api_v2:get_all_active_names(),
                             {jsx:encode(RulesetsActiveNames), Req, State};

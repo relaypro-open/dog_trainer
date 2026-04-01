@@ -202,12 +202,15 @@ publish_to_outbound_exchange(TargetEnvName, IpsetExternalMap) ->
     RoutingKey = binary:list_to_bin(LocalEnvName),
     BrokerConfigName = list_to_atom(binary:bin_to_list(TargetEnvName)),
     %thumper:start_link(BrokerConfigName),
-    ?LOG_INFO(#{
-        brokerconfigname => BrokerConfigName,
-        message => Message,
-        value => <<"inbound">>,
-        routingkey => RoutingKey
-    }, #{domain => [dog_trainer]}),
+    ?LOG_INFO(
+        #{
+            brokerconfigname => BrokerConfigName,
+            message => Message,
+            value => <<"inbound">>,
+            routingkey => RoutingKey
+        },
+        #{domain => [dog_trainer]}
+    ),
     %Response = thumper:publish_to(BrokerConfigName, Message, <<"inbound">>, RoutingKey),
     PublisherName = erlang:binary_to_atom(<<TargetEnvName/binary, <<"_publisher">>/binary>>),
     Response = turtle:publish(

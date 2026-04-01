@@ -447,7 +447,6 @@ set_inactive_by_id(ExtId) when is_binary(ExtId) ->
     replace(ExtId, NewExt),
     ok.
 
-
 -spec get_schema() -> binary().
 get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).

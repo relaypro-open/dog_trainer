@@ -206,8 +206,8 @@ do_periodic_publish(State) ->
                                 MergedIpsets
                             )
                         of
-                            {R4IpsetsIptablesRuleset, R6IpsetsIptablesRuleset, R4IptablesIptablesRuleset,
-                                R6IptablesIptablesRuleset} ->
+                            {R4IpsetsIptablesRuleset, R6IpsetsIptablesRuleset,
+                                R4IptablesIptablesRuleset, R6IptablesIptablesRuleset} ->
                                 {Group,
                                     dog_iptables:publish_to_queue(
                                         RoutingKey,
@@ -232,6 +232,8 @@ do_periodic_publish(State) ->
             ?LOG_INFO(#{publishlist => PublishList}, #{domain => [dog_trainer]}),
             {ok, ordsets:from_list(LeftoverGroups)};
         false ->
-            ?LOG_INFO(#{message => "Skipping, dog_agent_checker:check() false"}, #{domain => [dog_trainer]}),
+            ?LOG_INFO(#{message => "Skipping, dog_agent_checker:check() false"}, #{
+                domain => [dog_trainer]
+            }),
             {ok, State}
     end.

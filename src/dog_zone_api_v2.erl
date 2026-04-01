@@ -131,24 +131,24 @@ get_schema() ->
 -spec to_hcl_by_id(ZoneId :: binary()) -> binary().
 to_hcl_by_id(ZoneId) ->
     {ok, Zone} = get_by_id(ZoneId),
-    to_hcl(Zone). 
+    to_hcl(Zone).
 
 -spec to_hcl(Zone :: map()) -> binary().
 to_hcl(Zone) ->
     Bindings = #{
-                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Zone)), 
-                 'Name' => maps:get(<<"name">>, Zone), 
-                 'Environment' => <<"qa">>,
-                 'IPv4Addresses' =>
-                     dog_common:format_value(maps:get(<<"ipv4_addresses">>,Zone)),
-                 'IPv6Addresses' =>
-                     dog_common:format_value(maps:get(<<"ipv6_addresses">>,Zone))
-                },
+        'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Zone)),
+        'Name' => maps:get(<<"name">>, Zone),
+        'Environment' => <<"qa">>,
+        'IPv4Addresses' =>
+            dog_common:format_value(maps:get(<<"ipv4_addresses">>, Zone)),
+        'IPv6Addresses' =>
+            dog_common:format_value(maps:get(<<"ipv6_addresses">>, Zone))
+    },
     {ok, Snapshot} = eel:compile(<<
         "resource \"dog_zone\" \"<%= TerraformName .%>\" {\n"
         "  name = \"<%= Name .%>\"\n"
-		"  ipv4_addresses = <%= IPv4Addresses .%>\n"
-		"  ipv6_addresses = <%= IPv6Addresses .%>\n"
+        "  ipv4_addresses = <%= IPv4Addresses .%>\n"
+        "  ipv6_addresses = <%= IPv6Addresses .%>\n"
         "  provider = dog.<%= Environment .%>\n"
         "}\n"
         "\n"

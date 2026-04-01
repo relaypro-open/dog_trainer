@@ -38,9 +38,11 @@ from_post_json(Req, State) ->
                 200,
                 #{<<"content-type">> => <<"application/json">>},
                 jsx:encode(
-                  #{Hostkey =>
-                    #{retcode => 1, stdout => "" , stderr => <<"Hostkey not found">>
-                            }}),
+                    #{
+                        Hostkey =>
+                            #{retcode => 1, stdout => "", stderr => <<"Hostkey not found">>}
+                    }
+                ),
                 Req
             ),
             {stop, Req@2, State};
@@ -56,9 +58,16 @@ from_post_json(Req, State) ->
                     Req@2 = cowboy_req:reply(
                         200,
                         #{<<"content-type">> => <<"application/json">>},
-                        jsx:encode(#{Hostkey => #{retcode => 1, stdout => <<"">>, stderr => #{error
-                                                                                              =>
-                                                                                              StdErr}}}),
+                        jsx:encode(#{
+                            Hostkey => #{
+                                retcode => 1,
+                                stdout => <<"">>,
+                                stderr => #{
+                                    error =>
+                                        StdErr
+                                }
+                            }
+                        }),
                         Req
                     ),
                     {stop, Req@2, State};
@@ -85,7 +94,8 @@ from_post_json(Req, State) ->
             end
     end.
 
--spec handle_command(Hostkey :: binary(), Message :: map(), ApiUserName :: binary() | undefined) -> {ok | error, iolist()}.
+-spec handle_command(Hostkey :: binary(), Message :: map(), ApiUserName :: binary() | undefined) ->
+    {ok | error, iolist()}.
 handle_command(Hostkey, Message, ApiUserName) ->
     ?LOG_DEBUG(#{message => Message}, #{domain => [dog_trainer]}),
     Command = maps:get(<<"command">>, Message),
@@ -201,13 +211,17 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
                         {ok, MyBody, Req3} = cowboy_req:read_part_body(Req2),
                         [Req3, MyBody];
                     {file, _FieldName, RemoteFilePath, CType} ->
-                        ?LOG_DEBUG(#{remotefilepath => RemoteFilePath, ctype => CType}, #{domain => [dog_trainer]}),
+                        ?LOG_DEBUG(#{remotefilepath => RemoteFilePath, ctype => CType}, #{
+                            domain => [dog_trainer]
+                        }),
                         UUID = entropy_string:session_id(),
                         FileLocationBase = erlang:list_to_binary(?FILE_LOCATION_BASE),
                         HostFilePath =
-                        <<FileLocationBase/binary,Hostkey/binary,<<"/">>/binary,UUID/binary>>,
+                            <<FileLocationBase/binary, Hostkey/binary, <<"/">>/binary,
+                                UUID/binary>>,
                         ?LOG_DEBUG(#{hostfilepath => HostFilePath}, #{domain => [dog_trainer]}),
-                        LocalFilePath = <<HostFilePath/binary,<<"/send">>/binary,RemoteFilePath/binary>>,
+                        LocalFilePath =
+                            <<HostFilePath/binary, <<"/send">>/binary, RemoteFilePath/binary>>,
                         ?LOG_DEBUG(#{localfilepath => LocalFilePath}, #{domain => [dog_trainer]}),
                         ok = filelib:ensure_dir(LocalFilePath),
                         {ok, IoDevice} = file:open(LocalFilePath, [raw, write, binary, sync]),

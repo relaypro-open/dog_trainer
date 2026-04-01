@@ -43,30 +43,17 @@ make_profile(Inbound, Outbound) ->
 %% ============================================================
 
 create_hash_test_() ->
-    {setup,
-        fun() -> application:ensure_all_started(crypto) end,
-        fun(_) -> ok end,
-        [
-            {"deterministic for same input",
-                fun create_hash_deterministic/0},
-            {"different inputs produce different hashes",
-                fun create_hash_different_inputs/0},
-            {"comments are stripped before hashing",
-                fun create_hash_strips_comments/0},
-            {"counters are zeroed before hashing",
-                fun create_hash_zeros_counters/0},
-            {"quotes are stripped before hashing",
-                fun create_hash_strips_quotes/0},
-            {"docker lines are stripped before hashing",
-                fun create_hash_strips_docker/0},
-            {"trailing whitespace is stripped",
-                fun create_hash_strips_trailing_whitespace/0},
-            {"empty lines are stripped",
-                fun create_hash_strips_empty_lines/0},
-            {"returns a binary",
-                fun create_hash_returns_binary/0}
-        ]
-    }.
+    {setup, fun() -> application:ensure_all_started(crypto) end, fun(_) -> ok end, [
+        {"deterministic for same input", fun create_hash_deterministic/0},
+        {"different inputs produce different hashes", fun create_hash_different_inputs/0},
+        {"comments are stripped before hashing", fun create_hash_strips_comments/0},
+        {"counters are zeroed before hashing", fun create_hash_zeros_counters/0},
+        {"quotes are stripped before hashing", fun create_hash_strips_quotes/0},
+        {"docker lines are stripped before hashing", fun create_hash_strips_docker/0},
+        {"trailing whitespace is stripped", fun create_hash_strips_trailing_whitespace/0},
+        {"empty lines are stripped", fun create_hash_strips_empty_lines/0},
+        {"returns a binary", fun create_hash_returns_binary/0}
+    ]}.
 
 create_hash_deterministic() ->
     Input = "*filter\n:INPUT DROP [0:0]\nCOMMIT\n",
@@ -99,13 +86,15 @@ create_hash_strips_quotes() ->
 
 create_hash_strips_docker() ->
     %% Docker-related lines should be removed
-    Base = "*filter\n:INPUT DROP [0:0]\n:FORWARD DROP [0:0]\n:OUTPUT ACCEPT [0:0]\n"
-           "-A FORWARD -j REJECT --reject-with icmp-port-unreachable\nCOMMIT\n",
-    WithDocker = "*filter\n:INPUT DROP [0:0]\n:FORWARD DROP [0:0]\n:OUTPUT ACCEPT [0:0]\n"
-                 ":DOCKER - [0:0]\n:DOCKER-ISOLATION-STAGE-1 - [0:0]\n"
-                 "-A DOCKER-USER -j RETURN\n"
-                 "-A FORWARD -j DOCKER-USER\n"
-                 "-A FORWARD -j REJECT --reject-with icmp-port-unreachable\nCOMMIT\n",
+    Base =
+        "*filter\n:INPUT DROP [0:0]\n:FORWARD DROP [0:0]\n:OUTPUT ACCEPT [0:0]\n"
+        "-A FORWARD -j REJECT --reject-with icmp-port-unreachable\nCOMMIT\n",
+    WithDocker =
+        "*filter\n:INPUT DROP [0:0]\n:FORWARD DROP [0:0]\n:OUTPUT ACCEPT [0:0]\n"
+        ":DOCKER - [0:0]\n:DOCKER-ISOLATION-STAGE-1 - [0:0]\n"
+        "-A DOCKER-USER -j RETURN\n"
+        "-A FORWARD -j DOCKER-USER\n"
+        "-A FORWARD -j REJECT --reject-with icmp-port-unreachable\nCOMMIT\n",
     ?assertEqual(dog_profile:create_hash(Base), dog_profile:create_hash(WithDocker)).
 
 create_hash_strips_trailing_whitespace() ->
@@ -241,8 +230,20 @@ date_string_contains_day_name_test() ->
 
 date_string_contains_month_name_test() ->
     Result = lists:flatten(dog_profile:date_string()),
-    Months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    Months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
+    ],
     MonthFound = lists:any(fun(M) -> string:find(Result, M) =/= nomatch end, Months),
     ?assert(MonthFound).
 

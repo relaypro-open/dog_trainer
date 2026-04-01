@@ -122,10 +122,12 @@ code_change(_OldVsn, State, _Extra) ->
 -spec do_host_active_state_metrics() -> null.
 do_host_active_state_metrics() ->
     {ok, {grouped, States}} = dog_host:get_grouped_active_states(),
-    lists:foreach(fun([State,Count]) ->
-                          imetrics:set_gauge_m(<<"host_active_state">>, State, Count)
-                  end, 
-                  States).
+    lists:foreach(
+        fun([State, Count]) ->
+            imetrics:set_gauge_m(<<"host_active_state">>, State, Count)
+        end,
+        States
+    ).
 %% @doc Makes a call to the nif to add a resource to
 %% watch. Logs on error
 -spec do_watch_keepalives(_) -> ok | pass.
@@ -179,6 +181,8 @@ do_watch_keepalives(_State) ->
         false ->
             imetrics:set_gauge_m(<<"host_keepalive">>, <<"retirement">>, 0),
             imetrics:set_gauge_m(<<"host_keepalive">>, <<"inactive">>, 0),
-            ?LOG_INFO(#{message => "Skipping, dog_agent_checker:check() false"}, #{domain => [dog_trainer]}),
+            ?LOG_INFO(#{message => "Skipping, dog_agent_checker:check() false"}, #{
+                domain => [dog_trainer]
+            }),
             ok
     end.

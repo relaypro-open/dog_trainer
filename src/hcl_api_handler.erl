@@ -46,13 +46,13 @@ content_types_provided(Req, State) ->
 content_types_accepted(Req, State) ->
     case cowboy_req:method(Req) of
         <<"PUT">> ->
-            {[{<<"application/json">>, from_json}], Req, State };
+            {[{<<"application/json">>, from_json}], Req, State};
         <<"POST">> ->
-            {[{<<"application/json">>, from_json}], Req, State }
+            {[{<<"application/json">>, from_json}], Req, State}
     end.
 
 allowed_methods(Req, State) ->
-    {[<<"PUT">>,<<"POST">>], Req, State}.
+    {[<<"PUT">>, <<"POST">>], Req, State}.
 
 resource_exists(Req@0, State@0) ->
     {false, Req@0, State@0}.

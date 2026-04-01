@@ -65,7 +65,9 @@ loop(_RoutingKey, _CType, Payload, State) ->
     %TODO: create on link creation, set empty, inactive
     dog_external:replace(ExistingExternalId, ExternalEnv),
     ?LOG_INFO(#{message => "dog_ipset_update_agent:queue_add()"}, #{domain => [dog_trainer]}),
-    dog_ipset_update_agent:queue_add(dog_common:concat([<<"external->">>,ExternalEnvName],binary)),
+    dog_ipset_update_agent:queue_add(
+        dog_common:concat([<<"external->">>, ExternalEnvName], binary)
+    ),
     {ack, State}.
 
 -spec set_link_state(NewState :: map()) -> ok | error.
@@ -78,13 +80,16 @@ set_link_state(
         old_direction_state := DirectionState
     }
 ) ->
-    ?LOG_INFO(#{
-        envname => EnvName,
-        enabledstate => EnabledState,
-        newenabledstate => NewEnabledState,
-        directionstate => DirectionState,
-        newdirectionstate => NewDirectionState
-    }, #{domain => [dog_trainer]}),
+    ?LOG_INFO(
+        #{
+            envname => EnvName,
+            enabledstate => EnabledState,
+            newenabledstate => NewEnabledState,
+            directionstate => DirectionState,
+            newdirectionstate => NewDirectionState
+        },
+        #{domain => [dog_trainer]}
+    ),
     ExternalId =
         case dog_external:get_by_name(EnvName) of
             {error, notfound} ->

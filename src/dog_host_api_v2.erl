@@ -59,30 +59,37 @@ create(HostMap@0) ->
                             {error, exists};
                         {error, notfound} ->
                             {ok, ExistingHosts} = get_all(),
-                            ExistingHostkeys = [maps:get(<<"hostkey">>, Host) || Host <- ExistingHosts],
+                            ExistingHostkeys = [
+                                maps:get(<<"hostkey">>, Host)
+                             || Host <- ExistingHosts
+                            ],
                             DefaultValuesHostMap = #{
-                                                     <<"active">> => <<"new">>,
-                                                     <<"environment">> => <<"*">>,
-                                                     <<"hash_alert_sent">> => <<"">>,
-                                                     <<"hash_fail_count">> => 0,
-                                                     <<"hostkey">> => <<"">>,
-                                                     <<"ipset_hash_timestamp">> => <<"">>,
-                                                     <<"iptables_hash_timestamp">> => <<"">>,
-                                                     <<"keepalive_alert_sent">> => <<"">>,
-                                                     <<"keepalive_timestamp">> => <<"">>,
-                                                     <<"location">> => <<"*">>
-                                                    },
+                                <<"active">> => <<"new">>,
+                                <<"environment">> => <<"*">>,
+                                <<"hash_alert_sent">> => <<"">>,
+                                <<"hash_fail_count">> => 0,
+                                <<"hostkey">> => <<"">>,
+                                <<"ipset_hash_timestamp">> => <<"">>,
+                                <<"iptables_hash_timestamp">> => <<"">>,
+                                <<"keepalive_alert_sent">> => <<"">>,
+                                <<"keepalive_timestamp">> => <<"">>,
+                                <<"location">> => <<"*">>
+                            },
                             MergedHostMap = maps:merge(DefaultValuesHostMap, HostMap@0),
                             case lists:member(Hostkey, ExistingHostkeys) of
                                 false ->
                                     {ok, R} = dog_rethink:run(
-                                                fun(X) ->
-                                                        reql:db(X, dog),
-                                                        reql:table(X, ?TYPE_TABLE),
-                                                        reql:insert(X, MergedHostMap, #{return_changes => always})
-                                                end
-                                               ),
-                                    NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                                        fun(X) ->
+                                            reql:db(X, dog),
+                                            reql:table(X, ?TYPE_TABLE),
+                                            reql:insert(X, MergedHostMap, #{
+                                                return_changes => always
+                                            })
+                                        end
+                                    ),
+                                    NewVal = maps:get(
+                                        <<"new_val">>, hd(maps:get(<<"changes">>, R))
+                                    ),
                                     {ok, NewVal};
                                 true ->
                                     {error, name_exists}
@@ -149,7 +156,7 @@ delete(Id) ->
 update(Id, UpdateMap) ->
     case dog_host:get_by_id(Id) of
         {ok, OldHost} ->
-            NewHost = maps:merge(maps:remove(<<"vars">>,OldHost), UpdateMap),
+            NewHost = maps:merge(maps:remove(<<"vars">>, OldHost), UpdateMap),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewHost) of
                 ok ->
                     {ok, R} = dog_rethink:run(
@@ -194,20 +201,20 @@ update_by_hostkey(HostKey, UpdateMap) ->
 -spec to_hcl_by_id(HostId :: binary()) -> binary().
 to_hcl_by_id(HostId) ->
     {ok, Host} = get_by_id(HostId),
-    to_hcl(Host). 
+    to_hcl(Host).
 
 -spec to_hcl(Host :: map()) -> binary().
 to_hcl(Host) ->
     Bindings = #{
-                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Host)), 
-                 'Name' => maps:get(<<"name">>, Host), 
-                 'Environment' => <<"qa">>,
-                 'Group' => maps:get(<<"group">>, Host), 
-                 'HostKey' => maps:get(<<"hostkey">>, Host), 
-                 'Location' => maps:get(<<"location">>, Host), 
-                 'Vars' => dog_common:format_vars(maps:get(<<"vars">>, Host,[])), 
-                 'Provider' => <<"dog">>
-                },
+        'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Host)),
+        'Name' => maps:get(<<"name">>, Host),
+        'Environment' => <<"qa">>,
+        'Group' => maps:get(<<"group">>, Host),
+        'HostKey' => maps:get(<<"hostkey">>, Host),
+        'Location' => maps:get(<<"location">>, Host),
+        'Vars' => dog_common:format_vars(maps:get(<<"vars">>, Host, [])),
+        'Provider' => <<"dog">>
+    },
     {ok, Snapshot} = eel:compile(<<
         "resource \"dog_host\" \"<%= TerraformName .%>\" {\n"
         "  environment = \"<%= Environment .%>\"\n"
@@ -219,7 +226,7 @@ to_hcl(Host) ->
         "<%= case Vars of %>"
         "<% [] -> <<>> ; %>"
         "<% _ ->  %>"
-		"  vars = jsonencode({\n"
+        "  vars = jsonencode({\n"
         "<%= lists:map(fun({Key,Value}) -> %>"
         "    <%= Key .%> = <%= Value .%> \n"
         "<% end, maps:to_list(Vars)) .%>"

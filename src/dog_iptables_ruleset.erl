@@ -18,8 +18,12 @@
     write_iptables_ruleset_unset_v6_to_file/2
 ]).
 
--spec generate_iptables_ruleset(ProfileJson :: map(), Type :: atom(), Version :: binary(),
-                                SelfGroupName :: binary()) ->
+-spec generate_iptables_ruleset(
+    ProfileJson :: map(),
+    Type :: atom(),
+    Version :: binary(),
+    SelfGroupName :: binary()
+) ->
     {'ok', iolist()}.
 generate_iptables_ruleset(ProfileJson, Type, Version, SelfGroupName) ->
     {Ipv4RoleMap, Ipv6RoleMap, Ipv4ZoneMap, Ipv6ZoneMap, ZoneIdMap, GroupIdMap, ServiceIdMap} = dog_ipset:id_maps(),
@@ -92,12 +96,18 @@ generate_iptables_ruleset(
                     Rules
                 catch
                     Exception:ExceptionReason:Stacktrace ->
-                        ?LOG_ERROR(#{profilename => ProfileName, profileid => ProfileId, index => Index}, #{domain => [dog_trainer]}),
-                        ?LOG_ERROR(#{
-                            exception => Exception,
-                            exceptionreason => ExceptionReason,
-                            stacktrace => Stacktrace
-                        }, #{domain => [dog_trainer]}),
+                        ?LOG_ERROR(
+                            #{profilename => ProfileName, profileid => ProfileId, index => Index},
+                            #{domain => [dog_trainer]}
+                        ),
+                        ?LOG_ERROR(
+                            #{
+                                exception => Exception,
+                                exceptionreason => ExceptionReason,
+                                stacktrace => Stacktrace
+                            },
+                            #{domain => [dog_trainer]}
+                        ),
                         throw(Exception)
                 end
             end,
@@ -138,12 +148,22 @@ generate_iptables_ruleset(
                             Rules
                         catch
                             Exception:ExceptionReason:Stacktrace ->
-                                ?LOG_ERROR(#{profilename => ProfileName, profileid => ProfileId, index => Index}, #{domain => [dog_trainer]}),
-                                ?LOG_ERROR(#{
-                                    exception => Exception,
-                                    exceptionreason => ExceptionReason,
-                                    stacktrace => Stacktrace
-                                }, #{domain => [dog_trainer]}),
+                                ?LOG_ERROR(
+                                    #{
+                                        profilename => ProfileName,
+                                        profileid => ProfileId,
+                                        index => Index
+                                    },
+                                    #{domain => [dog_trainer]}
+                                ),
+                                ?LOG_ERROR(
+                                    #{
+                                        exception => Exception,
+                                        exceptionreason => ExceptionReason,
+                                        stacktrace => Stacktrace
+                                    },
+                                    #{domain => [dog_trainer]}
+                                ),
                                 throw(Exception)
                         end
                 end
@@ -173,12 +193,18 @@ generate_iptables_ruleset(
                     Rules
                 catch
                     Exception:ExceptionReason:Stacktrace ->
-                        ?LOG_ERROR(#{profilename => ProfileName, profileid => ProfileId, index => Index}, #{domain => [dog_trainer]}),
-                        ?LOG_ERROR(#{
-                            exception => Exception,
-                            exceptionreason => ExceptionReason,
-                            stacktrace => Stacktrace
-                        }, #{domain => [dog_trainer]}),
+                        ?LOG_ERROR(
+                            #{profilename => ProfileName, profileid => ProfileId, index => Index},
+                            #{domain => [dog_trainer]}
+                        ),
+                        ?LOG_ERROR(
+                            #{
+                                exception => Exception,
+                                exceptionreason => ExceptionReason,
+                                stacktrace => Stacktrace
+                            },
+                            #{domain => [dog_trainer]}
+                        ),
                         throw(Exception)
                 end
             end,
@@ -241,11 +267,14 @@ generate_iptables_ruleset(
     catch
         Exception:ExceptionReason:Stacktrace ->
             imetrics:add_m(generate_iptables_ruleset, "error"),
-            ?LOG_ERROR(#{
-                exception => Exception,
-                exceptionreason => ExceptionReason,
-                stacktrace => Stacktrace
-            }, #{domain => [dog_trainer]}),
+            ?LOG_ERROR(
+                #{
+                    exception => Exception,
+                    exceptionreason => ExceptionReason,
+                    stacktrace => Stacktrace
+                },
+                #{domain => [dog_trainer]}
+            ),
             throw(ExceptionReason)
     after
         {ok, []}
@@ -555,7 +584,9 @@ json_to_rule(
             ProtocolString = get_protcol_string(Protocol),
             MultiplePorts = get_multiple_ports(Ports),
             ProtocolModule = get_protocol_module(MultiplePorts, Protocol),
-            PortParameter = get_port_parameter(Protocol, MultiplePorts, Direction, ProtocolModule, Symmetric),
+            PortParameter = get_port_parameter(
+                Protocol, MultiplePorts, Direction, ProtocolModule, Symmetric
+            ),
             SourceParameter = get_source_parameter(Direction),
             InterfaceString = get_interface(maps:get(<<"interface">>, Json)),
             %?LOG_DEBUG("InterfaceString: ~p~n",[InterfaceString]),
@@ -760,7 +791,7 @@ generate_basic_rule_unset(
                     end,
                     ZoneAddresses
                 );
-            {G, <<"ANY">>} when G =:= <<"ROLE">> ; G =:= <<"GROUP">> ->
+            {G, <<"ANY">>} when G =:= <<"ROLE">>; G =:= <<"GROUP">> ->
                 Addresses = maps:get(Group, IpRoleMap, []),
                 RoleAddresses =
                     case Chain of
@@ -786,7 +817,7 @@ generate_basic_rule_unset(
                     end,
                     RoleAddresses
                 );
-            {G, _} when G =:= <<"ROLE">> ; G =:= <<"GROUP">> ->
+            {G, _} when G =:= <<"ROLE">>; G =:= <<"GROUP">> ->
                 Addresses = maps:get(Group, IpRoleMap, []),
                 RoleAddresses =
                     case Chain of
@@ -1139,12 +1170,16 @@ get_service_name(ServiceId, ServiceIdMap) ->
     end.
 
 -spec get_group_name(
-    GroupType :: binary(), Group :: binary(), GroupIdMap :: map(), ZoneIdMap :: map(), SelfGroupName
-    :: binary()
+    GroupType :: binary(),
+    Group :: binary(),
+    GroupIdMap :: map(),
+    ZoneIdMap :: map(),
+    SelfGroupName ::
+        binary()
 ) -> binary().
 get_group_name(GroupType, Group, GroupIdMap, ZoneIdMap, SelfGroupName) ->
     case GroupType of
-        G when G =:= <<"ROLE">> ; G =:= <<"GROUP">> ->
+        G when G =:= <<"ROLE">>; G =:= <<"GROUP">> ->
             %get_group_name_by_id(Group);
             GroupName = maps:get(<<"name">>, maps:get(Group, GroupIdMap)),
             case GroupName of
@@ -1173,7 +1208,7 @@ get_ipset_name(GroupName, GroupType, Sep, Version) ->
                 case GroupType of
                     <<"ANY">> ->
                         <<"ANY">>;
-                    G when G =:= <<"ROLE">> ; G =:= <<"GROUP">> ->
+                    G when G =:= <<"ROLE">>; G =:= <<"GROUP">> ->
                         <<GroupName/bitstring, Sep/bitstring, <<"g">>/bitstring,
                             Version/bitstring>>;
                     <<"ZONE">> ->
@@ -1443,39 +1478,39 @@ write_iptables_ruleset_unset_v6_to_file(IptablesRuleset, GroupName) ->
 -spec read_iptables_ruleset_set_v4_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_set_v4_from_file(GroupName) ->
     FileName = ?RUNDIR ++ "/iptables_ruleset4_ipsets." ++ binary_to_list(GroupName) ++ ".txt",
-     case dog_file:read_file(FileName) of
+    case dog_file:read_file(FileName) of
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
-         {error, Error} ->
-             ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
-     end.
+        {error, Error} ->
+            ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
+    end.
 -spec read_iptables_ruleset_set_v6_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_set_v6_from_file(GroupName) ->
     FileName = ?RUNDIR ++ "/iptables_ruleset6_ipsets." ++ binary_to_list(GroupName) ++ ".txt",
-     case dog_file:read_file(FileName) of
+    case dog_file:read_file(FileName) of
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
-         {error, Error} ->
-             ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
-     end.
+        {error, Error} ->
+            ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
+    end.
 -spec read_iptables_ruleset_unset_v4_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_unset_v4_from_file(GroupName) ->
     FileName = ?RUNDIR ++ "/iptables_ruleset4_iptables." ++ binary_to_list(GroupName) ++ ".txt",
-     case dog_file:read_file(FileName) of
+    case dog_file:read_file(FileName) of
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
-         {error, Error} ->
-             ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
-     end.
+        {error, Error} ->
+            ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
+    end.
 -spec read_iptables_ruleset_unset_v6_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_unset_v6_from_file(GroupName) ->
     FileName = ?RUNDIR ++ "/iptables_ruleset6_iptables." ++ binary_to_list(GroupName) ++ ".txt",
-     case dog_file:read_file(FileName) of
+    case dog_file:read_file(FileName) of
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
-         {error, Error} ->
-             ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
-     end.
+        {error, Error} ->
+            ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
+    end.
 
 %%%--------------------------------------------------------------------
 %%% @spec cidr_netmask(Bits :: integer()) -> ipv4()

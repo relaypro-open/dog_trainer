@@ -215,15 +215,15 @@ update_in_place(Id, UpdateMap) ->
 -spec to_hcl_by_id(ProfileId :: binary()) -> binary().
 to_hcl_by_id(ProfileId) ->
     {ok, Profile} = get_by_id(ProfileId),
-    to_hcl(Profile). 
+    to_hcl(Profile).
 
 -spec to_hcl(Profile :: map()) -> binary().
 to_hcl(Profile) ->
     Bindings = #{
-                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Profile)), 
-                 'Name' => maps:get(<<"name">>, Profile), 
-                 'Environment' => <<"qa">>
-                },
+        'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Profile)),
+        'Name' => maps:get(<<"name">>, Profile),
+        'Environment' => <<"qa">>
+    },
     {ok, Snapshot} = eel:compile(<<
         "resource \"dog_profile\" \"<%= TerraformName .%>\" {\n"
         "  name = \"<%= Name .%>\"\n"

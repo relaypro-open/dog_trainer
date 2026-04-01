@@ -120,8 +120,12 @@ handle_query_result(Result, State) ->
                     ?LOG_INFO(#{groupname => GroupName}, #{domain => [dog_trainer]}),
                     dog_iptables:update_group_iptables(GroupName, GroupType),
                     dog_iptables:update_group_ec2_sgs(GroupName),
-                    {ok, R4IpsetsIptablesRuleset} = dog_iptables_ruleset:read_iptables_ruleset_set_v4_from_file(GroupName),
-                    {ok, R6IpsetsIptablesRuleset} = dog_iptables_ruleset:read_iptables_ruleset_set_v6_from_file(GroupName),
+                    {ok, R4IpsetsIptablesRuleset} = dog_iptables_ruleset:read_iptables_ruleset_set_v4_from_file(
+                        GroupName
+                    ),
+                    {ok, R6IpsetsIptablesRuleset} = dog_iptables_ruleset:read_iptables_ruleset_set_v6_from_file(
+                        GroupName
+                    ),
                     {ok, R4IptablesIptablesRuleset} = dog_iptables_ruleset:read_iptables_ruleset_unset_v4_from_file(
                         GroupName
                     ),
@@ -136,8 +140,12 @@ handle_query_result(Result, State) ->
                     {ok, _} = dog_group:set_hash6_ipsets(GroupName, Hash6Ipsets),
                     {ok, _} = dog_group:set_hash4_iptables(GroupName, Hash4Iptables),
                     {ok, _} = dog_group:set_hash6_iptables(GroupName, Hash6Iptables),
-                    ?LOG_INFO(#{message => "dog_ipset_update_agent:queue_add()"}, #{domain => [dog_trainer]}),
-                    dog_ipset_update_agent:queue_add(dog_common:concat([<<"group-">>,GroupName],binary))
+                    ?LOG_INFO(#{message => "dog_ipset_update_agent:queue_add()"}, #{
+                        domain => [dog_trainer]
+                    }),
+                    dog_ipset_update_agent:queue_add(
+                        dog_common:concat([<<"group-">>, GroupName], binary)
+                    )
                 end,
                 Result
             )

@@ -60,12 +60,16 @@ zone_id_map() ->
 
 %% Role/Zone maps are keyed by group/zone ID (same as used in rule JSON <<"group">> field)
 ipv4_role_map() ->
-    #{<<"grp_web">> => [<<"10.0.0.1/32">>, <<"10.0.0.2/32">>],
-      <<"grp_self">> => [<<"10.0.1.1/32">>]}.
+    #{
+        <<"grp_web">> => [<<"10.0.0.1/32">>, <<"10.0.0.2/32">>],
+        <<"grp_self">> => [<<"10.0.1.1/32">>]
+    }.
 
 ipv6_role_map() ->
-    #{<<"grp_web">> => [<<"2001:db8::1/128">>, <<"2001:db8::2/128">>],
-      <<"grp_self">> => [<<"2001:db8::10/128">>]}.
+    #{
+        <<"grp_web">> => [<<"2001:db8::1/128">>, <<"2001:db8::2/128">>],
+        <<"grp_self">> => [<<"2001:db8::10/128">>]
+    }.
 
 ipv4_zone_map() ->
     #{<<"zone_dmz">> => [<<"192.168.1.0/24">>]}.
@@ -133,60 +137,32 @@ flatten_result({ok, Result}) ->
 %% ============================================================
 
 generate_iptables_ruleset_test_() ->
-    {setup,
-        fun setup/0,
-        fun cleanup/1,
-        [
-            {"v4 ipsets basic inbound ROLE rule",
-                fun v4_ipsets_basic_inbound_role/0},
-            {"v4 ipsets empty rules produces header+footer only",
-                fun v4_ipsets_empty_rules/0},
-            {"v4 iptables basic inbound ROLE rule (unset)",
-                fun v4_iptables_basic_inbound_role/0},
-            {"v6 ipsets basic inbound rule",
-                fun v6_ipsets_basic_inbound/0},
-            {"v4 ipsets ZONE group type",
-                fun v4_ipsets_zone_group/0},
-            {"v4 ipsets ANY group type",
-                fun v4_ipsets_any_group/0},
-            {"v4 ipsets inactive rule skipped",
-                fun v4_ipsets_inactive_rule/0},
-            {"v4 ipsets DROP inbound skips symmetric outbound",
-                fun v4_ipsets_drop_skips_symmetric/0},
-            {"v4 docker profile",
-                fun v4_docker_profile/0},
-            {"v4 ipsets outbound rule",
-                fun v4_ipsets_outbound/0},
-            {"v4 ipsets multiple ports uses multiport",
-                fun v4_ipsets_multiport/0},
-            {"v4 ipsets ICMP rule",
-                fun v4_ipsets_icmp/0},
-            {"v4 ipsets REJECT action",
-                fun v4_ipsets_reject_action/0},
-            {"v6 ipsets REJECT action",
-                fun v6_ipsets_reject_action/0},
-            {"v4 ipsets rule with interface",
-                fun v4_ipsets_with_interface/0},
-            {"v4 ipsets self group resolves to SelfGroupName",
-                fun v4_ipsets_self_group/0},
-            {"v4 ipsets rule with comment containing spaces",
-                fun v4_ipsets_comment_with_spaces/0},
-            {"v4 ipsets connlimit rule type",
-                fun v4_ipsets_connlimit/0},
-            {"v4 ipsets recent rule type",
-                fun v4_ipsets_recent/0},
-            {"v4 ipsets rule with states",
-                fun v4_ipsets_with_states/0},
-            {"v4 ipsets rule with no states",
-                fun v4_ipsets_no_states/0},
-            {"v4 ipsets ANY service",
-                fun v4_ipsets_any_service/0},
-            {"v4 iptables ZONE rule expands addresses",
-                fun v4_iptables_zone_expands/0},
-            {"v4 ipsets environment non-local",
-                fun v4_ipsets_environment_nonlocal/0}
-        ]
-    }.
+    {setup, fun setup/0, fun cleanup/1, [
+        {"v4 ipsets basic inbound ROLE rule", fun v4_ipsets_basic_inbound_role/0},
+        {"v4 ipsets empty rules produces header+footer only", fun v4_ipsets_empty_rules/0},
+        {"v4 iptables basic inbound ROLE rule (unset)", fun v4_iptables_basic_inbound_role/0},
+        {"v6 ipsets basic inbound rule", fun v6_ipsets_basic_inbound/0},
+        {"v4 ipsets ZONE group type", fun v4_ipsets_zone_group/0},
+        {"v4 ipsets ANY group type", fun v4_ipsets_any_group/0},
+        {"v4 ipsets inactive rule skipped", fun v4_ipsets_inactive_rule/0},
+        {"v4 ipsets DROP inbound skips symmetric outbound", fun v4_ipsets_drop_skips_symmetric/0},
+        {"v4 docker profile", fun v4_docker_profile/0},
+        {"v4 ipsets outbound rule", fun v4_ipsets_outbound/0},
+        {"v4 ipsets multiple ports uses multiport", fun v4_ipsets_multiport/0},
+        {"v4 ipsets ICMP rule", fun v4_ipsets_icmp/0},
+        {"v4 ipsets REJECT action", fun v4_ipsets_reject_action/0},
+        {"v6 ipsets REJECT action", fun v6_ipsets_reject_action/0},
+        {"v4 ipsets rule with interface", fun v4_ipsets_with_interface/0},
+        {"v4 ipsets self group resolves to SelfGroupName", fun v4_ipsets_self_group/0},
+        {"v4 ipsets rule with comment containing spaces", fun v4_ipsets_comment_with_spaces/0},
+        {"v4 ipsets connlimit rule type", fun v4_ipsets_connlimit/0},
+        {"v4 ipsets recent rule type", fun v4_ipsets_recent/0},
+        {"v4 ipsets rule with states", fun v4_ipsets_with_states/0},
+        {"v4 ipsets rule with no states", fun v4_ipsets_no_states/0},
+        {"v4 ipsets ANY service", fun v4_ipsets_any_service/0},
+        {"v4 iptables ZONE rule expands addresses", fun v4_iptables_zone_expands/0},
+        {"v4 ipsets environment non-local", fun v4_ipsets_environment_nonlocal/0}
+    ]}.
 
 %% ============================================================
 %% Individual test functions
@@ -254,8 +230,13 @@ v4_ipsets_any_group() ->
     ?assert(string:find(Result, "--dport 22") =/= nomatch).
 
 v4_ipsets_inactive_rule() ->
-    Rule = make_rule(<<"svc_ssh">>, <<"grp_web">>, <<"ROLE">>, <<"ACCEPT">>,
-                     #{<<"active">> => false}),
+    Rule = make_rule(
+        <<"svc_ssh">>,
+        <<"grp_web">>,
+        <<"ROLE">>,
+        <<"ACCEPT">>,
+        #{<<"active">> => false}
+    ),
     Profile = make_profile([Rule], []),
     Result = flatten_result(generate(Profile, ipsets, <<"v4">>, <<"my_group">>)),
     %% Inactive rule should not appear - no --dport 22
@@ -269,8 +250,12 @@ v4_ipsets_drop_skips_symmetric() ->
     ?assert(string:find(Result, "-A INPUT") =/= nomatch),
     %% OUTPUT should NOT have a symmetric rule for DROP
     Lines = string:split(Result, "\n", all),
-    OutputRuleLines = [L || L <- Lines, string:find(L, "-A OUTPUT") =/= nomatch,
-                                       string:find(L, "web_servers") =/= nomatch],
+    OutputRuleLines = [
+        L
+     || L <- Lines,
+        string:find(L, "-A OUTPUT") =/= nomatch,
+        string:find(L, "web_servers") =/= nomatch
+    ],
     ?assertEqual([], OutputRuleLines).
 
 v4_docker_profile() ->
@@ -289,8 +274,12 @@ v4_ipsets_outbound() ->
     %% Outbound rule should be in OUTPUT chain with dst
     ?assert(string:find(Result, "-A OUTPUT") =/= nomatch),
     Lines = string:split(Result, "\n", all),
-    OutputSshLines = [L || L <- Lines, string:find(L, "-A OUTPUT") =/= nomatch,
-                                       string:find(L, "--dport 22") =/= nomatch],
+    OutputSshLines = [
+        L
+     || L <- Lines,
+        string:find(L, "-A OUTPUT") =/= nomatch,
+        string:find(L, "--dport 22") =/= nomatch
+    ],
     ?assert(length(OutputSshLines) > 0).
 
 v4_ipsets_multiport() ->
@@ -311,8 +300,12 @@ v4_ipsets_icmp() ->
     ?assert(string:find(Result, "--icmp-type") =/= nomatch),
     %% Symmetric outbound should convert ping request (8) to reply (0)
     Lines = string:split(Result, "\n", all),
-    OutputIcmpLines = [L || L <- Lines, string:find(L, "-A OUTPUT") =/= nomatch,
-                                        string:find(L, "icmp") =/= nomatch],
+    OutputIcmpLines = [
+        L
+     || L <- Lines,
+        string:find(L, "-A OUTPUT") =/= nomatch,
+        string:find(L, "icmp") =/= nomatch
+    ],
     OutputIcmpStr = lists:flatten(OutputIcmpLines),
     ?assert(string:find(OutputIcmpStr, " 0") =/= nomatch).
 
@@ -329,8 +322,13 @@ v6_ipsets_reject_action() ->
     ?assert(string:find(Result, "REJECT --reject-with icmp6-port-unreachable") =/= nomatch).
 
 v4_ipsets_with_interface() ->
-    Rule = make_rule(<<"svc_ssh">>, <<"grp_web">>, <<"ROLE">>, <<"ACCEPT">>,
-                     #{<<"interface">> => <<"eth0">>}),
+    Rule = make_rule(
+        <<"svc_ssh">>,
+        <<"grp_web">>,
+        <<"ROLE">>,
+        <<"ACCEPT">>,
+        #{<<"interface">> => <<"eth0">>}
+    ),
     Profile = make_profile([Rule], []),
     Result = flatten_result(generate(Profile, ipsets, <<"v4">>, <<"my_group">>)),
     ?assert(string:find(Result, "-i eth0") =/= nomatch).
@@ -343,18 +341,30 @@ v4_ipsets_self_group() ->
     ?assert(string:find(Result, "my_group_gv4") =/= nomatch).
 
 v4_ipsets_comment_with_spaces() ->
-    Rule = make_rule(<<"svc_ssh">>, <<"grp_web">>, <<"ROLE">>, <<"ACCEPT">>,
-                     #{<<"comment">> => <<"ssh access rule">>}),
+    Rule = make_rule(
+        <<"svc_ssh">>,
+        <<"grp_web">>,
+        <<"ROLE">>,
+        <<"ACCEPT">>,
+        #{<<"comment">> => <<"ssh access rule">>}
+    ),
     Profile = make_profile([Rule], []),
     Result = flatten_result(generate(Profile, ipsets, <<"v4">>, <<"my_group">>)),
     %% Comment with spaces should be quoted
     ?assert(string:find(Result, "\"ssh access rule\"") =/= nomatch).
 
 v4_ipsets_connlimit() ->
-    Rule = make_rule(<<"svc_ssh">>, <<"grp_web">>, <<"ROLE">>, <<"ACCEPT">>,
-                     #{<<"type">> => <<"CONNLIMIT">>,
-                       <<"conn_limit_above">> => 20,
-                       <<"conn_limit_mask">> => 24}),
+    Rule = make_rule(
+        <<"svc_ssh">>,
+        <<"grp_web">>,
+        <<"ROLE">>,
+        <<"ACCEPT">>,
+        #{
+            <<"type">> => <<"CONNLIMIT">>,
+            <<"conn_limit_above">> => 20,
+            <<"conn_limit_mask">> => 24
+        }
+    ),
     Profile = make_profile([Rule], []),
     Result = flatten_result(generate(Profile, ipsets, <<"v4">>, <<"my_group">>)),
     ?assert(string:find(Result, "connlimit") =/= nomatch),
@@ -364,12 +374,19 @@ v4_ipsets_connlimit() ->
     ?assert(string:find(Result, "REJECT --reject-with tcp-reset") =/= nomatch).
 
 v4_ipsets_recent() ->
-    Rule = make_rule(<<"svc_ssh">>, <<"grp_web">>, <<"ROLE">>, <<"ACCEPT">>,
-                     #{<<"type">> => <<"RECENT">>,
-                       <<"recent_name">> => <<"ssh_brute">>,
-                       <<"recent_mask">> => [],
-                       <<"seconds">> => 300,
-                       <<"hit_count">> => 10}),
+    Rule = make_rule(
+        <<"svc_ssh">>,
+        <<"grp_web">>,
+        <<"ROLE">>,
+        <<"ACCEPT">>,
+        #{
+            <<"type">> => <<"RECENT">>,
+            <<"recent_name">> => <<"ssh_brute">>,
+            <<"recent_mask">> => [],
+            <<"seconds">> => 300,
+            <<"hit_count">> => 10
+        }
+    ),
     Profile = make_profile([Rule], []),
     Result = flatten_result(generate(Profile, ipsets, <<"v4">>, <<"my_group">>)),
     ?assert(string:find(Result, "recent") =/= nomatch),
@@ -382,26 +399,44 @@ v4_ipsets_recent() ->
     ?assert(string:find(Result, "--set --name ssh_brute") =/= nomatch).
 
 v4_ipsets_with_states() ->
-    Rule = make_rule(<<"svc_ssh">>, <<"grp_web">>, <<"ROLE">>, <<"ACCEPT">>,
-                     #{<<"states">> => [<<"NEW">>, <<"ESTABLISHED">>]}),
+    Rule = make_rule(
+        <<"svc_ssh">>,
+        <<"grp_web">>,
+        <<"ROLE">>,
+        <<"ACCEPT">>,
+        #{<<"states">> => [<<"NEW">>, <<"ESTABLISHED">>]}
+    ),
     Profile = make_profile([Rule], []),
     Result = flatten_result(generate(Profile, ipsets, <<"v4">>, <<"my_group">>)),
     ?assert(string:find(Result, "--state NEW,ESTABLISHED") =/= nomatch).
 
 v4_ipsets_no_states() ->
-    Rule = make_rule(<<"svc_ssh">>, <<"grp_web">>, <<"ROLE">>, <<"ACCEPT">>,
-                     #{<<"states">> => []}),
+    Rule = make_rule(
+        <<"svc_ssh">>,
+        <<"grp_web">>,
+        <<"ROLE">>,
+        <<"ACCEPT">>,
+        #{<<"states">> => []}
+    ),
     Profile = make_profile([Rule], []),
     Result = flatten_result(generate(Profile, ipsets, <<"v4">>, <<"my_group">>)),
     %% Inbound rule with empty states should have no --state on the INPUT line
     Lines = string:split(Result, "\n", all),
-    InputSshLines = [L || L <- Lines, string:find(L, "-A INPUT") =/= nomatch,
-                                      string:find(L, "--dport 22") =/= nomatch],
+    InputSshLines = [
+        L
+     || L <- Lines,
+        string:find(L, "-A INPUT") =/= nomatch,
+        string:find(L, "--dport 22") =/= nomatch
+    ],
     InputSshStr = lists:flatten(InputSshLines),
     ?assert(string:find(InputSshStr, "--state") =:= nomatch),
     %% But symmetric outbound should still have RELATED,ESTABLISHED
-    OutputSshLines = [L || L <- Lines, string:find(L, "-A OUTPUT") =/= nomatch,
-                                       string:find(L, "web_servers") =/= nomatch],
+    OutputSshLines = [
+        L
+     || L <- Lines,
+        string:find(L, "-A OUTPUT") =/= nomatch,
+        string:find(L, "web_servers") =/= nomatch
+    ],
     OutputSshStr = lists:flatten(OutputSshLines),
     ?assert(string:find(OutputSshStr, "RELATED,ESTABLISHED") =/= nomatch).
 
@@ -421,8 +456,13 @@ v4_iptables_zone_expands() ->
     ?assert(string:find(Result, "192.168.1.0/24") =/= nomatch).
 
 v4_ipsets_environment_nonlocal() ->
-    Rule = make_rule(<<"svc_ssh">>, <<"grp_web">>, <<"ROLE">>, <<"ACCEPT">>,
-                     #{<<"environment">> => <<"staging">>}),
+    Rule = make_rule(
+        <<"svc_ssh">>,
+        <<"grp_web">>,
+        <<"ROLE">>,
+        <<"ACCEPT">>,
+        #{<<"environment">> => <<"staging">>}
+    ),
     Profile = make_profile([Rule], []),
     Result = flatten_result(generate(Profile, ipsets, <<"v4">>, <<"my_group">>)),
     %% Non-local environment should prefix the group with environment#

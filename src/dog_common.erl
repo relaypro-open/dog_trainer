@@ -46,11 +46,14 @@ to_list(Item) when is_float(Item) ->
     binary().
 to_binary(Item) when is_atom(Item) ->
     erlang:atom_to_binary(Item, utf8);
-to_binary(Item) when is_list(Item) -> % Assumes Item is a valid iolist or string
+% Assumes Item is a valid iolist or string
+to_binary(Item) when is_list(Item) ->
     erlang:iolist_to_binary(Item);
-to_binary(Item) when is_tuple(Item) -> % String representation like "{a,b}"
+% String representation like "{a,b}"
+to_binary(Item) when is_tuple(Item) ->
     erlang:iolist_to_binary(io_lib:format("~p", [Item]));
-to_binary(Item) when is_map(Item) -> % String representation like "#{a=>b}"
+% String representation like "#{a=>b}"
+to_binary(Item) when is_map(Item) ->
     erlang:iolist_to_binary(io_lib:format("~p", [Item]));
 to_binary(Item) when is_binary(Item) ->
     Item;
@@ -299,5 +302,11 @@ concat(Words, binary) ->
 %% INTERNAL
 
 internal_concat(Elements) ->
-    NonBinaryElements = [case Element of _ when is_binary(Element) -> binary_to_list(Element); _ -> Element end || Element <- Elements],
+    NonBinaryElements = [
+        case Element of
+            _ when is_binary(Element) -> binary_to_list(Element);
+            _ -> Element
+        end
+     || Element <- Elements
+    ],
     lists:concat(NonBinaryElements).

@@ -72,7 +72,7 @@ loop(_RoutingKey, _CType, Payload, State) ->
         Hostkey = maps:get(<<"hostkey">>, Config),
         ?LOG_DEBUG(#{hostname => Hostname, hostkey => Hostkey}, #{domain => [dog_trainer]}),
         dog_config:update_host_keepalive(Hostkey),
-        UpdateSource = dog_common:concat([<<"host_group->">>,GroupName],binary),
+        UpdateSource = dog_common:concat([<<"host_group->">>, GroupName], binary),
         ConfigClean = maps:remove(<<"updatetype">>, Config),
         ok = check_config(ConfigClean),
         case dog_host:get_by_hostkey(Hostkey) of
@@ -114,18 +114,23 @@ loop(_RoutingKey, _CType, Payload, State) ->
                                 ?LOG_ERROR(#{hostkey => Hostkey}, #{domain => [dog_trainer]})
                         end;
                     _ ->
-                        ?LOG_INFO(#{hostkey => Hostkey, reason => Reason}, #{domain => [dog_trainer]})
+                        ?LOG_INFO(#{hostkey => Hostkey, reason => Reason}, #{
+                            domain => [dog_trainer]
+                        })
                 end
         end,
         dog_agent_checker:go()
     catch
         Exception:ExceptionReason:Stacktrace ->
             imetrics:add_m(ips_update, "exception"),
-            ?LOG_ERROR(#{
-                exception => Exception,
-                exceptionreason => ExceptionReason,
-                stacktrace => Stacktrace
-            }, #{domain => [dog_trainer]})
+            ?LOG_ERROR(
+                #{
+                    exception => Exception,
+                    exceptionreason => ExceptionReason,
+                    stacktrace => Stacktrace
+                },
+                #{domain => [dog_trainer]}
+            )
     end,
     {ack, State}.
 
@@ -186,18 +191,23 @@ subscriber_callback(_DeliveryTag, _RoutingKey, Payload) ->
                                 ?LOG_ERROR(#{hostkey => Hostkey}, #{domain => [dog_trainer]})
                         end;
                     _ ->
-                        ?LOG_INFO(#{hostkey => Hostkey, reason => Reason}, #{domain => [dog_trainer]})
+                        ?LOG_INFO(#{hostkey => Hostkey, reason => Reason}, #{
+                            domain => [dog_trainer]
+                        })
                 end
         end,
         dog_agent_checker:go()
     catch
         Exception:ExceptionReason:Stacktrace ->
             imetrics:add_m(ips_update, "exception"),
-            ?LOG_ERROR(#{
-                         exception => Exception,
-                         exceptionreason => ExceptionReason,
-                         stacktrace => Stacktrace
-                        }, #{domain => [dog_trainer]})
+            ?LOG_ERROR(
+                #{
+                    exception => Exception,
+                    exceptionreason => ExceptionReason,
+                    stacktrace => Stacktrace
+                },
+                #{domain => [dog_trainer]}
+            )
     end,
     ack.
 
@@ -315,7 +325,7 @@ remove_local_ips(IPs) ->
 
 -spec check_config(Config :: map()) -> ok | error.
 check_config(Config) ->
-  case is_map(Config) of
-    true -> ok;
-    false -> error
-  end.
+    case is_map(Config) of
+        true -> ok;
+        false -> error
+    end.

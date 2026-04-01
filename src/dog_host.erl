@@ -54,7 +54,9 @@ keepalive_check() ->
     {ok, KeepAliveAlertSeconds} = application:get_env(dog_trainer, keepalive_alert_seconds),
     TimeCutoff = Now - KeepAliveAlertSeconds,
     ?LOG_DEBUG(#{now => calendar:system_time_to_rfc3339(Now)}, #{domain => [dog_trainer]}),
-    ?LOG_DEBUG(#{timecutoff => calendar:system_time_to_rfc3339(TimeCutoff)}, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(#{timecutoff => calendar:system_time_to_rfc3339(TimeCutoff)}, #{
+        domain => [dog_trainer]
+    }),
     keepalive_check(TimeCutoff).
 
 -spec keepalive_check(TimeCutoff :: number()) -> {ok, list()}.
@@ -72,11 +74,14 @@ keepalive_check(TimeCutoff) ->
     ?LOG_INFO(#{oldagents => OldAgents}, #{domain => [dog_trainer]}),
     {ok, OldAgents}.
 
--spec filter_out_retired_hosts(HostsGroups :: list(map()) ) -> AlertHosts :: list(map()).
+-spec filter_out_retired_hosts(HostsGroups :: list(map())) -> AlertHosts :: list(map()).
 filter_out_retired_hosts(Hosts) ->
-    lists:filter(fun(Host) ->
-                         maps:get(<<"active">>,Host) =/= <<"retired">>
-                 end, Hosts).
+    lists:filter(
+        fun(Host) ->
+            maps:get(<<"active">>, Host) =/= <<"retired">>
+        end,
+        Hosts
+    ).
 
 -spec retirement_check() -> {ok, Unalive :: list()}.
 retirement_check() ->
@@ -84,7 +89,9 @@ retirement_check() ->
     KeepAliveAlertSeconds = application:get_env(dog_trainer, retirement_alert_seconds, 86400),
     TimeCutoff = Now - KeepAliveAlertSeconds,
     ?LOG_DEBUG(#{now => calendar:system_time_to_rfc3339(Now)}, #{domain => [dog_trainer]}),
-    ?LOG_DEBUG(#{timecutoff => calendar:system_time_to_rfc3339(TimeCutoff)}, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(#{timecutoff => calendar:system_time_to_rfc3339(TimeCutoff)}, #{
+        domain => [dog_trainer]
+    }),
     retirement_check(TimeCutoff).
 
 -spec retirement_check(TimeCutoff :: number()) -> {ok, list()}.
@@ -166,7 +173,7 @@ hash_check(Host) ->
     GroupName = maps:get(<<"group">>, Host),
     ?LOG_DEBUG(#{groupname => GroupName}, #{domain => [dog_trainer]}),
     case dog_group:get_by_name(GroupName) of
-    %Iptables
+        %Iptables
         {error, notfound} ->
             ?LOG_INFO(#{groupname => GroupName}, #{domain => [dog_trainer]}),
             {error, notfound};
@@ -205,8 +212,18 @@ hash_check(Host) ->
                 <<"iptables_hash_age_check">> => IptablesHashCheck
             },
             ?LOG_DEBUG(#{hashstatus => HashStatus}, #{domain => [dog_trainer]}),
-            ?LOG_DEBUG(#{iptableshashcheck => IptablesHashCheck, ipsethashcheck => IpsetHashCheck}, #{domain => [dog_trainer]}),
-            ?LOG_DEBUG(#{iptableshashagecheck => IptablesHashAgeCheck, ipsethashagecheck => IpsetHashAgeCheck}, #{domain => [dog_trainer]}),
+            ?LOG_DEBUG(
+                #{iptableshashcheck => IptablesHashCheck, ipsethashcheck => IpsetHashCheck}, #{
+                    domain => [dog_trainer]
+                }
+            ),
+            ?LOG_DEBUG(
+                #{
+                    iptableshashagecheck => IptablesHashAgeCheck,
+                    ipsethashagecheck => IpsetHashAgeCheck
+                },
+                #{domain => [dog_trainer]}
+            ),
             case {IptablesHashCheck, IpsetHashCheck} of
                 {true, true} ->
                     iptables_hash_age_update(HostId, Now),
@@ -235,7 +252,9 @@ ipset_hash_age_check(HostId) ->
     KeepAliveAlertSeconds = application:get_env(dog_trainer, hashcheck_alert_seconds, 30),
     TimeCutoff = Now - KeepAliveAlertSeconds,
     ?LOG_DEBUG(#{now => calendar:system_time_to_rfc3339(Now)}, #{domain => [dog_trainer]}),
-    ?LOG_DEBUG(#{timecutoff => calendar:system_time_to_rfc3339(TimeCutoff)}, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(#{timecutoff => calendar:system_time_to_rfc3339(TimeCutoff)}, #{
+        domain => [dog_trainer]
+    }),
     ipset_hash_age_check(HostId, TimeCutoff).
 
 -spec ipset_hash_age_check(HostId :: binary(), TimeCutoff :: number()) -> boolean().
@@ -248,7 +267,9 @@ ipset_hash_age_check(HostId, TimeCutoff) ->
             reql:get_field(X, <<"ipset_hash_timestamp">>)
         end
     ),
-    ?LOG_DEBUG(#{ipsethashtimestamp => IpsetHashTimestamp, timecutoff => TimeCutoff}, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(#{ipsethashtimestamp => IpsetHashTimestamp, timecutoff => TimeCutoff}, #{
+        domain => [dog_trainer]
+    }),
     case IpsetHashTimestamp of
         <<>> ->
             Now = erlang:system_time(second),
@@ -264,7 +285,9 @@ iptables_hash_age_check(HostId) ->
     KeepAliveAlertSeconds = application:get_env(dog_trainer, hashcheck_alert_seconds, 30),
     TimeCutoff = Now - KeepAliveAlertSeconds,
     ?LOG_DEBUG(#{now => calendar:system_time_to_rfc3339(Now)}, #{domain => [dog_trainer]}),
-    ?LOG_DEBUG(#{timecutoff => calendar:system_time_to_rfc3339(TimeCutoff)}, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(#{timecutoff => calendar:system_time_to_rfc3339(TimeCutoff)}, #{
+        domain => [dog_trainer]
+    }),
     iptables_hash_age_check(HostId, TimeCutoff).
 
 -spec iptables_hash_age_check(HostId :: binary(), TimeCutoff :: number()) -> boolean().
@@ -333,7 +356,9 @@ keepalive_age_check() ->
     KeepAliveAlertSeconds = application:get_env(dog_trainer, keepalive_alert_seconds, 1800),
     TimeCutoff = Now - KeepAliveAlertSeconds,
     ?LOG_DEBUG(#{now => calendar:system_time_to_rfc3339(Now)}, #{domain => [dog_trainer]}),
-    ?LOG_DEBUG(#{timecutoff => calendar:system_time_to_rfc3339(TimeCutoff)}, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(#{timecutoff => calendar:system_time_to_rfc3339(TimeCutoff)}, #{
+        domain => [dog_trainer]
+    }),
     keepalive_age_check(TimeCutoff).
 
 -spec keepalive_age_check(TimeCutoff :: number()) -> {ok, list()}.
@@ -371,12 +396,13 @@ send_retirement_alert(Host) ->
     RetirementAlertEnabled = application:get_env(dog_trainer, retirement_alert_enabled, true),
     HostAlertActive = host_alert_active(Host),
     GroupName = maps:get(<<"group_name">>, Host, <<"">>),
-    GroupAlertActive = case GroupName =/= <<"">> of
-                           true ->
-                               dog_group:group_alert_active(GroupName);
-                           false ->
-                               false
-                       end,
+    GroupAlertActive =
+        case GroupName =/= <<"">> of
+            true ->
+                dog_group:group_alert_active(GroupName);
+            false ->
+                false
+        end,
     case RetirementAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
             ?LOG_INFO(#{host => Host}, #{domain => [dog_trainer]}),
@@ -390,13 +416,18 @@ send_retirement_alert(Host) ->
             {ok, From} = application:get_env(dog_trainer, smtp_from),
             {ok, Addresses} = application:get_env(dog_trainer, smtp_to),
             To = string:join(Addresses, ","),
-            KeepAliveAlertSeconds = application:get_env(dog_trainer, retirement_alert_seconds, 86400),
+            KeepAliveAlertSeconds = application:get_env(
+                dog_trainer, retirement_alert_seconds, 86400
+            ),
             Body = io_lib:format(
-                "Hosts that haven't communicated in last ~p seconds: ~nHostName: ~p~nHostKey: ~p~n", [
+                "Hosts that haven't communicated in last ~p seconds: ~nHostName: ~p~nHostKey: ~p~n",
+                [
                     KeepAliveAlertSeconds, HostName, HostKey
                 ]
             ),
-            Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s", [Subject, From, To, Body]),
+            Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s", [
+                Subject, From, To, Body
+            ]),
             gen_smtp_client:send(
                 {From, Addresses, Email},
                 [
@@ -417,12 +448,13 @@ send_keepalive_alert(Host) ->
     KeepaliveAlertEnabled = application:get_env(dog_trainer, keepalive_alert_enabled, true),
     HostAlertActive = host_alert_active(Host),
     GroupName = maps:get(<<"group_name">>, Host, <<"">>),
-    GroupAlertActive = case GroupName =/= <<"">> of
-                           true ->
-                               dog_group:group_alert_active(GroupName);
-                           false ->
-                               false
-                       end,
+    GroupAlertActive =
+        case GroupName =/= <<"">> of
+            true ->
+                dog_group:group_alert_active(GroupName);
+            false ->
+                false
+        end,
     case KeepaliveAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
             ?LOG_INFO(#{host => Host}, #{domain => [dog_trainer]}),
@@ -438,11 +470,14 @@ send_keepalive_alert(Host) ->
             To = string:join(Addresses, ","),
             {ok, KeepAliveAlertSeconds} = application:get_env(dog_trainer, keepalive_alert_seconds),
             Body = io_lib:format(
-                "Hosts that haven't communicated in last ~p seconds: ~nHostName: ~p~nHostKey: ~p~n", [
+                "Hosts that haven't communicated in last ~p seconds: ~nHostName: ~p~nHostKey: ~p~n",
+                [
                     KeepAliveAlertSeconds, HostName, HostKey
                 ]
             ),
-            Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s", [Subject, From, To, Body]),
+            Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s", [
+                Subject, From, To, Body
+            ]),
             gen_smtp_client:send(
                 {From, Addresses, Email},
                 [
@@ -463,12 +498,13 @@ send_keepalive_recover(Host) ->
     KeepaliveAlertEnabled = application:get_env(dog_trainer, keepalive_alert_enabled, true),
     HostAlertActive = host_alert_active(Host),
     GroupName = maps:get(<<"group_name">>, Host, <<"">>),
-    GroupAlertActive = case GroupName =/= <<"">> of
-                           true ->
-                               dog_group:group_alert_active(GroupName);
-                           false ->
-                               false
-                       end,
+    GroupAlertActive =
+        case GroupName =/= <<"">> of
+            true ->
+                dog_group:group_alert_active(GroupName);
+            false ->
+                false
+        end,
     case KeepaliveAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
             ?LOG_INFO(#{host => Host}, #{domain => [dog_trainer]}),
@@ -483,10 +519,14 @@ send_keepalive_recover(Host) ->
             {ok, Addresses} = application:get_env(dog_trainer, smtp_to),
             To = string:join(Addresses, ","),
             {ok, KeepAliveAlertSeconds} = application:get_env(dog_trainer, keepalive_alert_seconds),
-            Body = io_lib:format("Host reconnected in last ~p seconds: ~nHostName: ~s~nHostKey: ~s~n", [
-                KeepAliveAlertSeconds, HostName, HostKey
+            Body = io_lib:format(
+                "Host reconnected in last ~p seconds: ~nHostName: ~s~nHostKey: ~s~n", [
+                    KeepAliveAlertSeconds, HostName, HostKey
+                ]
+            ),
+            Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s", [
+                Subject, From, To, Body
             ]),
-            Email = io_lib:format("Subject: ~s\r\nFrom: ~s \r\nTo: ~s \r\n\r\n~s", [Subject, From, To, Body]),
             gen_smtp_client:send(
                 {From, Addresses, Email},
                 [
@@ -504,7 +544,7 @@ send_keepalive_recover(Host) ->
 
 -spec host_alert_active(HostMap :: map()) -> boolean().
 host_alert_active(HostMap) ->
-    case maps:get(<<"alert_enable">>,HostMap, true) of
+    case maps:get(<<"alert_enable">>, HostMap, true) of
         true -> true;
         false -> false
     end.
@@ -514,12 +554,13 @@ send_hash_alert(Host, HashStatus) ->
     HashAlertEnabled = application:get_env(dog_trainer, hash_alert_enabled, true),
     HostAlertActive = host_alert_active(Host),
     GroupName = maps:get(<<"group_name">>, Host, <<"">>),
-    GroupAlertActive = case GroupName =/= <<"">> of
-                           true ->
-                               dog_group:group_alert_active(GroupName);
-                           false ->
-                               false
-                       end,
+    GroupAlertActive =
+        case GroupName =/= <<"">> of
+            true ->
+                dog_group:group_alert_active(GroupName);
+            false ->
+                false
+        end,
     case HashAlertEnabled and HostAlertActive and GroupAlertActive of
         true ->
             ?LOG_INFO(#{host => Host}, #{domain => [dog_trainer]}),
@@ -948,12 +989,15 @@ state_event(HostMap, Event, HashStatus) ->
     Id = maps:get(<<"id">>, HostMap),
     {ok, OldState} = get_state_from_host(HostMap),
     NewState = new_state(HostMap, OldState, Event, HashStatus),
-    ?LOG_DEBUG(#{
-        id => Id,
-        event => Event,
-        oldstate => OldState,
-        newstate => NewState
-    }, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(
+        #{
+            id => Id,
+            event => Event,
+            oldstate => OldState,
+            newstate => NewState
+        },
+        #{domain => [dog_trainer]}
+    ),
     case OldState == NewState of
         false ->
             set_state_by_id(Id, NewState);

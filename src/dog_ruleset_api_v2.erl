@@ -101,7 +101,6 @@ get_all_names() ->
     ),
     {ok, RulesReplaced}.
 
-
 -spec get_by_name(Name :: binary()) -> {ok, map()} | {error, atom()}.
 get_by_name(Name) ->
     {ok, R} = dog_rethink:run(
@@ -328,7 +327,7 @@ get_schema() ->
     dog_json_schema:get_file(?VALIDATION_TYPE).
 
 -spec ids_to_names(Rulesets :: list() | map()) -> {'ok', list()} | map().
-ids_to_names(Rulesets) when is_list(Rulesets)->
+ids_to_names(Rulesets) when is_list(Rulesets) ->
     RulesReplaced = lists:map(
         fun(Ruleset) ->
             ids_to_names(Ruleset)
@@ -501,19 +500,19 @@ rule_names_to_ids(Rules, ServicesByName, ZonesByName, GroupsByName) ->
 to_hcl_by_id(RulesetId) ->
     {ok, RulesetWithIds} = get_by_id(RulesetId),
     Ruleset = ids_to_names(RulesetWithIds),
-    to_hcl(Ruleset). 
+    to_hcl(Ruleset).
 
 -spec to_hcl(Ruleset :: map()) -> binary().
 to_hcl(Ruleset) ->
-    InboundRules = rules_to_hcl(nested:get([<<"rules">>,<<"inbound">>],Ruleset)),
-    OutboundRules = rules_to_hcl(nested:get([<<"rules">>,<<"outbound">>],Ruleset)),
+    InboundRules = rules_to_hcl(nested:get([<<"rules">>, <<"inbound">>], Ruleset)),
+    OutboundRules = rules_to_hcl(nested:get([<<"rules">>, <<"outbound">>], Ruleset)),
     Bindings = #{
-                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Ruleset)), 
-                 'Name' => maps:get(<<"name">>, Ruleset), 
-                 'Environment' => <<"qa">>,
-                 'InboundRules' => InboundRules,
-                 'OutboundRules' => OutboundRules
-                },
+        'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Ruleset)),
+        'Name' => maps:get(<<"name">>, Ruleset),
+        'Environment' => <<"qa">>,
+        'InboundRules' => InboundRules,
+        'OutboundRules' => OutboundRules
+    },
     {ok, Snapshot} = eel:compile(<<
         "resource \"dog_ruleset\" \"<%= TerraformName .%>\"\n"
         "  name = \"<%= Name .%>\"\n"
@@ -535,68 +534,73 @@ to_hcl(Ruleset) ->
 
 -spec rules_to_hcl(Rules :: [map()]) -> [binary()].
 rules_to_hcl(Rules) ->
-    lists:map(fun(Rule) ->
-                      Group = case maps:get(<<"group">>,Rule) of
-                                  <<"any">> ->
-                                      <<"\"any\"">>;
-                                  <<"all-active">> ->
-                                      <<"\"all-active\"">>;
-                                  OtherGroup ->
-                                      case maps:get(<<"group_type">>,Rule) of
-                                          <<"ZONE">> ->
-                                              erlang:iolist_to_binary([
-                                                                       <<"dog_zone">>,<<".">>,OtherGroup,<<".id">>
-                                                                      ]);
-                                          _Other ->
-                                              erlang:iolist_to_binary([
-                                                                       <<"dog_group">>,<<".">>,OtherGroup,<<".id">>
-                                                                      ])
-                                      end
-                              end,
-                      Service = case maps:get(<<"service">>, Rule) of
-                                    <<"any">> ->
-                                        <<"any">>;
-                                        OtherService ->
-                                          erlang:iolist_to_binary([
-                                            <<"dog_service">>,<<".">>,OtherService,<<".id">>
-                                                                  ])
-                                end,
-                      Bindings = #{
-                                   'Action' => maps:get(<<"action">>,Rule),
-                                   'Active' => maps:get(<<"active">>,Rule),
-                                   'Comment' => maps:get(<<"comment">>,Rule),
-                                   'Environments' =>
-                                   io_lib:format("~p",[maps:get(<<"environments">>,Rule)]),
-                                   'Group' => Group,
-                                   'GroupType' => maps:get(<<"group_type">>,Rule),
-                                   'Interface' => maps:get(<<"interface">>,Rule),
-                                   'Log' => maps:get(<<"log">>,Rule),
-                                   'LogPrefix' => maps:get(<<"log_prefix">>,Rule),
-                                   'Service' => Service,
-                                   'States' =>
-                                   io_lib:format("~p",[maps:get(<<"states">>,Rule)]),
-                                   'Type' => maps:get(<<"type">>,Rule)
-                                  },
-                      {ok, Snapshot} = eel:compile(<<
-                                                     "      {\n"
-                                                     "        action       = \"<%= Action .%>\"\n"
-                                                     "        active       = \"<%= Active .%>\"\n"
-                                                     "        comment      = \"<%= Comment .%>\"\n"
-                                                     "        environments = <%= Environments .%>\n"
-                                                     "        group        = <%= Group .%>\n"
-                                                     "        group_type   = \"<%= GroupType .%>\"\n"
-                                                     "        interface    = \"<%= Interface .%>\"\n"
-                                                     "        log          = \"<%= Log .%>\"\n"
-                                                     "        log_prefix   = \"<%= LogPrefix .%>\"\n"
-                                                     "        service      = <%= Service .%>\n"
-                                                     "        states       = <%= States .%>\n"
-                                                     "        type         = \"<%= Type .%>\"\n"
-                                                     "      },\n"
-                                                   >>),
-      {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
-      {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
-      erlang:iolist_to_binary(IoData)
-end, Rules).
+    lists:map(
+        fun(Rule) ->
+            Group =
+                case maps:get(<<"group">>, Rule) of
+                    <<"any">> ->
+                        <<"\"any\"">>;
+                    <<"all-active">> ->
+                        <<"\"all-active\"">>;
+                    OtherGroup ->
+                        case maps:get(<<"group_type">>, Rule) of
+                            <<"ZONE">> ->
+                                erlang:iolist_to_binary([
+                                    <<"dog_zone">>, <<".">>, OtherGroup, <<".id">>
+                                ]);
+                            _Other ->
+                                erlang:iolist_to_binary([
+                                    <<"dog_group">>, <<".">>, OtherGroup, <<".id">>
+                                ])
+                        end
+                end,
+            Service =
+                case maps:get(<<"service">>, Rule) of
+                    <<"any">> ->
+                        <<"any">>;
+                    OtherService ->
+                        erlang:iolist_to_binary([
+                            <<"dog_service">>, <<".">>, OtherService, <<".id">>
+                        ])
+                end,
+            Bindings = #{
+                'Action' => maps:get(<<"action">>, Rule),
+                'Active' => maps:get(<<"active">>, Rule),
+                'Comment' => maps:get(<<"comment">>, Rule),
+                'Environments' =>
+                    io_lib:format("~p", [maps:get(<<"environments">>, Rule)]),
+                'Group' => Group,
+                'GroupType' => maps:get(<<"group_type">>, Rule),
+                'Interface' => maps:get(<<"interface">>, Rule),
+                'Log' => maps:get(<<"log">>, Rule),
+                'LogPrefix' => maps:get(<<"log_prefix">>, Rule),
+                'Service' => Service,
+                'States' =>
+                    io_lib:format("~p", [maps:get(<<"states">>, Rule)]),
+                'Type' => maps:get(<<"type">>, Rule)
+            },
+            {ok, Snapshot} = eel:compile(<<
+                "      {\n"
+                "        action       = \"<%= Action .%>\"\n"
+                "        active       = \"<%= Active .%>\"\n"
+                "        comment      = \"<%= Comment .%>\"\n"
+                "        environments = <%= Environments .%>\n"
+                "        group        = <%= Group .%>\n"
+                "        group_type   = \"<%= GroupType .%>\"\n"
+                "        interface    = \"<%= Interface .%>\"\n"
+                "        log          = \"<%= Log .%>\"\n"
+                "        log_prefix   = \"<%= LogPrefix .%>\"\n"
+                "        service      = <%= Service .%>\n"
+                "        states       = <%= States .%>\n"
+                "        type         = \"<%= Type .%>\"\n"
+                "      },\n"
+            >>),
+            {ok, RenderSnapshot} = eel_renderer:render(Bindings, Snapshot),
+            {IoData, _} = {eel_evaluator:eval(RenderSnapshot), RenderSnapshot},
+            erlang:iolist_to_binary(IoData)
+        end,
+        Rules
+    ).
 
 -spec get_all_active_names() -> {ok, list()}.
 get_all_active_names() ->
@@ -605,35 +609,41 @@ get_all_active_names() ->
 
 -spec get_all_active() -> {ok, list()}.
 get_all_active() ->
-    {ok, Result} = dog_rethink:run( fun(X) ->
-     reql:db(X, dog),
-     reql:table(X, group),
-     reql:has_fields(X, [<<"profile_id">>]),
-     reql:get_field(X, <<"profile_id">>)
+    {ok, Result} = dog_rethink:run(fun(X) ->
+        reql:db(X, dog),
+        reql:table(X, group),
+        reql:has_fields(X, [<<"profile_id">>]),
+        reql:get_field(X, <<"profile_id">>)
     end),
     {ok, All} = rethink_cursor:all(Result),
     ActiveGroupProfileIds = lists:flatten(All),
 
-    {ok, Result2} = dog_rethink:run( fun(X) ->
-     reql:db(X, dog),
-     reql:table(X, ruleset),
-     reql:has_fields(X, [<<"profile_id">>])
+    {ok, Result2} = dog_rethink:run(fun(X) ->
+        reql:db(X, dog),
+        reql:table(X, ruleset),
+        reql:has_fields(X, [<<"profile_id">>])
     end),
     {ok, All2} = rethink_cursor:all(Result2),
     ActiveRulesets = lists:flatten(All2),
 
-    ProfileToRulesetList = lists:map(fun(Ruleset) ->
-                      {
-                      maps:get(<<"profile_id">>,Ruleset),
-                      Ruleset
-                      }
-      end, ActiveRulesets),
+    ProfileToRulesetList = lists:map(
+        fun(Ruleset) ->
+            {
+                maps:get(<<"profile_id">>, Ruleset),
+                Ruleset
+            }
+        end,
+        ActiveRulesets
+    ),
     ProfileToRulesetMap = maps:from_list(ProfileToRulesetList),
 
     Rulesets = lists:flatten(
-                 lists:map(fun(GroupProfileId) -> 
-                          maps:get(GroupProfileId, ProfileToRulesetMap,[])
-                 end, ActiveGroupProfileIds)
-                ),
+        lists:map(
+            fun(GroupProfileId) ->
+                maps:get(GroupProfileId, ProfileToRulesetMap, [])
+            end,
+            ActiveGroupProfileIds
+        )
+    ),
     RulesetsUnique = sets:to_list(sets:from_list(Rulesets)),
     {ok, RulesetsUnique}.

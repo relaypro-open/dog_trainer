@@ -68,16 +68,24 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
             )
         of
             {error, Reason} ->
-                ?LOG_ERROR(#{reason => Reason, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
+                ?LOG_ERROR(#{reason => Reason, routing_key => RoutingKey}, #{
+                    domain => [dog_trainer]
+                }),
                 {error, Reason};
             {ok, _NTime, _CType, Payload} ->
-                ?LOG_DEBUG(#{payload => Payload, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
+                ?LOG_DEBUG(#{payload => Payload, routing_key => RoutingKey}, #{
+                    domain => [dog_trainer]
+                }),
                 case decode_payload(Payload) of
                     {<<"error">>, StdErr} ->
-                        ?LOG_ERROR(#{stderr => StdErr, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
+                        ?LOG_ERROR(#{stderr => StdErr, routing_key => RoutingKey}, #{
+                            domain => [dog_trainer]
+                        }),
                         {error, StdErr};
                     {<<"ok">>, StdOut} ->
-                        ?LOG_INFO(#{stdout => StdOut, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
+                        ?LOG_INFO(#{stdout => StdOut, routing_key => RoutingKey}, #{
+                            domain => [dog_trainer]
+                        }),
                         {ok, string:trim(StdOut, trailing, "\n")}
                 end
         end,
@@ -167,7 +175,11 @@ publish_file_send(
     Response.
 
 -spec send_file(
-    HostFilePath :: iodata(), LocalFilePath :: iodata(), RemoteFilePath :: iodata(), Hostkey :: iodata(), Opts :: list()
+    HostFilePath :: iodata(),
+    LocalFilePath :: iodata(),
+    RemoteFilePath :: iodata(),
+    Hostkey :: iodata(),
+    Opts :: list()
 ) -> ok | error.
 send_file(HostFilePath, LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
     imetrics:add_m(file_transfer, send_file),
@@ -181,17 +193,31 @@ send_file(HostFilePath, LocalFilePath, RemoteFilePath, Hostkey, Opts) ->
 
 send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, MaxBlockSizeBytes, Opts) ->
     TotalBlocks = number_blocks(LocalFilePath, MaxBlockSizeBytes),
-    ok = send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, 0, Opts).
+    ok = send_data(
+        IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, 0, Opts
+    ).
 
-send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, CurrentBlock, Opts) ->
+send_data(
+    IoDevice,
+    LocalFilePath,
+    RemoteFilePath,
+    Hostkey,
+    TotalBlocks,
+    MaxBlockSizeBytes,
+    CurrentBlock,
+    Opts
+) ->
     case file:read(IoDevice, MaxBlockSizeBytes) of
         {ok, Data} ->
-            ?LOG_DEBUG(#{
-                remotefilepath => RemoteFilePath,
-                maxblocksizebytes => MaxBlockSizeBytes,
-                currentblock => CurrentBlock,
-                total_blocks => TotalBlocks
-            }, #{domain => [dog_trainer]}),
+            ?LOG_DEBUG(
+                #{
+                    remotefilepath => RemoteFilePath,
+                    maxblocksizebytes => MaxBlockSizeBytes,
+                    currentblock => CurrentBlock,
+                    total_blocks => TotalBlocks
+                },
+                #{domain => [dog_trainer]}
+            ),
             % Write Data to Socket
             NextBlock = CurrentBlock + 1,
             {ack, _Time} = publish_file_send(
@@ -199,7 +225,14 @@ send_data(IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBloc
             ),
             %?LOG_DEBUG(#{response => Response}),
             ok = send_data(
-                IoDevice, LocalFilePath, RemoteFilePath, Hostkey, TotalBlocks, MaxBlockSizeBytes, NextBlock, Opts
+                IoDevice,
+                LocalFilePath,
+                RemoteFilePath,
+                Hostkey,
+                TotalBlocks,
+                MaxBlockSizeBytes,
+                NextBlock,
+                Opts
             ),
             ok;
         eof when MaxBlockSizeBytes =:= 0 ->
@@ -263,10 +296,14 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
                 <<"text/json">> ->
                     case jsx:decode(Response) of
                         #{<<"error">> := StdErr} ->
-                            ?LOG_ERROR(#{stderr => StdErr, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
+                            ?LOG_ERROR(#{stderr => StdErr, routing_key => RoutingKey}, #{
+                                domain => [dog_trainer]
+                            }),
                             {error, StdErr};
                         #{<<"ok">> := StdOut} ->
-                            ?LOG_INFO(#{stdout => StdOut, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
+                            ?LOG_INFO(#{stdout => StdOut, routing_key => RoutingKey}, #{
+                                domain => [dog_trainer]
+                            }),
                             {ok, StdOut}
                     end
             end

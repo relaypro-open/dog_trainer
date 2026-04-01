@@ -1,4 +1,3 @@
-
 -module(dog_fact_api_v2).
 
 -include_lib("kernel/include/logger.hrl").
@@ -93,7 +92,7 @@ update(Id, UpdateMap@0) ->
         {ok, OldFact} ->
             %Fun = fun(K,V1) when is_map(K) -> map:remove(<<"vars">>,V1) end,
             %NoVarsFact = maps:map(Fun,OldFact),
-            NoVarsFact = nested:remove([<<"groups">>,<<"all">>,<<"vars">>],OldFact),
+            NoVarsFact = nested:remove([<<"groups">>, <<"all">>, <<"vars">>], OldFact),
             NewFact = maps:merge(NoVarsFact, UpdateMap@0),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewFact) of
                 ok ->
@@ -133,16 +132,16 @@ get_schema() ->
 -spec to_hcl_by_id(FactId :: binary()) -> binary().
 to_hcl_by_id(FactId) ->
     {ok, Fact} = get_by_id(FactId),
-    to_hcl(Fact). 
+    to_hcl(Fact).
 
 -spec to_hcl(Fact :: map()) -> binary().
 to_hcl(Fact) ->
     Bindings = #{
-                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Fact)), 
-                 'Name' => maps:get(<<"name">>, Fact), 
-                 'Environment' => <<"qa">>,
-                 'Groups' => to_hcl_group(maps:get(<<"groups">>, Fact))
-                },
+        'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Fact)),
+        'Name' => maps:get(<<"name">>, Fact),
+        'Environment' => <<"qa">>,
+        'Groups' => to_hcl_group(maps:get(<<"groups">>, Fact))
+    },
     {ok, Snapshot} = eel:compile(<<
         "resource \"dog_fact\" \"<%= TerraformName .%>\n"
         "    name = <%= Name .%>\n"
@@ -158,10 +157,10 @@ to_hcl(Fact) ->
 to_hcl_group(Group) ->
     All = maps:get(<<"all">>, Group),
     Bindings = #{
-                 'Children' => dog_common:format_value(maps:get(<<"children">>, All)), 
-                 'Hosts' => dog_common:format_vars(maps:get(<<"hosts">>, All)),
-                 'Vars' => dog_common:format_vars(maps:get(<<"vars">>, All, []))
-                },
+        'Children' => dog_common:format_value(maps:get(<<"children">>, All)),
+        'Hosts' => dog_common:format_vars(maps:get(<<"hosts">>, All)),
+        'Vars' => dog_common:format_vars(maps:get(<<"vars">>, All, []))
+    },
     {ok, Snapshot} = eel:compile(<<
         "      all = {\n"
         "        children = <%= Children .%>\n"
@@ -175,7 +174,7 @@ to_hcl_group(Group) ->
         "<%= case Vars of %>"
         "<% [] -> <<>> ; %>"
         "<% _ ->  %>"
-		"    vars = jsonencode({\n"
+        "    vars = jsonencode({\n"
         "<%= lists:map(fun({Key,Value}) -> %>"
         "      <%= Key .%> = <%= Value .%> \n"
         "<% end, maps:to_list(Vars)) .%>"

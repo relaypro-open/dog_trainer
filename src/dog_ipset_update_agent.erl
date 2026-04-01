@@ -171,16 +171,20 @@ do_periodic_publish(State) ->
                 _ ->
                     ?LOG_INFO(#{state => State}, #{domain => [dog_trainer]}),
                     ?LOG_INFO(#{state => length(State)}, #{domain => [dog_trainer]}),
-                    case lists:member(force,State) of
-                      true ->
-                        ?LOG_DEBUG(#{message => "force ipset update"}, #{domain => [dog_trainer]}),
-                        dog_ipset:force_update_ipsets();
-                      false ->
-                        dog_ipset:update_ipsets()
+                    case lists:member(force, State) of
+                        true ->
+                            ?LOG_DEBUG(#{message => "force ipset update"}, #{
+                                domain => [dog_trainer]
+                            }),
+                            dog_ipset:force_update_ipsets();
+                        false ->
+                            dog_ipset:update_ipsets()
                     end,
                     {ok, []}
             end;
         false ->
-            ?LOG_INFO(#{message => "Skipping, dog_agent_checker:check() false"}, #{domain => [dog_trainer]}),
+            ?LOG_INFO(#{message => "Skipping, dog_agent_checker:check() false"}, #{
+                domain => [dog_trainer]
+            }),
             {ok, State}
     end.

@@ -459,7 +459,9 @@ hash_check(AgentIpsetHash) ->
     {ok, LatestHash} = latest_hash(),
     case AgentIpsetHash == LatestHash of
         false ->
-            ?LOG_INFO(#{agentipsethash => AgentIpsetHash, latesthash => LatestHash}, #{domain => [dog_trainer]}),
+            ?LOG_INFO(#{agentipsethash => AgentIpsetHash, latesthash => LatestHash}, #{
+                domain => [dog_trainer]
+            }),
             false;
         true ->
             true

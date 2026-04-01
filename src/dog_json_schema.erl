@@ -22,34 +22,39 @@ get_file(Type) ->
 -spec validate(Type :: binary(), Document :: map()) -> ok | {error, _}.
 validate(Type, Document) ->
     %try
-        SchemaContents = get_file(Type),
-        SchemaMap = jsx:decode(SchemaContents),
-        %{ok, SchemaMap} = 'Elixir.Jason':decode(SchemaContents),
-        %?LOG_DEBUG("SchemaMap: ~p", [SchemaMap]),
-        %Schema = 'Elixir.JsonXema':new(SchemaMap),
-        %?LOG_DEBUG("Schema: ~p",[Schema]),
-        Name = maps:get(<<"name">>, Document, <<"NONE">>),
-        Id = maps:get(<<"id">>, Document, <<"NONE">>),
-        %Validation = 'Elixir.JsonXema':validate(Schema, Document),
-        Validation = jesse:validate_with_schema(SchemaMap, Document),
-        case Validation of
-            {ok, _Reason} ->
-                ?LOG_DEBUG(#{type => Type, name => Name, id => Id, validation => Validation}, #{domain => [dog_trainer]}),
-                ok;
-            {error, Reason} ->
-                ?LOG_ERROR(#{type => Type, name => Name, id => Id, validation => Validation, reason => Reason}, #{domain => [dog_trainer]}),
-                {error, Reason}
-        end.
-    %catch
-    %    Exception:ExceptionReason:Stacktrace ->
-    %        ?LOG_ERROR(#{
-    %            schematype => Type,
-    %            exception => Exception,
-    %            exceptionreason => ExceptionReason,
-    %            stacktrace => Stacktrace
-    %        }),
-    %        throw(error)
-    %end.
+    SchemaContents = get_file(Type),
+    SchemaMap = jsx:decode(SchemaContents),
+    %{ok, SchemaMap} = 'Elixir.Jason':decode(SchemaContents),
+    %?LOG_DEBUG("SchemaMap: ~p", [SchemaMap]),
+    %Schema = 'Elixir.JsonXema':new(SchemaMap),
+    %?LOG_DEBUG("Schema: ~p",[Schema]),
+    Name = maps:get(<<"name">>, Document, <<"NONE">>),
+    Id = maps:get(<<"id">>, Document, <<"NONE">>),
+    %Validation = 'Elixir.JsonXema':validate(Schema, Document),
+    Validation = jesse:validate_with_schema(SchemaMap, Document),
+    case Validation of
+        {ok, _Reason} ->
+            ?LOG_DEBUG(#{type => Type, name => Name, id => Id, validation => Validation}, #{
+                domain => [dog_trainer]
+            }),
+            ok;
+        {error, Reason} ->
+            ?LOG_ERROR(
+                #{type => Type, name => Name, id => Id, validation => Validation, reason => Reason},
+                #{domain => [dog_trainer]}
+            ),
+            {error, Reason}
+    end.
+%catch
+%    Exception:ExceptionReason:Stacktrace ->
+%        ?LOG_ERROR(#{
+%            schematype => Type,
+%            exception => Exception,
+%            exceptionreason => ExceptionReason,
+%            stacktrace => Stacktrace
+%        }),
+%        throw(error)
+%end.
 
 -spec validate_all(Type :: binary()) -> ResultMap :: map().
 validate_all(Type) ->

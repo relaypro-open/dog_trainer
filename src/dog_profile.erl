@@ -46,7 +46,8 @@
 init() ->
     pass.
 
--spec generate_ipv6_iptables_ruleset_by_id(Id :: binary(), SelfGroupName :: binary()) -> {{ok, iolist()}, {ok, iolist()}}.
+-spec generate_ipv6_iptables_ruleset_by_id(Id :: binary(), SelfGroupName :: binary()) ->
+    {{ok, iolist()}, {ok, iolist()}}.
 generate_ipv6_iptables_ruleset_by_id(Id, SelfGroupName) ->
     case get_by_id(Id) of
         {error, _Error} ->
@@ -62,11 +63,14 @@ generate_ipv6_iptables_ruleset_by_id(Id, SelfGroupName) ->
             {IpsetsIptablesRulesetResult, IptablesIptablesRulesetResult}
     end.
 
--spec generate_ipv4_iptables_ruleset_by_id(GroupId :: binary(), SelfGroupName :: binary() ) -> {{ok, iolist()}, {ok, iolist()}}.
+-spec generate_ipv4_iptables_ruleset_by_id(GroupId :: binary(), SelfGroupName :: binary()) ->
+    {{ok, iolist()}, {ok, iolist()}}.
 generate_ipv4_iptables_ruleset_by_id(Id, SelfGroupName) ->
     {ok, Json} = get_by_id(Id),
     Ipsets = dog_iptables_ruleset:generate_iptables_ruleset(Json, ipsets, <<"v4">>, SelfGroupName),
-    Iptables = dog_iptables_ruleset:generate_iptables_ruleset(Json, iptables, <<"v4">>, SelfGroupName),
+    Iptables = dog_iptables_ruleset:generate_iptables_ruleset(
+        Json, iptables, <<"v4">>, SelfGroupName
+    ),
     {Ipsets, Iptables}.
 
 -spec generate_ipv4_iptables_ruleset_by_group_name(
@@ -139,8 +143,12 @@ generate_ipv6_iptables_ruleset_by_group_id(GroupId) ->
             {ok, Id} -> Id
         end,
     {ok, Json} = get_by_id(ProfileId),
-    {ok, Ipsets} = dog_iptables_ruleset:generate_iptables_ruleset(Json, ipsets, <<"v4">>, SelfGroupName),
-    {ok, Iptables} = dog_iptables_ruleset:generate_iptables_ruleset(Json, iptables, <<"v4">>, SelfGroupName),
+    {ok, Ipsets} = dog_iptables_ruleset:generate_iptables_ruleset(
+        Json, ipsets, <<"v4">>, SelfGroupName
+    ),
+    {ok, Iptables} = dog_iptables_ruleset:generate_iptables_ruleset(
+        Json, iptables, <<"v4">>, SelfGroupName
+    ),
     {Ipsets, Iptables}.
 
 -spec profile_not_found(GroupId :: binary()) -> no_return().
@@ -219,8 +227,12 @@ generate_ipv4_iptables_ruleset_by_group_id(GroupId) ->
             {ok, Id} -> Id
         end,
     {ok, Json} = get_by_id(ProfileId),
-    {ok, Ipsets} = dog_iptables_ruleset:generate_iptables_ruleset(Json, ipsets, <<"v4">>, SelfGroupName),
-    {ok, Iptables} = dog_iptables_ruleset:generate_iptables_ruleset(Json, iptables, <<"v4">>, SelfGroupName),
+    {ok, Ipsets} = dog_iptables_ruleset:generate_iptables_ruleset(
+        Json, ipsets, <<"v4">>, SelfGroupName
+    ),
+    {ok, Iptables} = dog_iptables_ruleset:generate_iptables_ruleset(
+        Json, iptables, <<"v4">>, SelfGroupName
+    ),
     {Ipsets, Iptables}.
 
 -spec write_profile_to_file(Profile :: map(), GroupName :: binary()) -> ok.

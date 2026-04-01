@@ -93,7 +93,9 @@ handle_connection_down(State) ->
 
 handle_query_result(Result, State) ->
     ?LOG_INFO(#{result => Result}, #{domain => [dog_trainer]}),
-    ?LOG_INFO(#{message => "dog_service_watcher calling update_all_iptables"}, #{domain => [dog_trainer]}),
+    ?LOG_INFO(#{message => "dog_service_watcher calling update_all_iptables"}, #{
+        domain => [dog_trainer]
+    }),
     %TODO detect which groups are effected by service change
     case Result of
         [] ->
@@ -112,7 +114,9 @@ handle_query_result(Result, State) ->
                         end,
                     ?LOG_INFO(#{serviceid => ServiceId}, #{domain => [dog_trainer]}),
                     {ok, ProfilesWithService} = dog_service:where_used(ServiceId),
-                    ?LOG_INFO(#{profileswithservice => ProfilesWithService}, #{domain => [dog_trainer]}),
+                    ?LOG_INFO(#{profileswithservice => ProfilesWithService}, #{
+                        domain => [dog_trainer]
+                    }),
                     GroupIdsWithProfile = lists:flatten(
                         lists:map(
                             fun(ProfileId) ->
@@ -121,7 +125,9 @@ handle_query_result(Result, State) ->
                             ProfilesWithService
                         )
                     ),
-                    ?LOG_INFO(#{groupidswithprofile => GroupIdsWithProfile}, #{domain => [dog_trainer]}),
+                    ?LOG_INFO(#{groupidswithprofile => GroupIdsWithProfile}, #{
+                        domain => [dog_trainer]
+                    }),
                     GroupIdsWithProfile2 = lists:flatten([
                         element(2, GroupId)
                      || GroupId <- GroupIdsWithProfile
@@ -130,7 +136,9 @@ handle_query_result(Result, State) ->
                         element(2, dog_group:get_name_by_id(GroupId))
                      || GroupId <- GroupIdsWithProfile2
                     ],
-                    ?LOG_INFO(#{groupnameswithprofile => GroupNamesWithProfile}, #{domain => [dog_trainer]}),
+                    ?LOG_INFO(#{groupnameswithprofile => GroupNamesWithProfile}, #{
+                        domain => [dog_trainer]
+                    }),
                     dog_profile_update_agent:add_to_queue(GroupNamesWithProfile)
                 end,
                 Result

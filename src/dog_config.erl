@@ -17,7 +17,10 @@ publish_host_config(Hostkey) ->
             Count = 1,
             Pid = erlang:self(),
             Message = term_to_binary([
-                {count, Count}, {local_time, calendar:local_time()}, {pid, Pid}, {user_data, UserData}
+                {count, Count},
+                {local_time, calendar:local_time()},
+                {pid, Pid},
+                {user_data, UserData}
             ]),
             Response = turtle:publish(
                 config_publisher,
@@ -56,14 +59,17 @@ update_host_keepalive(Hostkey) ->
     IpsetHash :: iolist()
 ) -> ok.
 update_host_hashes(Hostname, Hash4Ipsets, Hash6Ipsets, Hash4Iptables, Hash6Iptables, IpsetHash) ->
-    ?LOG_DEBUG(#{
-        hostname => Hostname,
-        hash4ipsets => Hash4Ipsets,
-        hash6ipsets => Hash6Ipsets,
-        hash4iptables => Hash4Iptables,
-        hash6iptables => Hash6Iptables,
-        ipsethash => IpsetHash
-    }, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(
+        #{
+            hostname => Hostname,
+            hash4ipsets => Hash4Ipsets,
+            hash6ipsets => Hash6Ipsets,
+            hash4iptables => Hash4Iptables,
+            hash6iptables => Hash6Iptables,
+            ipsethash => IpsetHash
+        },
+        #{domain => [dog_trainer]}
+    ),
     %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
     %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     {ok, _R} = dog_rethink:run(

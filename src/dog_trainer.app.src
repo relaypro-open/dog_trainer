@@ -36,8 +36,7 @@
         eel,
         cowboy_access_log,
         entropy_string
-        ]
-    },
+    ]},
     {env, []},
     {modules, []},
     {maintainers, []},

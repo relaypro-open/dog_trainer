@@ -137,17 +137,17 @@ update(Id, UpdateMap) ->
 -spec to_hcl_by_id(ServiceId :: binary()) -> binary().
 to_hcl_by_id(ServiceId) ->
     {ok, Service} = get_by_id(ServiceId),
-    to_hcl(Service). 
+    to_hcl(Service).
 
 -spec to_hcl(Service :: map()) -> binary().
 to_hcl(Service) ->
     Bindings = #{
-                 'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Service)), 
-                 'Name' => maps:get(<<"name">>, Service), 
-                 'Version' => maps:get(<<"version">>, Service), 
-                 'Environment' => <<"qa">>,
-                 'PortProtocols' => portprotocols_output(maps:get(<<"services">>, Service))
-                },
+        'TerraformName' => dog_common:to_terraform_name(maps:get(<<"name">>, Service)),
+        'Name' => maps:get(<<"name">>, Service),
+        'Version' => maps:get(<<"version">>, Service),
+        'Environment' => <<"qa">>,
+        'PortProtocols' => portprotocols_output(maps:get(<<"services">>, Service))
+    },
     {ok, Snapshot} = eel:compile(<<
         "resource \"dog_service\" \"<%= TerraformName .%>\" {\n"
         "  name = \"<%= Name .%>\"\n"
@@ -165,20 +165,23 @@ to_hcl(Service) ->
 
 -spec portprotocols_output(PortProtocols :: [map()]) -> binary().
 portprotocols_output(PortProtocols) ->
-    PPs = lists:map(fun(PP) -> 
-        Ports = maps:get(<<"ports">>, PP), 
-        Protocol = io_lib:format("\"~s\"",[maps:get(<<"protocol">>, PP)]), 
-        PortsString = dog_common:quoted_comma_delimited(Ports),
-        {Protocol, PortsString}
-    end, PortProtocols),
+    PPs = lists:map(
+        fun(PP) ->
+            Ports = maps:get(<<"ports">>, PP),
+            Protocol = io_lib:format("\"~s\"", [maps:get(<<"protocol">>, PP)]),
+            PortsString = dog_common:quoted_comma_delimited(Ports),
+            {Protocol, PortsString}
+        end,
+        PortProtocols
+    ),
     Bindings = #{
-                 'PortProtocols' => PPs 
-                },
+        'PortProtocols' => PPs
+    },
     {ok, Snapshot} = eel:compile(<<
         "<%= lists:map(fun({Protocol,Ports}) -> %>"
         "    {\n"
         "      protocol = <%= Protocol .%>\n"
-		"      ports    = [<%= Ports .%>]\n"
+        "      ports    = [<%= Ports .%>]\n"
         "    },\n"
         "<% end, PortProtocols) .%>"
     >>),
