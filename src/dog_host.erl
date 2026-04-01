@@ -35,6 +35,15 @@
     state_event/3
 ]).
 
+-ifdef(TEST).
+-export([
+    filter_out_retired_hosts/1,
+    get_state_from_host/1,
+    host_alert_active/1,
+    iptables_hash_logic/4
+]).
+-endif.
+
 -spec get_all_joined_with_group() -> HostsGroups :: map().
 get_all_joined_with_group() ->
     dog_common:eq_join(<<"host">>, <<"group">>, <<"name">>, <<"group">>).
