@@ -743,7 +743,7 @@ get_by_ips(Key) ->
 -spec interfaces_to_ips(InterfacesString :: iolist()) -> Ips :: list().
 interfaces_to_ips(InterfacesString) ->
     Interfaces = jsx:decode(InterfacesString),
-    lists:delete(<<"127.0.0.1">>, lists:flatten([element(2, I) || I <- Interfaces])).
+    lists:delete(<<"127.0.0.1">>, lists:flatten(maps:values(Interfaces))).
 
 -spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(HostMap@0) ->

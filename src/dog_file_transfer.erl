@@ -30,12 +30,12 @@
 hostkey_to_routing_key(Hostkey) ->
     erlang:iolist_to_binary(["*.*.*.", Hostkey]).
 
--spec execute_command(Hostkey :: string(), ExecuteCommand :: string()) ->
+-spec execute_command(ExecuteCommand :: string(), Hostkey :: string()) ->
     {ok | error, iolist()}.
 execute_command(ExecuteCommand, Hostkey) ->
     execute_command(ExecuteCommand, Hostkey, []).
 
--spec execute_command(Hostkey :: string(), ExecuteCommand :: string(), Opts :: list()) ->
+-spec execute_command(ExecuteCommand :: string(), Hostkey :: string(), Opts :: list()) ->
     {ok | error, iolist()}.
 execute_command(ExecuteCommand, Hostkey, Opts) ->
     imetrics:add_m(file_transfer, execute_command),
@@ -84,7 +84,7 @@ publish_execute_command(Hostkey, ExecuteCommand, Opts) ->
     Response.
 
 decode_payload(Payload) ->
-    {Response, Message} = hd(jsx:decode(Payload)),
+    [{Response, Message}] = maps:to_list(jsx:decode(Payload)),
     {Response, Message}.
 
 delete_file(FilePath, Hostkey, Opts) ->
@@ -118,8 +118,8 @@ publish_file_delete(Hostkey, Filename, Opts) ->
             ?LOG_ERROR(#{reason => Reason, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
             Reason;
         {ok, _NTime, _CType, Payload} ->
-            case hd(jsx:decode(Payload)) of
-                {<<"error">>, Error} ->
+            case jsx:decode(Payload) of
+                #{<<"error">> := Error} ->
                     {error, Error};
                 <<"ok">> ->
                     ok
@@ -261,11 +261,11 @@ publish_file_fetch(Hostkey, Filename, Opts) ->
                     ?LOG_INFO(#{response => erlang:size(Response)}, #{domain => [dog_trainer]}),
                     Response;
                 <<"text/json">> ->
-                    case hd(jsx:decode(Response)) of
-                        {<<"error">>, StdErr} ->
+                    case jsx:decode(Response) of
+                        #{<<"error">> := StdErr} ->
                             ?LOG_ERROR(#{stderr => StdErr, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
                             {error, StdErr};
-                        {<<"ok">>, StdOut} ->
+                        #{<<"ok">> := StdOut} ->
                             ?LOG_INFO(#{stdout => StdOut, routing_key => RoutingKey}, #{domain => [dog_trainer]}),
                             {ok, StdOut}
                     end
