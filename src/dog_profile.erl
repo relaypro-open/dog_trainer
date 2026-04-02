@@ -625,6 +625,8 @@ create(ProfileMap@0) ->
                             <<"profile_id">> => ProfileId
                         }
                     ),
+                    {ok, NewVal} = get_by_id(ProfileId),
+                    dog_profile_event:on_create(NewVal),
                     {ok, ProfileId};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
@@ -771,7 +773,10 @@ update(Id, UpdateMap) ->
                             Replaced = maps:get(<<"replaced">>, R),
                             Unchanged = maps:get(<<"unchanged">>, R),
                             case {Replaced, Unchanged} of
-                                {1, 0} -> {true, Id};
+                                {1, 0} ->
+                                    {ok, NewVal} = get_by_id(Id),
+                                    dog_profile_event:on_update(OldProfile, NewVal),
+                                    {true, Id};
                                 {0, 1} -> {false, Id};
                                 _ -> {false, no_updated}
                             end;
@@ -803,7 +808,10 @@ update(Id, UpdateMap) ->
                             Replaced = maps:get(<<"replaced">>, R),
                             Unchanged = maps:get(<<"unchanged">>, R),
                             case {Replaced, Unchanged} of
-                                {1, 0} -> {true, Id};
+                                {1, 0} ->
+                                    {ok, NewVal} = get_by_id(Id),
+                                    dog_profile_event:on_update(OldProfile, NewVal),
+                                    {true, Id};
                                 {0, 1} -> {false, Id};
                                 _ -> {false, no_updated}
                             end;
@@ -835,6 +843,7 @@ delete(Id) ->
             RulesetId = maps:get(<<"id">>, Ruleset),
             ?LOG_DEBUG(#{ruleset_id => RulesetId}, #{domain => [dog_trainer]}),
             dog_ruleset:delete(RulesetId),
+            dog_profile_event:on_delete(Profile),
             ok;
         {ok, Groups} ->
             ?LOG_INFO(#{id => Id, groups => Groups}, #{domain => [dog_trainer]}),

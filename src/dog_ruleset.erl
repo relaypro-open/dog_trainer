@@ -53,6 +53,8 @@ create(RulesMap) ->
                     ),
                     Key = hd(maps:get(<<"generated_keys">>, R)),
                     ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
+                    {ok, NewVal} = get_by_id(Key),
+                    dog_ruleset_event:on_create(NewVal),
                     {ok, Key};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
@@ -178,7 +180,10 @@ update(Id, UpdateMap) ->
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of
-                        {1, 0} -> {true, Id};
+                        {1, 0} ->
+                            {ok, NewVal} = get_by_id(Id),
+                            dog_ruleset_event:on_update(OldRules, NewVal),
+                            {true, Id};
                         {0, 1} -> {false, Id};
                         _ -> {false, no_updated}
                     end;
@@ -192,6 +197,7 @@ update(Id, UpdateMap) ->
 
 -spec delete(GroupId :: binary()) -> (ok | {error, Error :: map()}).
 delete(Id) ->
+    {ok, OldVal} = get_by_id(Id),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -203,7 +209,9 @@ delete(Id) ->
     ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
-        1 -> ok;
+        1 ->
+            dog_ruleset_event:on_delete(OldVal),
+            ok;
         _ -> {error, #{<<"error">> => <<"error">>}}
     end.
 
