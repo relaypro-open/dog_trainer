@@ -53,6 +53,7 @@ create(RuleMap@0) ->
                         end
                     ),
                     NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                    dog_ruleset_event:on_create(NewVal),
                     {ok, NewVal};
                 {error, Error} ->
                     ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]}),
@@ -194,6 +195,7 @@ update(Id, UpdateMap@0) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                            dog_ruleset_event:on_update(OldService, NewVal),
                             {true, NewVal};
                         {0, 1} ->
                             OldVal = maps:get(<<"old_val">>, hd(maps:get(<<"changes">>, R))),
@@ -213,6 +215,7 @@ update(Id, UpdateMap@0) ->
 delete(Id) ->
     case where_used(Id) of
         {ok, []} ->
+            {ok, OldVal} = get_by_id(Id),
             {ok, R} = dog_rethink:run(
                 fun(X) ->
                     reql:db(X, dog),
@@ -224,7 +227,9 @@ delete(Id) ->
             ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
-                1 -> ok;
+                1 ->
+                    dog_ruleset_event:on_delete(OldVal),
+                    ok;
                 _ -> {error, #{<<"error">> => <<"error">>}}
             end;
         {ok, Profiles} ->

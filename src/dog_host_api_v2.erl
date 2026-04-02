@@ -90,6 +90,7 @@ create(HostMap@0) ->
                                     NewVal = maps:get(
                                         <<"new_val">>, hd(maps:get(<<"changes">>, R))
                                     ),
+                                    dog_host_event:on_create(NewVal),
                                     {ok, NewVal};
                                 true ->
                                     {error, name_exists}
@@ -136,6 +137,7 @@ get_all_active() ->
 
 -spec delete(Id :: binary()) -> (ok | error).
 delete(Id) ->
+    {ok, OldVal} = get_by_id(Id),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -147,7 +149,9 @@ delete(Id) ->
     ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
-        1 -> ok;
+        1 ->
+            dog_host_event:on_delete(OldVal),
+            ok;
         _ -> error
     end.
 
@@ -173,6 +177,7 @@ update(Id, UpdateMap) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                            dog_host_event:on_update(OldHost, NewVal),
                             {true, NewVal};
                         {0, 1} ->
                             OldVal = maps:get(<<"old_val">>, hd(maps:get(<<"changes">>, R))),

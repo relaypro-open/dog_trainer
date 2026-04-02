@@ -37,6 +37,7 @@ create(LinkMap@0) ->
                     ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                     create_empty_external(Name),
                     NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                    dog_link_event:on_create(NewVal),
                     {ok, NewVal};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
@@ -57,6 +58,7 @@ delete(Id) ->
             ?LOG_INFO(#{id => Id}, #{domain => [dog_trainer]}),
             {error, #{<<"errors">> => #{<<"unable to delete">> => <<"link enabled">>}}};
         false ->
+            {ok, OldLink} = get_by_id(Id),
             delete_related_external(Id),
             {ok, R} = dog_rethink:run(
                 fun(X) ->
@@ -69,7 +71,9 @@ delete(Id) ->
             ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
-                1 -> ok;
+                1 ->
+                    dog_link_event:on_delete(OldLink),
+                    ok;
                 _ -> {error, #{<<"error">> => <<"error">>}}
             end
     end.
@@ -164,6 +168,7 @@ update(Id, UpdateMap) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                            dog_link_event:on_update(OldLink, NewVal),
                             {true, NewVal};
                         {0, 1} ->
                             OldVal = maps:get(<<"old_val">>, hd(maps:get(<<"changes">>, R))),

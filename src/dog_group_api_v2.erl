@@ -59,6 +59,7 @@ create(Group@0) when is_map(Group@0) ->
                         end
                     ),
                     NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                    dog_group_event:on_create(NewVal),
                     {ok, NewVal};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
@@ -70,6 +71,7 @@ create(Group@0) when is_map(Group@0) ->
 
 -spec delete(GroupId :: binary()) -> (ok | {error, Error :: iolist()}).
 delete(Id) ->
+    {ok, OldVal} = get_by_id(Id),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -81,7 +83,9 @@ delete(Id) ->
     ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
-        1 -> ok;
+        1 ->
+            dog_group_event:on_delete(OldVal),
+            ok;
         _ -> {error, #{<<"error">> => <<"error">>}}
     end.
 
@@ -128,6 +132,7 @@ replace(Id, ReplaceMap) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                            dog_group_event:on_update(OldExternal, NewVal),
                             {true, NewVal};
                         {0, 1} ->
                             OldVal = maps:get(<<"old_val">>, hd(maps:get(<<"changes">>, R))),
@@ -192,6 +197,7 @@ update(Id, UpdateMap) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                            dog_group_event:on_update(OldGroup, NewVal),
                             {true, NewVal};
                         {0, 1} ->
                             OldVal = maps:get(<<"old_val">>, hd(maps:get(<<"changes">>, R))),

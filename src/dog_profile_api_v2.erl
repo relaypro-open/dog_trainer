@@ -38,6 +38,7 @@ create(Profile) ->
                 end
             ),
             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+            dog_profile_event:on_create(NewVal),
             {ok, NewVal};
         {error, Error} ->
             ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]}),
@@ -47,6 +48,7 @@ create(Profile) ->
 
 -spec delete(GroupId :: binary()) -> (ok | {error, Error :: map()}).
 delete(Id) ->
+    {ok, OldVal} = get_by_id(Id),
     {ok, R} = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -59,6 +61,7 @@ delete(Id) ->
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 ->
+            dog_profile_event:on_delete(OldVal),
             ok;
         _ ->
             {error, #{<<"error">> => <<"error">>}}
@@ -197,6 +200,7 @@ update_in_place(Id, UpdateMap) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
+                            dog_profile_event:on_update(OldProfile, NewVal),
                             {true, NewVal};
                         {0, 1} ->
                             OldVal = maps:get(<<"old_val">>, hd(maps:get(<<"changes">>, R))),
