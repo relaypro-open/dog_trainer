@@ -17,6 +17,7 @@
     ec2_security_group/2,
     ec2_security_group_ids/1,
     ec2_security_groups/1,
+    get_ec2_security_groups/1,
     start_link/0
 ]).
 
@@ -60,8 +61,6 @@ start_link() ->
 
 -spec init(_) -> {'ok', []}.
 init(_Args) ->
-    Ec2SgCacheSeconds = application:get_env(dog_trainer, ec2_sg_cache_seconds, 10),
-    cache_tab:new(ec2_sgs, [{life_time, Ec2SgCacheSeconds}]),
     State = ordsets:new(),
     {ok, State}.
 
@@ -120,9 +119,6 @@ terminate(Reason, State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-%% ------------------------------------------------------------------
-%% Internal Function Definitions
-%% ------------------------------------------------------------------
 -spec get_ec2_security_groups(Region :: binary()) -> {ok, Ec2Sgs :: map()}.
 get_ec2_security_groups(Region) ->
     Config = dog_ec2_sg:config(Region),
@@ -135,9 +131,12 @@ get_ec2_security_groups(Region) ->
             {error, #{}}
     end.
 
+%% ------------------------------------------------------------------
+%% Internal Function Definitions
+%% ------------------------------------------------------------------
 -spec ec2_security_groups(Region :: binary()) -> Ec2Sgs :: list().
 ec2_security_groups(Region) ->
-    case cache_tab:lookup(ec2_sgs, Region, fun() -> get_ec2_security_groups(Region) end) of
+    case get_ec2_security_groups(Region) of
         {ok, Ec2Sgs} ->
             ListOfMaps = [maps:from_list(X) || X <- Ec2Sgs, proplists:get_value(vpc_id, X) =/= []],
             Ec2SgsMap = dog_common:list_of_maps_to_map(ListOfMaps, group_id),
@@ -161,7 +160,7 @@ ec2_security_group_ids(Region) ->
 
 -spec ec2_classic_security_groups(Region :: binary()) -> Ec2Sgs :: list().
 ec2_classic_security_groups(Region) ->
-    case cache_tab:lookup(ec2_sgs, Region, fun() -> get_ec2_security_groups(Region) end) of
+    case get_ec2_security_groups(Region) of
         {ok, Ec2Sgs} ->
             ListOfMaps = [maps:from_list(X) || X <- Ec2Sgs, proplists:get_value(vpc_id, X) == []],
             Ec2SgsMap = dog_common:list_of_maps_to_map(ListOfMaps, group_id),
