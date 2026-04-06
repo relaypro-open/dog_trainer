@@ -50,7 +50,7 @@ start_link() ->
 
 -spec periodic_publish() -> OldServer :: ok.
 periodic_publish() ->
-    ?LOG_INFO("function"),
+    ?LOG_INFO(#{message => "function"}, #{domain => [dog_trainer]}),
     gen_server:call(?MODULE, periodic_publish).
 
 -spec queue_update(Ipsets :: list) -> ok.
@@ -113,7 +113,7 @@ handle_cast({add_to_queue, Ipsets}, State) ->
     NewState = Ipsets,
     {noreply, NewState};
 handle_cast(Msg, State) ->
-    ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
+    ?LOG_ERROR(#{msg => Msg, state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -132,7 +132,7 @@ handle_info(periodic_publish, State) ->
     erlang:send_after(PeriodicPublishInterval * 1000, self(), periodic_publish),
     {noreply, NewState};
 handle_info(Info, State) ->
-    ?LOG_ERROR("unknown_message: Info: ~p, State: ~p", [Info, State]),
+    ?LOG_ERROR(#{info => Info, state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 %%----------------------------------------------------------------------
@@ -142,7 +142,7 @@ handle_info(Info, State) ->
 %%----------------------------------------------------------------------
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    ?LOG_INFO(#{reason => Reason, state => State}, #{domain => [dog_trainer]}),
     {close}.
 
 -spec code_change(_, State :: ips_state(), _) -> {ok, State :: ips_state()}.
@@ -154,13 +154,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 -spec do_periodic_publish(_) -> OldServers :: {ok, list()}.
 do_periodic_publish(State) ->
-    ?LOG_INFO("do_periodic_publish"),
+    ?LOG_INFO(#{message => "do_periodic_publish"}, #{domain => [dog_trainer]}),
     case State of
         [] ->
             {ok, []};
         _ ->
-            ?LOG_INFO("ipset queue: ~p", [State]),
-            ?LOG_INFO("length of ipset queue: ~p", [length(State)]),
+            ?LOG_INFO(#{state => State}, #{domain => [dog_trainer]}),
+            ?LOG_INFO(#{state => length(State)}, #{domain => [dog_trainer]}),
             LatestInternalIpsets = lists:last(State),
             publish_to_external(LatestInternalIpsets),
             dog_ipset:update_ipsets(),
@@ -177,7 +177,7 @@ publish_to_outbound_exchanges(IpsetExternalMap) ->
             EnvName = maps:get(<<"name">>, Env),
             ExternalMap = maps:put(<<"ec2">>, IdsByGroup, IpsetExternalMap),
             %ExternalMap = maps:put(<<"ec2">>,jsx:encode(#{}),IpsetExternalMap),
-            ?LOG_DEBUG("ExternalMap: ~p~n", [ExternalMap]),
+            ?LOG_DEBUG(#{externalmap => ExternalMap}, #{domain => [dog_trainer]}),
             publish_to_outbound_exchange(EnvName, ExternalMap)
         end,
         ExternalEnvs
@@ -185,7 +185,7 @@ publish_to_outbound_exchanges(IpsetExternalMap) ->
 
 -spec publish_to_outbound_exchange(TargetEnvName :: binary(), IpsetExternalMap :: map()) -> any().
 publish_to_outbound_exchange(TargetEnvName, IpsetExternalMap) ->
-    ?LOG_INFO("IpsetExternalMap: ~p", [IpsetExternalMap]),
+    ?LOG_INFO(#{ipsetexternalmap => IpsetExternalMap}, #{domain => [dog_trainer]}),
     {ok, LocalEnvName} = application:get_env(dog_trainer, env),
     UserData = #{
         ipsets => jsx:encode(IpsetExternalMap),
@@ -202,7 +202,12 @@ publish_to_outbound_exchange(TargetEnvName, IpsetExternalMap) ->
     RoutingKey = binary:list_to_bin(LocalEnvName),
     BrokerConfigName = list_to_atom(binary:bin_to_list(TargetEnvName)),
     %thumper:start_link(BrokerConfigName),
-    ?LOG_INFO("~p, ~p, ~p, ~p", [BrokerConfigName, Message, <<"inbound">>, RoutingKey]),
+    ?LOG_INFO(#{
+        brokerconfigname => BrokerConfigName,
+        message => Message,
+        value => <<"inbound">>,
+        routingkey => RoutingKey
+    }, #{domain => [dog_trainer]}),
     %Response = thumper:publish_to(BrokerConfigName, Message, <<"inbound">>, RoutingKey),
     PublisherName = erlang:binary_to_atom(<<TargetEnvName/binary, <<"_publisher">>/binary>>),
     Response = turtle:publish(
@@ -218,5 +223,5 @@ publish_to_outbound_exchange(TargetEnvName, IpsetExternalMap) ->
 
 -spec publish_to_external(InternalIpsetsMap :: map()) -> any().
 publish_to_external(InternalIpsetsMap) ->
-    ?LOG_INFO("publishing to external"),
+    ?LOG_INFO(#{message => "publishing to external"}, #{domain => [dog_trainer]}),
     publish_to_outbound_exchanges(InternalIpsetsMap).

@@ -50,21 +50,21 @@ start_link(Link) ->
 loop(_RoutingKey, _CType, Payload, State) ->
     Proplist = binary_to_term(Payload),
     UserData = proplists:get_value(user_data, Proplist),
-    ?LOG_DEBUG("UserData: ~p~n", [UserData]),
+    ?LOG_DEBUG(#{userdata => UserData}, #{domain => [dog_trainer]}),
     Ipsets = maps:get(ipsets, UserData),
-    ?LOG_DEBUG("Ipsets: ~p~n", [Ipsets]),
+    ?LOG_DEBUG(#{ipsets => Ipsets}, #{domain => [dog_trainer]}),
     IpsetsDecoded = jsx:decode(Ipsets),
-    ?LOG_DEBUG("IpsetsDecoded: ~p~n", [IpsetsDecoded]),
+    ?LOG_DEBUG(#{ipsetsdecoded => IpsetsDecoded}, #{domain => [dog_trainer]}),
     ExternalEnv = jsn:as_map(IpsetsDecoded),
-    ?LOG_DEBUG("ExternalEnv: ~p", [ExternalEnv]),
+    ?LOG_DEBUG(#{externalenv => ExternalEnv}, #{domain => [dog_trainer]}),
     imetrics:add(external_ipset_update),
     ExternalEnvName = maps:get(<<"name">>, ExternalEnv),
-    ?LOG_INFO("external ipsets receieved: ~p", [ExternalEnvName]),
+    ?LOG_INFO(#{externalenvname => ExternalEnvName}, #{domain => [dog_trainer]}),
     {ok, ExistingExternal} = dog_external:get_by_name(ExternalEnvName),
     ExistingExternalId = maps:get(<<"id">>, ExistingExternal),
     %TODO: create on link creation, set empty, inactive
     dog_external:replace(ExistingExternalId, ExternalEnv),
-    ?LOG_INFO("dog_ipset_update_agent:queue_add()"),
+    ?LOG_INFO(#{message => "dog_ipset_update_agent:queue_add()"}, #{domain => [dog_trainer]}),
     dog_ipset_update_agent:queue_add(dog_common:concat([<<"external->">>,ExternalEnvName],binary)),
     {ack, State}.
 
@@ -78,10 +78,13 @@ set_link_state(
         old_direction_state := DirectionState
     }
 ) ->
-    ?LOG_INFO(
-        "New link state: EnvName: ~p, EnabledState: ~p, NewEnabledState: ~p, DirectionState: ~p, NewDirectionState: ~p",
-        [EnvName, EnabledState, NewEnabledState, DirectionState, NewDirectionState]
-    ),
+    ?LOG_INFO(#{
+        envname => EnvName,
+        enabledstate => EnabledState,
+        newenabledstate => NewEnabledState,
+        directionstate => DirectionState,
+        newdirectionstate => NewDirectionState
+    }, #{domain => [dog_trainer]}),
     ExternalId =
         case dog_external:get_by_name(EnvName) of
             {error, notfound} ->
@@ -235,7 +238,7 @@ create_outbound_publisher(EnvName) ->
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 init([Link]) ->
-    ?LOG_DEBUG("init"),
+    ?LOG_DEBUG(#{message => "init"}, #{domain => [dog_trainer]}),
     State = #{
         env_name => maps:get(<<"name">>, Link),
         new_enabled_state => maps:get(<<"enabled">>, Link),
@@ -254,17 +257,17 @@ handle_call(_Request, _From, State) ->
 handle_cast(stop, State) ->
     {stop, normal, State};
 handle_cast(Msg, State) ->
-    ?LOG_ERROR("unknown_message: Msg: ~p, State: ~p", [Msg, State]),
+    ?LOG_ERROR(#{msg => Msg, state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 -spec handle_info(_, _) -> {'noreply', _}.
 handle_info(Info, State) ->
-    ?LOG_ERROR("unknown_message: Info: ~p, State: ~p", [Info, State]),
+    ?LOG_ERROR(#{info => Info, state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 -spec terminate(_, ips_state()) -> {close}.
 terminate(Reason, State) ->
-    ?LOG_INFO("terminate: Reason: ~p, State: ~p", [Reason, State]),
+    ?LOG_INFO(#{reason => Reason, state => State}, #{domain => [dog_trainer]}),
     {close}.
 
 -spec code_change(_, State :: ips_state(), _) -> {ok, State :: ips_state()}.

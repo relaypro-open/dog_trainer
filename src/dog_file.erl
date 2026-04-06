@@ -19,7 +19,5 @@ read_file(FileName) ->
         File -> File
     catch
         ErrorType:ErrorReason:Stacktrace ->
-            ?LOG_ERROR("catch ErrorType:ErrorReason:Stacktrace", [
-                ErrorType, ErrorReason, Stacktrace
-            ])
+            ?LOG_ERROR(#{errortype => ErrorType, errorreason => ErrorReason, stacktrace => Stacktrace}, #{domain => [dog_trainer]})
     end.

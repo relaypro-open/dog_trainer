@@ -95,7 +95,7 @@ zone_groups_in_groups_profiles() ->
     Profiles = lists:map(
         fun(Group) ->
             Name = maps:get(<<"name">>, Group),
-            ?LOG_DEBUG("Name: ~p~n", [Name]),
+            ?LOG_DEBUG(#{name => Name}, #{domain => [dog_trainer]}),
             case get_profile_by_name(Name) of
                 {ok, Profile} ->
                     {Name, Profile};
@@ -119,7 +119,7 @@ role_groups_in_groups_profiles() ->
     ProfilesRaw = lists:map(
         fun(Group) ->
             Name = maps:get(<<"name">>, Group),
-            ?LOG_DEBUG("Name: ~p~n", [Name]),
+            ?LOG_DEBUG(#{name => Name}, #{domain => [dog_trainer]}),
             case get_profile_by_name(Name) of
                 {ok, Profile} ->
                     {Name, Profile};
@@ -130,7 +130,7 @@ role_groups_in_groups_profiles() ->
         Groups
     ),
     Profiles = lists:flatten(ProfilesRaw),
-    ?LOG_DEBUG("Profiles: ~p", [Profiles]),
+    ?LOG_DEBUG(#{profiles => Profiles}, #{domain => [dog_trainer]}),
     GroupNamesInGroups = lists:map(
         fun({Name, Profile}) ->
             GroupIdsInProfile = dog_profile:get_role_groups_in_profile(Profile),
@@ -149,7 +149,7 @@ role_groups_in_groups_profiles() ->
         end,
         lists:flatten(Profiles)
     ),
-    ?LOG_DEBUG("GroupNamesInGroups: ~p", [GroupNamesInGroups]),
+    ?LOG_DEBUG(#{groupnamesingroups => GroupNamesInGroups}, #{domain => [dog_trainer]}),
     maps:from_list(GroupNamesInGroups).
 
 -spec role_group_effects_groups(GroupName :: binary()) -> ({ok, list()} | error).
@@ -255,7 +255,7 @@ create(Group@0) when is_map(Group@0) ->
                 case maps:find(<<"profile_name">>, Group@1) of
                     error ->
                         NewMap = maps:merge(DefaultMap, Group@1),
-                        ?LOG_INFO("NewMap: ~p", [NewMap]),
+                        ?LOG_INFO(#{newmap => NewMap}, #{domain => [dog_trainer]}),
                         NewMap;
                     {ok, ProfileName} ->
                         ProfileId =
@@ -271,7 +271,7 @@ create(Group@0) when is_map(Group@0) ->
                                     end
                             end,
                         NewMap = maps:merge(DefaultMap, Group@1),
-                        ?LOG_DEBUG("NewMap: ~p", [NewMap]),
+                        ?LOG_DEBUG(#{newmap => NewMap}, #{domain => [dog_trainer]}),
                         maps:merge(NewMap, #{<<"profile_id">> => ProfileId})
                 end,
             case dog_json_schema:validate(?VALIDATION_TYPE, Group@2) of
@@ -314,7 +314,7 @@ get_profile_by_id(GroupId) ->
                 exception => Exception,
                 exceptionreason => ExceptionReason,
                 stacktrace => Stacktrace
-            }),
+            }, #{domain => [dog_trainer]}),
             {error, notfound}
     end.
 
@@ -462,7 +462,7 @@ set_hash6_iptables(GroupName, Hash) ->
 
 -spec set_hash(GroupName :: binary(), Hash :: binary(), Field :: binary()) -> {ok, any()}.
 set_hash(GroupName, Hash, Field) ->
-    ?LOG_DEBUG("GroupName: ~p, Hash: ~p", [GroupName, Hash]),
+    ?LOG_DEBUG(#{groupname => GroupName, hash => Hash}, #{domain => [dog_trainer]}),
     {ok, GroupId} = dog_group:get_id_by_name(GroupName),
     {ok, R} = dog_rethink:run(
         fun(X) ->
@@ -502,7 +502,7 @@ get_by_name(GroupName) ->
                     Result = hd(R4),
                     case Result of
                         {error, Error} ->
-                            ?LOG_ERROR("group name not found: ~p, ~p", [GroupName, Error]),
+                            ?LOG_ERROR(#{groupname => GroupName, error => Error}, #{domain => [dog_trainer]}),
                             {error, Error};
                         GroupJson ->
                             {ok, GroupJson}
@@ -567,7 +567,7 @@ replace(Id, ReplaceMap) ->
                             reql:replace(X, NewItem3)
                         end
                     ),
-                    ?LOG_DEBUG("replaced R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of
@@ -600,7 +600,7 @@ update(Id, UpdateMap) ->
                             reql:replace(X, NewGroup, #{return_changes => always})
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of
@@ -628,14 +628,14 @@ delete(Id) ->
                     reql:delete(X)
                 end
             ),
-            ?LOG_DEBUG("delete R: ~p~n", [R]),
+            ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 -> ok;
                 _ -> {error, #{<<"error">> => <<"error">>}}
             end;
         {true, Profiles} ->
-            ?LOG_INFO("group ~p not deleted, in profiles: ~p~n", [Id, Profiles]),
+            ?LOG_INFO(#{id => Id, profiles => Profiles}, #{domain => [dog_trainer]}),
             {error, #{<<"errors">> => #{<<"in active profile">> => Profiles}}}
     end.
 
@@ -824,9 +824,9 @@ get_all_group_interfaces(OnlyActive) ->
             ),
             {ok, Result} = rethink_cursor:all(R),
             Interfaces = lists:flatten(Result),
-            ?LOG_DEBUG("Interfaces: ~p", [Interfaces]),
+            ?LOG_DEBUG(#{interfaces => Interfaces}, #{domain => [dog_trainer]}),
             Interfaces@1 = merge(Interfaces),
-            ?LOG_DEBUG("Interfaces@1: ~p", [Interfaces@1]),
+            ?LOG_DEBUG(#{'interfaces@1' => Interfaces@1}, #{domain => [dog_trainer]}),
             case Interfaces@1 of
                 [] -> {ok, []};
                 _ -> {ok, Interfaces@1}
@@ -891,7 +891,7 @@ get_group_interfaces_by_name(GroupName, OnlyActive) ->
     end.
 %TODO
 merge(Interfaces) ->
-    Interfaces@1 = [jsx:decode(I) || I <- Interfaces],
+    Interfaces@1 = [maps:to_list(jsx:decode(I)) || I <- Interfaces],
     L3 = lists:foldl(
         fun(Interface, Acc) ->
             merge_join(Interface, Acc)
@@ -1078,7 +1078,7 @@ replace_profile_by_profile_id(OldId, NewId) ->
 -spec replace_profile_by_profile_id(OldId :: binary(), NewId :: binary(), ProfileName :: iolist()) ->
     list().
 replace_profile_by_profile_id(OldId, NewId, ProfileName) ->
-    ?LOG_DEBUG("OldId: ~p, NewId: ~p, ProfileName: ~p", [OldId, NewId, ProfileName]),
+    ?LOG_DEBUG(#{oldid => OldId, newid => NewId, profilename => ProfileName}, #{domain => [dog_trainer]}),
     GroupIds = get_ids_with_profile_id(OldId),
     Results = lists:map(
         fun(GroupId) ->
@@ -1115,7 +1115,7 @@ get_schema() ->
 get_all_inbound_ports_by_protocol(GroupName) ->
     case get_profile_by_name(GroupName) of
         {error, _Error} ->
-            ?LOG_INFO("No profile associated with group: ~p", [GroupName]),
+            ?LOG_INFO(#{groupname => GroupName}, #{domain => [dog_trainer]}),
             throw(profile_not_found);
         {ok, ProfileJson} ->
             dog_profile:get_all_inbound_ports_by_protocol(ProfileJson)
@@ -1296,7 +1296,7 @@ where_ec2_sg_id_used(SgId) ->
 -spec update_group_ec2_security_groups(GroupZoneIdentifier :: binary(), GroupType :: binary()) ->
     'ok'.
 update_group_ec2_security_groups(GroupZoneIdentifier, GroupType) ->
-    ?LOG_INFO("GroupZoneIdentifier: ~p", [GroupZoneIdentifier]),
+    ?LOG_INFO(#{groupzoneidentifier => GroupZoneIdentifier}, #{domain => [dog_trainer]}),
     Groups =
         case GroupType of
             G when G =:= <<"role">>; G =:= <<"group">> ->
@@ -1324,7 +1324,7 @@ update_group_ec2_security_groups(GroupZoneIdentifier, GroupType) ->
         end,
         lists:flatten(Groups)
     ),
-    ?LOG_INFO("Effected Groups: ~p", [GroupsWithEc2SgIds]),
+    ?LOG_INFO(#{groupswithec2sgids => GroupsWithEc2SgIds}, #{domain => [dog_trainer]}),
     lists:foreach(
         fun(Group) ->
             dog_ec2_sg:publish_ec2_sg_by_name(Group)

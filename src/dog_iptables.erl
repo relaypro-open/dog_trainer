@@ -16,7 +16,7 @@
 
 -spec update_group_iptables(GroupZoneName :: binary(), GroupType :: binary()) -> 'ok'.
 update_group_iptables(GroupZoneName, GroupType) ->
-    ?LOG_INFO("GroupZoneName: ~p", [GroupZoneName]),
+    ?LOG_INFO(#{groupzonename => GroupZoneName}, #{domain => [dog_trainer]}),
     Groups =
         case application:get_env(dog_trainer, generate_unset_tables, true) of
             true ->
@@ -44,15 +44,15 @@ update_group_iptables(GroupZoneName, GroupType) ->
                     end,
                 GroupsList
         end,
-    ?LOG_INFO("Effected Groups: ~p", [Groups]),
-    ?LOG_INFO("add_to_queue: ~p", [Groups]),
+    ?LOG_INFO(#{groups => Groups}, #{domain => [dog_trainer]}),
+    ?LOG_INFO(#{groups => Groups}, #{domain => [dog_trainer]}),
     dog_profile_update_agent:add_to_queue(Groups),
     ok.
 
 -spec update_group_ec2_sgs(GroupZoneName :: binary()) -> 'ok'.
 update_group_ec2_sgs(GroupZoneName) ->
     {ok, GroupList} = dog_group:role_group_effects_groups(GroupZoneName),
-    ?LOG_DEBUG("GroupList: ~p~n", [GroupList]),
+    ?LOG_DEBUG(#{grouplist => GroupList}, #{domain => [dog_trainer]}),
     plists:map(
         fun(Group) ->
             dog_ec2_sg:publish_ec2_sg_by_name(Group)
@@ -62,7 +62,7 @@ update_group_ec2_sgs(GroupZoneName) ->
 
 -spec update_all_iptables() -> 'ok'.
 update_all_iptables() ->
-    ?LOG_DEBUG("update_all_iptables:start"),
+    ?LOG_DEBUG(#{message => "update_all_iptables:start"}, #{domain => [dog_trainer]}),
     {ok, Groups} = dog_group:get_active_groups(),
     GroupNames = [maps:get(<<"name">>, Group) || Group <- Groups],
     ChunkedGroupNames = chunk_list(GroupNames, 2),
@@ -73,7 +73,7 @@ update_all_iptables() ->
         end,
         ChunkedGroupNames
     ),
-    ?LOG_DEBUG("update_all_iptables:end"),
+    ?LOG_DEBUG(#{message => "update_all_iptables:end"}, #{domain => [dog_trainer]}),
     ok.
 
 chunk_list(List) ->
@@ -106,7 +106,7 @@ publish_to_queue(
     R6IptablesIptablesRuleset,
     Ipsets
 ) ->
-    ?LOG_INFO("RoutingKey: ~p", [RoutingKey]),
+    ?LOG_INFO(#{routingkey => RoutingKey}, #{domain => [dog_trainer]}),
     UserData = #{
         ruleset4_ipset => R4IpsetsIptablesRuleset,
         ruleset6_ipset => R6IpsetsIptablesRuleset,

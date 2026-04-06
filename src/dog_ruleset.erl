@@ -36,7 +36,7 @@ init() ->
 -spec create(Group :: map()) -> {ok | error, Key :: iolist() | name_exists}.
 create(RulesMap) ->
     RulesMap@0 = RulesMap,
-    ?LOG_DEBUG(#{rulesmap@0 => RulesMap@0}),
+    ?LOG_DEBUG(#{rulesmap@0 => RulesMap@0}, #{domain => [dog_trainer]}),
     Name = maps:get(<<"name">>, RulesMap@0),
     {ok, ExistingRules} = get_all(),
     ExistingNames = [maps:get(<<"name">>, Rules) || Rules <- ExistingRules],
@@ -52,7 +52,7 @@ create(RulesMap) ->
                         end
                     ),
                     Key = hd(maps:get(<<"generated_keys">>, R)),
-                    ?LOG_DEBUG("create R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                     {ok, Key};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
@@ -97,7 +97,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, rules name not found: ~p", [Name]),
+            ?LOG_ERROR(#{name => Name}, #{domain => [dog_trainer]}),
             {error, notfound};
         _ ->
             Rules = hd(Result),
@@ -140,7 +140,7 @@ all() ->
 
 -spec get_by_id(Id :: binary()) -> {ok, map()} | {error, notfound}.
 get_by_id(Id) ->
-    ?LOG_DEBUG(#{id => Id}),
+    ?LOG_DEBUG(#{id => Id}, #{domain => [dog_trainer]}),
     R = dog_rethink:run(
         fun(X) ->
             reql:db(X, dog),
@@ -150,7 +150,7 @@ get_by_id(Id) ->
     ),
     case R of
         {ok, null} ->
-            ?LOG_DEBUG("rules id null return value: ~p", [Id]),
+            ?LOG_DEBUG(#{id => Id}, #{domain => [dog_trainer]}),
             {error, notfound};
         {ok, Rules} ->
             {ok, Rules}
@@ -159,8 +159,8 @@ get_by_id(Id) ->
 -spec update(Id :: binary(), UpdateMap :: map()) ->
     {false, atom()} | {validation_error, iolist()} | {true, binary()}.
 update(Id, UpdateMap) ->
-    ?LOG_DEBUG(#{id => Id, updatemap => UpdateMap}),
-    ?LOG_INFO("update_in_place"),
+    ?LOG_DEBUG(#{id => Id, updatemap => UpdateMap}, #{domain => [dog_trainer]}),
+    ?LOG_INFO(#{message => "update_in_place"}, #{domain => [dog_trainer]}),
     case get_by_id(Id) of
         {ok, OldRules} ->
             NewRules = maps:merge(OldRules, UpdateMap),
@@ -174,7 +174,7 @@ update(Id, UpdateMap) ->
                             reql:update(X, UpdateMap)
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of
@@ -200,7 +200,7 @@ delete(Id) ->
             reql:delete(X)
         end
     ),
-    ?LOG_DEBUG("delete R: ~p~n", [R]),
+    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 -> ok;
@@ -212,7 +212,7 @@ rule_to_text(Rule, Keys) ->
     Values = lists:map(
         fun(L) ->
             Value = maps:get(L, Rule),
-            ?LOG_DEBUG("Key: ~p Value: ~p~n", [L, Value]),
+            ?LOG_DEBUG(#{l => L, value => Value}, #{domain => [dog_trainer]}),
             case L of
                 <<"group">> ->
                     case Value of
@@ -277,7 +277,7 @@ to_text(Rules) ->
 
 -spec where_used(RulesId :: binary()) -> {ok, list()}.
 where_used(RulesetId) ->
-    ?LOG_DEBUG(#{rulesetid => RulesetId}),
+    ?LOG_DEBUG(#{rulesetid => RulesetId}, #{domain => [dog_trainer]}),
     {ok, Ruleset} = get_by_id(RulesetId),
     ProfileId = maps:get(<<"profile_id">>, Ruleset),
     {ok, ProfileId}.
@@ -300,7 +300,7 @@ get_by_profile_id(ProfileId) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, no ruleset associated with profile: ~p", [ProfileId]),
+            ?LOG_ERROR(#{profileid => ProfileId}, #{domain => [dog_trainer]}),
             {error, notfound};
         _ ->
             Rules = hd(Result),

@@ -38,7 +38,7 @@ init() ->
 -spec get(Name :: binary()) -> [map()].
 get(Name) ->
     {ok, ServiceDefinition} = get_by_name(Name),
-    ?LOG_DEBUG("ServiceDefinition: ~p", [ServiceDefinition]),
+    ?LOG_DEBUG(#{servicedefinition => ServiceDefinition}, #{domain => [dog_trainer]}),
     S = maps:get(<<"services">>, ServiceDefinition),
     Services = lists:map(fun(Service) -> parse_service(Service) end, S),
     Services.
@@ -47,21 +47,21 @@ get(Name) ->
 get_name_by_id(<<"any">>) ->
     <<"ANY">>;
 get_name_by_id(Id) ->
-    ?LOG_DEBUG("Id: ~p", [Id]),
+    ?LOG_DEBUG(#{id => Id}, #{domain => [dog_trainer]}),
     case get_by_id(Id) of
         {ok, ServiceDefinition} ->
-            ?LOG_DEBUG("ServiceDefinition: ~p", [ServiceDefinition]),
+            ?LOG_DEBUG(#{servicedefinition => ServiceDefinition}, #{domain => [dog_trainer]}),
             Name = maps:get(<<"name">>, ServiceDefinition),
             Name;
         {error, Error} ->
-            ?LOG_ERROR("error, service id not found: ~p, ~p", [Id, Error]),
+            ?LOG_ERROR(#{id => Id, error => Error}, #{domain => [dog_trainer]}),
             {error, Error}
     end.
 
 -spec get_id_by_name(Name :: binary()) -> [iolist()].
 get_id_by_name(Name) ->
     {ok, ServiceDefinition} = get_by_name(Name),
-    ?LOG_DEBUG("ServiceDefinition: ~p", [ServiceDefinition]),
+    ?LOG_DEBUG(#{servicedefinition => ServiceDefinition}, #{domain => [dog_trainer]}),
     Id = maps:get(<<"id">>, ServiceDefinition),
     Id.
 
@@ -78,7 +78,7 @@ get_by_name(Name) ->
     Result = lists:flatten(R3),
     case Result of
         [] ->
-            ?LOG_ERROR("error, service name not found: ~p", [Name]),
+            ?LOG_ERROR(#{name => Name}, #{domain => [dog_trainer]}),
             {error, notfound};
         _ ->
             {ok, hd(Result)}
@@ -141,7 +141,7 @@ parse_ports(Ports) ->
 
 -spec delete(ZoneId :: binary()) -> ok | {error, Error :: map()}.
 delete(ZoneId) ->
-    ?LOG_DEBUG(#{zone_id => ZoneId}),
+    ?LOG_DEBUG(#{zone_id => ZoneId}, #{domain => [dog_trainer]}),
     case in_profile(ZoneId) of
         {false, []} ->
             {ok, R} = dog_rethink:run(
@@ -152,14 +152,14 @@ delete(ZoneId) ->
                     reql:delete(X)
                 end
             ),
-            ?LOG_DEBUG("delete R: ~p~n", [R]),
+            ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 -> ok;
                 _ -> {error, #{<<"error">> => <<"error">>}}
             end;
         {true, Profiles} ->
-            ?LOG_INFO("service ~p not deleted, in profiles: ~p~n", [ZoneId, Profiles]),
+            ?LOG_INFO(#{zoneid => ZoneId, profiles => Profiles}, #{domain => [dog_trainer]}),
             {error, #{<<"errors">> => #{<<"in active profile">> => Profiles}}}
     end.
 
@@ -178,7 +178,7 @@ update(Id, UpdateMap) ->
                             reql:update(X, UpdateMap)
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of
@@ -211,7 +211,7 @@ create(ServiceMap@0) ->
                         end
                     ),
                     Key = hd(maps:get(<<"generated_keys">>, R)),
-                    ?LOG_DEBUG("create R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                     {ok, Key};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
@@ -292,7 +292,7 @@ where_used_inbound(ServiceId) ->
             Else -> Else
         end,
     ProfileIds = [element(2, dog_ruleset:where_used(RulesId)) || RulesId <- RuleIds],
-    ?LOG_INFO("ProfileIds: ~p~n", [R]),
+    ?LOG_INFO(#{r => R}, #{domain => [dog_trainer]}),
 
     {ok, ProfileIds}.
 
@@ -318,7 +318,7 @@ where_used_outbound(ServiceId) ->
             [] -> [];
             Else -> Else
         end,
-    ?LOG_INFO("ProfileIds: ~p~n", [R]),
+    ?LOG_INFO(#{r => R}, #{domain => [dog_trainer]}),
     ProfileIds = [element(2, dog_ruleset:where_used(RulesId)) || RulesId <- RuleIds],
     {ok, ProfileIds}.
 

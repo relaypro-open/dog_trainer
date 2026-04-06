@@ -148,7 +148,7 @@ write_ipsets_to_file(IpSet) ->
 
 -spec add_to_ipset(Name :: binary(), Ip :: binary()) -> iolist().
 add_to_ipset(Name, Ip) ->
-    ?LOG_DEBUG("add_to_ipset(Name,Ip): ~p, ~p", [Name, Ip]),
+    ?LOG_DEBUG(#{name => Name, ip => Ip}, #{domain => [dog_trainer]}),
     Add = "add " ++ binary_to_list(Name) ++ " " ++ binary_to_list(Ip),
     Add.
 
@@ -211,7 +211,7 @@ latest_hash() ->
 
 -spec create(IpsetHash :: binary()) -> {ok, pid()}.
 create(Hash) ->
-    ?LOG_INFO("hash: ~p", [Hash]),
+    ?LOG_INFO(#{hash => Hash}, #{domain => [dog_trainer]}),
     %{ok, RethinkTimeout} = application:get_env(dog_trainer,rethink_timeout_ms),
     %{ok, Connection} = gen_rethink_session:get_connection(dog_session),
     Timestamp = dog_time:timestamp(),
@@ -428,8 +428,8 @@ create_internal_ipsets(
 
 -spec publish_to_queue(Ipsets :: list()) -> any().
 publish_to_queue(Ipsets) ->
-    ?LOG_INFO("local publish"),
-    ?LOG_DEBUG("Ipsets: ~p", [Ipsets]),
+    ?LOG_INFO(#{message => "local publish"}, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(#{ipsets => Ipsets}, #{domain => [dog_trainer]}),
     UserData = #{
         ruleset4_ipset => false,
         ruleset6_ipset => false,
@@ -459,9 +459,7 @@ hash_check(AgentIpsetHash) ->
     {ok, LatestHash} = latest_hash(),
     case AgentIpsetHash == LatestHash of
         false ->
-            ?LOG_INFO("Host IpsetHash ~p not equal to Latest IpsetHashes: ~p", [
-                AgentIpsetHash, LatestHash
-            ]),
+            ?LOG_INFO(#{agentipsethash => AgentIpsetHash, latesthash => LatestHash}, #{domain => [dog_trainer]}),
             false;
         true ->
             true
@@ -480,27 +478,27 @@ update_ipsets(Env) ->
     NewIpsetHash = create_hash(NormalizedIpset),
     delete_old(),
     create(NewIpsetHash),
-    ?LOG_DEBUG("LastestHash, NewIpsetHash: ~p, ~p", [LatestHash, NewIpsetHash]),
+    ?LOG_DEBUG(#{latesthash => LatestHash, newipsethash => NewIpsetHash}, #{domain => [dog_trainer]}),
     case NewIpsetHash == LatestHash of
         false ->
-            ?LOG_DEBUG("false"),
+            ?LOG_DEBUG(#{message => "false"}, #{domain => [dog_trainer]}),
             publish_to_queue(MergedIpsetsList),
             case Env of
                 local_env ->
-                    ?LOG_INFO("local_env"),
+                    ?LOG_INFO(#{message => "local_env"}, #{domain => [dog_trainer]}),
                     pass;
                 all_envs ->
-                    ?LOG_INFO("all_envs"),
+                    ?LOG_INFO(#{message => "all_envs"}, #{domain => [dog_trainer]}),
                     dog_external_update_agent:queue_update(InternalIpsetsMap)
             end;
         true ->
-            ?LOG_DEBUG("true"),
+            ?LOG_DEBUG(#{message => "true"}, #{domain => [dog_trainer]}),
             pass
     end.
 
 -spec force_update_ipsets() -> ok.
 force_update_ipsets() ->
-    ?LOG_INFO("publishing: force_update_ipsets"),
+    ?LOG_INFO(#{message => "publishing: force_update_ipsets"}, #{domain => [dog_trainer]}),
     {MergedIpsets, InternalIpsets} = create_ipsets(),
     publish_to_queue(MergedIpsets),
     dog_external_update_agent:queue_update(InternalIpsets),
@@ -513,7 +511,7 @@ persist_ipset() ->
         [] ->
             ok;
         Result ->
-            ?LOG_ERROR("PersistCmd Error: ~p", [Result]),
+            ?LOG_ERROR(#{result => Result}, #{domain => [dog_trainer]}),
             {error, Result}
     end.
 
@@ -551,7 +549,7 @@ read_current_ipset() ->
 read_hash() ->
     NormalizedIpset = normalize_ipset(read_current_ipset()),
     IpsetHash = create_hash(NormalizedIpset),
-    ?LOG_INFO("ipset hash: ~p", [IpsetHash]),
+    ?LOG_INFO(#{ipsethash => IpsetHash}, #{domain => [dog_trainer]}),
     IpsetHash.
 
 -spec match_only_add(Line :: iolist()) -> boolean().

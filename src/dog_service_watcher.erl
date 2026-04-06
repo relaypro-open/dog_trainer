@@ -52,7 +52,7 @@ state(Ref) ->
     gen_requery:call(Ref, state, infinity).
 
 init([]) ->
-    ?LOG_INFO("init"),
+    ?LOG_INFO(#{message => "init"}, #{domain => [dog_trainer]}),
     % The ConnectOptions are provided to gen_rethink:connect_unlinked
     RethinkdbHost = application:get_env(dog_trainer, rethinkdb_host, "localhost"),
     RethinkdbPort = application:get_env(dog_trainer, rethinkdb_port, 28015),
@@ -76,8 +76,8 @@ init([]) ->
 %% the managed connection is newly established
 handle_connection_up(Connection, State) ->
     {ok, RethinkSquashSec} = application:get_env(dog_trainer, rethink_squash_sec),
-    ?LOG_INFO("handle_connection_up"),
-    ?LOG_INFO("Connection: ~p", [Connection]),
+    ?LOG_INFO(#{message => "handle_connection_up"}, #{domain => [dog_trainer]}),
+    ?LOG_INFO(#{connection => Connection}, #{domain => [dog_trainer]}),
     Reql = reql:db(<<"dog">>),
     reql:table(Reql, <<"service">>),
     reql:changes(Reql, #{<<"include_initial">> => false, <<"squash">> => RethinkSquashSec}),
@@ -88,12 +88,12 @@ handle_connection_up(Connection, State) ->
 %% reconnect state with exponential backoffs. Your module can still process
 %% requests during this time.
 handle_connection_down(State) ->
-    ?LOG_INFO("handle_connection_down"),
+    ?LOG_INFO(#{message => "handle_connection_down"}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 handle_query_result(Result, State) ->
-    ?LOG_INFO("Result: ~p", [Result]),
-    ?LOG_INFO("dog_service_watcher calling update_all_iptables"),
+    ?LOG_INFO(#{result => Result}, #{domain => [dog_trainer]}),
+    ?LOG_INFO(#{message => "dog_service_watcher calling update_all_iptables"}, #{domain => [dog_trainer]}),
     %TODO detect which groups are effected by service change
     case Result of
         [] ->
@@ -102,7 +102,7 @@ handle_query_result(Result, State) ->
             imetrics:add_m(watcher, service_update),
             lists:foreach(
                 fun(Entry) ->
-                    ?LOG_INFO("Entry: ~p", [Entry]),
+                    ?LOG_INFO(#{entry => Entry}, #{domain => [dog_trainer]}),
                     ServiceId =
                         case maps:get(<<"new_val">>, Entry) of
                             null ->
@@ -110,9 +110,9 @@ handle_query_result(Result, State) ->
                             _ ->
                                 maps:get(<<"id">>, maps:get(<<"new_val">>, Entry))
                         end,
-                    ?LOG_INFO("ServiceId: ~p", [ServiceId]),
+                    ?LOG_INFO(#{serviceid => ServiceId}, #{domain => [dog_trainer]}),
                     {ok, ProfilesWithService} = dog_service:where_used(ServiceId),
-                    ?LOG_INFO("ProfilesWithService: ~p", [ProfilesWithService]),
+                    ?LOG_INFO(#{profileswithservice => ProfilesWithService}, #{domain => [dog_trainer]}),
                     GroupIdsWithProfile = lists:flatten(
                         lists:map(
                             fun(ProfileId) ->
@@ -121,7 +121,7 @@ handle_query_result(Result, State) ->
                             ProfilesWithService
                         )
                     ),
-                    ?LOG_INFO("GroupIdsWithProfile : ~p", [GroupIdsWithProfile]),
+                    ?LOG_INFO(#{groupidswithprofile => GroupIdsWithProfile}, #{domain => [dog_trainer]}),
                     GroupIdsWithProfile2 = lists:flatten([
                         element(2, GroupId)
                      || GroupId <- GroupIdsWithProfile
@@ -130,7 +130,7 @@ handle_query_result(Result, State) ->
                         element(2, dog_group:get_name_by_id(GroupId))
                      || GroupId <- GroupIdsWithProfile2
                     ],
-                    ?LOG_INFO("GroupNamesWithProfile: ~p", [GroupNamesWithProfile]),
+                    ?LOG_INFO(#{groupnameswithprofile => GroupNamesWithProfile}, #{domain => [dog_trainer]}),
                     dog_profile_update_agent:add_to_queue(GroupNamesWithProfile)
                 end,
                 Result
@@ -145,15 +145,15 @@ handle_query_error(Error, State) ->
     {stop, Error, State}.
 
 handle_call(state, _From, State) ->
-    ?LOG_DEBUG("handle_call changefeed: ~p", [State]),
+    ?LOG_DEBUG(#{state => State}, #{domain => [dog_trainer]}),
     {reply, State, State}.
 
 handle_cast(_Msg, State) ->
-    ?LOG_DEBUG("handle_cast changefeed: ~p", [State]),
+    ?LOG_DEBUG(#{state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 handle_info(_Info, State) ->
-    ?LOG_DEBUG("handle_info changefeed: ~p", [State]),
+    ?LOG_DEBUG(#{state => State}, #{domain => [dog_trainer]}),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

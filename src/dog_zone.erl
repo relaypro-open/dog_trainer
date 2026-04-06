@@ -212,7 +212,7 @@ get_by_id(ZoneId) ->
         {ok, Zone} ->
             {ok, Zone};
         {error, Error} ->
-            ?LOG_ERROR("zone id not found: ~p", [ZoneId]),
+            ?LOG_ERROR(#{zoneid => ZoneId}, #{domain => [dog_trainer]}),
             {error, Error}
     end.
 
@@ -273,7 +273,7 @@ create(ZoneMap@0) ->
 
 -spec update(ZoneId :: binary(), UpdateMap :: map()) -> {atom(), any()}.
 update(Id, UpdateMap@0) ->
-    ?LOG_DEBUG("UpdateMap: ~p~n", [UpdateMap@0]),
+    ?LOG_DEBUG(#{'updatemap@0' => UpdateMap@0}, #{domain => [dog_trainer]}),
     {ok, UpdateMap@1} = cleanup(UpdateMap@0),
     case get_by_id(Id) of
         {ok, OldService} ->
@@ -288,7 +288,7 @@ update(Id, UpdateMap@0) ->
                             reql:update(X, UpdateMap@1)
                         end
                     ),
-                    ?LOG_DEBUG("update R: ~p~n", [R]),
+                    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                     Replaced = maps:get(<<"replaced">>, R),
                     Unchanged = maps:get(<<"unchanged">>, R),
                     case {Replaced, Unchanged} of
@@ -316,14 +316,14 @@ delete(Id) ->
                     reql:delete(X)
                 end
             ),
-            ?LOG_DEBUG("delete R: ~p~n", [R]),
+            ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 -> ok;
                 _ -> {error, #{<<"error">> => <<"error">>}}
             end;
         {true, Profiles} ->
-            ?LOG_INFO("zone ~p not deleted, in profiles: ~p~n", [Id, Profiles]),
+            ?LOG_INFO(#{id => Id, profiles => Profiles}, #{domain => [dog_trainer]}),
             {error, #{<<"errors">> => #{<<"in active profile">> => Profiles}}}
     end.
 
@@ -350,7 +350,7 @@ where_used_inbound(ZoneId) ->
             Else -> Else
         end,
     ProfileIds = [element(2, dog_ruleset:where_used(RulesId)) || RulesId <- RuleIds],
-    ?LOG_INFO("ProfileIds: ~p~n", [R]),
+    ?LOG_INFO(#{r => R}, #{domain => [dog_trainer]}),
 
     {ok, ProfileIds}.
 
@@ -376,7 +376,7 @@ where_used_outbound(ZoneId) ->
             [] -> [];
             Else -> Else
         end,
-    ?LOG_INFO("ProfileIds: ~p~n", [R]),
+    ?LOG_INFO(#{r => R}, #{domain => [dog_trainer]}),
     ProfileIds = [element(2, dog_ruleset:where_used(RulesId)) || RulesId <- RuleIds],
     {ok, ProfileIds}.
 

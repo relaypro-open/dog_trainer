@@ -65,7 +65,7 @@ generate_iptables_ruleset(
 ) ->
     try
         Docker = get_docker(maps:get(<<"docker">>, ProfileJson, <<"undefined">>)),
-        ?LOG_DEBUG("Docker: ~p", [Docker]),
+        ?LOG_DEBUG(#{docker => Docker}, #{domain => [dog_trainer]}),
         ProfileId = maps:get(<<"id">>, ProfileJson),
         ProfileName = maps:get(<<"name">>, ProfileJson),
         InboundJson = maps:get(<<"inbound">>, maps:get(<<"rules">>, ProfileJson)),
@@ -92,14 +92,12 @@ generate_iptables_ruleset(
                     Rules
                 catch
                     Exception:ExceptionReason:Stacktrace ->
-                        ?LOG_ERROR("Error in profile ~p (~p) rule number: ~p", [
-                            ProfileName, ProfileId, Index
-                        ]),
+                        ?LOG_ERROR(#{profilename => ProfileName, profileid => ProfileId, index => Index}, #{domain => [dog_trainer]}),
                         ?LOG_ERROR(#{
                             exception => Exception,
                             exceptionreason => ExceptionReason,
                             stacktrace => Stacktrace
-                        }),
+                        }, #{domain => [dog_trainer]}),
                         throw(Exception)
                 end
             end,
@@ -140,14 +138,12 @@ generate_iptables_ruleset(
                             Rules
                         catch
                             Exception:ExceptionReason:Stacktrace ->
-                                ?LOG_ERROR("Error in profile ~p (~p) rule number: ~p", [
-                                    ProfileName, ProfileId, Index
-                                ]),
+                                ?LOG_ERROR(#{profilename => ProfileName, profileid => ProfileId, index => Index}, #{domain => [dog_trainer]}),
                                 ?LOG_ERROR(#{
                                     exception => Exception,
                                     exceptionreason => ExceptionReason,
                                     stacktrace => Stacktrace
-                                }),
+                                }, #{domain => [dog_trainer]}),
                                 throw(Exception)
                         end
                 end
@@ -177,14 +173,12 @@ generate_iptables_ruleset(
                     Rules
                 catch
                     Exception:ExceptionReason:Stacktrace ->
-                        ?LOG_ERROR("Error in profile ~p (~p) rule number: ~p", [
-                            ProfileName, ProfileId, Index
-                        ]),
+                        ?LOG_ERROR(#{profilename => ProfileName, profileid => ProfileId, index => Index}, #{domain => [dog_trainer]}),
                         ?LOG_ERROR(#{
                             exception => Exception,
                             exceptionreason => ExceptionReason,
                             stacktrace => Stacktrace
-                        }),
+                        }, #{domain => [dog_trainer]}),
                         throw(Exception)
                 end
             end,
@@ -251,7 +245,7 @@ generate_iptables_ruleset(
                 exception => Exception,
                 exceptionreason => ExceptionReason,
                 stacktrace => Stacktrace
-            }),
+            }, #{domain => [dog_trainer]}),
             throw(ExceptionReason)
     after
         {ok, []}
@@ -485,7 +479,7 @@ json_to_rules(
                         ZoneIdMap,
                         SelfGroupName
                     ),
-                    ?LOG_DEBUG("Rules: ~p~n", [Rules]),
+                    ?LOG_DEBUG(#{rules => Rules}, #{domain => [dog_trainer]}),
                     Rules
             end
     end.
@@ -1228,10 +1222,10 @@ get_port_parameter(Protocol, MultiplePorts, Direction, ProtocolModule, Symmetric
         ])
     of
         false ->
-            ?LOG_DEBUG("Protocol: ~p not in list", [Protocol]),
+            ?LOG_DEBUG(#{protocol => Protocol}, #{domain => [dog_trainer]}),
             io_lib:format("", []);
         true ->
-            ?LOG_DEBUG("Protocol: ~p is in list", [Protocol]),
+            ?LOG_DEBUG(#{protocol => Protocol}, #{domain => [dog_trainer]}),
             case Protocol of
                 <<"icmp">> ->
                     " -m icmp --icmp-type";
@@ -1332,7 +1326,7 @@ get_active(Active) ->
 
 -spec get_states(States :: iolist(), Symmetric :: boolean()) -> 'error' | string().
 get_states(States, Symmetric) ->
-    ?LOG_DEBUG("States: ~p~n", [States]),
+    ?LOG_DEBUG(#{states => States}, #{domain => [dog_trainer]}),
     case States of
         [] ->
             case Symmetric of
@@ -1453,7 +1447,7 @@ read_iptables_ruleset_set_v4_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
          {error, Error} ->
-             ?LOG_ERROR("Error: ~p",[Error])
+             ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
      end.
 -spec read_iptables_ruleset_set_v6_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_set_v6_from_file(GroupName) ->
@@ -1462,7 +1456,7 @@ read_iptables_ruleset_set_v6_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
          {error, Error} ->
-             ?LOG_ERROR("Error: ~p",[Error])
+             ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
      end.
 -spec read_iptables_ruleset_unset_v4_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_unset_v4_from_file(GroupName) ->
@@ -1471,7 +1465,7 @@ read_iptables_ruleset_unset_v4_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
          {error, Error} ->
-             ?LOG_ERROR("Error: ~p",[Error])
+             ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
      end.
 -spec read_iptables_ruleset_unset_v6_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_unset_v6_from_file(GroupName) ->
@@ -1480,7 +1474,7 @@ read_iptables_ruleset_unset_v6_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
          {error, Error} ->
-             ?LOG_ERROR("Error: ~p",[Error])
+             ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
      end.
 
 %%%--------------------------------------------------------------------

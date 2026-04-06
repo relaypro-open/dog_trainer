@@ -240,7 +240,7 @@ to_map(State) ->
     }.
 
 from_map(StateMap) ->
-    ?LOG_INFO("StateMap: ~p", [StateMap]),
+    ?LOG_INFO(#{statemap => StateMap}, #{domain => [dog_trainer]}),
     #dog_state{
         name = maps:get(<<"name">>, StateMap),
         interfaces = maps:get(<<"interfaces">>, StateMap),

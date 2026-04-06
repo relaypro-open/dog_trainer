@@ -21,17 +21,17 @@ init(Req, Opts) ->
     {cowboy_rest, Req, Opts}.
 
 from_post_json(Req, State) ->
-    ?LOG_DEBUG("Req: ~p", [Req]),
+    ?LOG_DEBUG(#{req => Req}, #{domain => [dog_trainer]}),
     %Hostkey = erlang:term_to_binary(cowboy_req:binding(id, Req)),
     Hostkey = cowboy_req:binding(id, Req),
     ApiUserName = cowboy_req:header(<<"x-consumer-username">>, Req),
     ConsumerCustomId = cowboy_req:header(<<"x-consumer-custom-id">>, Req),
     ConsumerId = cowboy_req:header(<<"x-consumer-id">>, Req),
     CredentialIdentifier = cowboy_req:header(<<"x-credential-identifier">>, Req),
-    ?LOG_DEBUG("ApiUserName: ~p", [ApiUserName]),
-    ?LOG_DEBUG("ConsumerCustomId: ~p", [ConsumerCustomId]),
-    ?LOG_DEBUG("ConsumerId: ~p", [ConsumerId]),
-    ?LOG_DEBUG("CredentialIdentifier: ~p", [CredentialIdentifier]),
+    ?LOG_DEBUG(#{apiusername => ApiUserName}, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(#{consumercustomid => ConsumerCustomId}, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(#{consumerid => ConsumerId}, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(#{credentialidentifier => CredentialIdentifier}, #{domain => [dog_trainer]}),
     case dog_host:get_by_hostkey(Hostkey) of
         {error, notfound} ->
             Req@2 = cowboy_req:reply(
@@ -46,9 +46,9 @@ from_post_json(Req, State) ->
             {stop, Req@2, State};
         _ ->
             Body = cowboy_req:read_body(Req),
-            ?LOG_DEBUG("Body: ~p", [Body]),
+            ?LOG_DEBUG(#{body => Body}, #{domain => [dog_trainer]}),
             {ok, Content, _} = Body,
-            ?LOG_DEBUG("Content: ~p", [Content]),
+            ?LOG_DEBUG(#{content => Content}, #{domain => [dog_trainer]}),
             Message = jsx:decode(Content, [return_maps]),
             Response = handle_command(Hostkey, Message, ApiUserName),
             case Response of
@@ -87,7 +87,7 @@ from_post_json(Req, State) ->
 
 -spec handle_command(Hostkey :: binary(), Message :: binary(), ApiUserName :: binary() ) -> {ok | error, iolist()}.
 handle_command(Hostkey, Message, ApiUserName) ->
-    ?LOG_DEBUG("Message: ~p", [Message]),
+    ?LOG_DEBUG(#{message => Message}, #{domain => [dog_trainer]}),
     Command = maps:get(<<"command">>, Message),
     %UseShell = erlang:binary_to_existing_atom(maps:get(<<"use_shell">>, Message, <<"false">>)),
     UseShell = erlang:binary_to_atom(maps:get(<<"use_shell">>, Message, <<"false">>)),
@@ -99,7 +99,7 @@ handle_command(Hostkey, Message, ApiUserName) ->
             false ->
                 [{use_shell, UseShell}, {api_user, ApiUserName}]
         end,
-    ?LOG_DEBUG("NewOpts: ~p", [NewOpts]),
+    ?LOG_DEBUG(#{newopts => NewOpts}, #{domain => [dog_trainer]}),
     Result = dog_file_transfer:execute_command(Command, Hostkey, NewOpts),
     Result.
 
@@ -115,7 +115,7 @@ resource_exists(Req, State) ->
         <<"GET">> ->
             Id = cowboy_req:binding(id, Req),
             ApiUserName = cowboy_req:header(<<"x-consumer-username">>, Req),
-            ?LOG_DEBUG("ApiUserName: ~p", [ApiUserName]),
+            ?LOG_DEBUG(#{apiusername => ApiUserName}, #{domain => [dog_trainer]}),
             Path =
                 case cowboy_req:match_qs([{path, [], plain}], Req) of
                     #{path := Value} ->
@@ -123,7 +123,7 @@ resource_exists(Req, State) ->
                     _ ->
                         undefined
                 end,
-            ?LOG_DEBUG("ID: ~p, Path:~p", [Id, Path]),
+            ?LOG_DEBUG(#{id => Id, path => Path}, #{domain => [dog_trainer]}),
             Opts = [{api_user, ApiUserName}],
             case dog_file_transfer:fetch_file(Path, Id, Opts) of
                 %timeout ->
@@ -158,8 +158,8 @@ from_post_multipart(Req, State) ->
     Opts = [{api_user, ApiUserName}],
     %Hostkey = term_to_binary(cowboy_req:binding(id, Req)),
     Hostkey = cowboy_req:binding(id, Req),
-    ?LOG_DEBUG("Hostkey= ~p~n", [Hostkey]),
-    ?LOG_DEBUG("Req= ~p~n", [Req]),
+    ?LOG_DEBUG(#{hostkey => Hostkey}, #{domain => [dog_trainer]}),
+    ?LOG_DEBUG(#{req => Req}, #{domain => [dog_trainer]}),
     case dog_host:get_by_hostkey(Hostkey) of
         {error, notfound} ->
             Req@2 = cowboy_req:reply(
@@ -171,8 +171,8 @@ from_post_multipart(Req, State) ->
             {stop, Req@2, State};
         _ ->
             {Result, Req@2} = acc_multipart(Hostkey, Req, [], Opts),
-            ?LOG_DEBUG("Result= ~p~n", [Result]),
-            ?LOG_DEBUG("Req@2= ~p~n", [Req@2]),
+            ?LOG_DEBUG(#{result => Result}, #{domain => [dog_trainer]}),
+            ?LOG_DEBUG(#{'req@2' => Req@2}, #{domain => [dog_trainer]}),
             ParsedResult = jsx:encode(
                 lists:map(
                     fun(X) ->
@@ -181,14 +181,14 @@ from_post_multipart(Req, State) ->
                     Result
                 )
             ),
-            ?LOG_DEBUG("ParsedResult= ~p~n", [ParsedResult]),
+            ?LOG_DEBUG(#{parsedresult => ParsedResult}, #{domain => [dog_trainer]}),
             Req@3 = cowboy_req:reply(
                 200,
                 #{<<"content-type">> => <<"application/json">>},
                 ParsedResult,
                 Req@2
             ),
-            ?LOG_DEBUG("Req@3: ~p", [Req@3]),
+            ?LOG_DEBUG(#{'req@3' => Req@3}, #{domain => [dog_trainer]}),
             {stop, Req@3, State}
     end.
 
@@ -201,16 +201,14 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
                         {ok, MyBody, Req3} = cowboy_req:read_part_body(Req2),
                         [Req3, MyBody];
                     {file, _FieldName, RemoteFilePath, CType} ->
-                        ?LOG_DEBUG("stream_file filename=~p content_type=~p~n", [
-                            RemoteFilePath, CType
-                        ]),
+                        ?LOG_DEBUG(#{remotefilepath => RemoteFilePath, ctype => CType}, #{domain => [dog_trainer]}),
                         UUID = entropy_string:session_id(),
                         FileLocationBase = erlang:list_to_binary(?FILE_LOCATION_BASE),
                         HostFilePath =
                         <<FileLocationBase/binary,Hostkey/binary,<<"/">>/binary,UUID/binary>>,
-                        ?LOG_DEBUG("HostFilePath: ~p", [HostFilePath]),
+                        ?LOG_DEBUG(#{hostfilepath => HostFilePath}, #{domain => [dog_trainer]}),
                         LocalFilePath = <<HostFilePath/binary,<<"/send">>/binary,RemoteFilePath/binary>>,
-                        ?LOG_DEBUG("LocalFilePath: ~p", [LocalFilePath]),
+                        ?LOG_DEBUG(#{localfilepath => LocalFilePath}, #{domain => [dog_trainer]}),
                         ok = filelib:ensure_dir(LocalFilePath),
                         {ok, IoDevice} = file:open(LocalFilePath, [raw, write, binary, sync]),
                         Req5 = stream_file(Req2, IoDevice),
@@ -219,7 +217,7 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
                         Response = dog_file_transfer:send_file(
                             HostFilePath, LocalFilePath, RemoteFilePath, Hostkey, Opts
                         ),
-                        ?LOG_DEBUG(#{response => Response}),
+                        ?LOG_DEBUG(#{response => Response}, #{domain => [dog_trainer]}),
                         [Req5, RemoteFilePath]
                 end,
             acc_multipart(Hostkey, Req4, [{Headers, Body} | Acc], Opts);
@@ -230,11 +228,11 @@ acc_multipart(Hostkey, Req, Acc, Opts) ->
 stream_file(Req, IoDevice) ->
     case cowboy_req:read_part_body(Req) of
         {ok, Body, Req2} ->
-            ?LOG_DEBUG("part_body ok~n", []),
+            ?LOG_DEBUG(#{message => "part_body ok"}, #{domain => [dog_trainer]}),
             file:write(IoDevice, Body),
             Req2;
         {more, Body, Req2} ->
-            ?LOG_DEBUG("part_body more~n", []),
+            ?LOG_DEBUG(#{message => "part_body more"}, #{domain => [dog_trainer]}),
             file:write(IoDevice, Body),
             stream_file(Req2, IoDevice)
     end.
@@ -274,7 +272,7 @@ to_file(Req, State) ->
     {State, Req, State}.
 
 to_json(Req, State) ->
-    ?LOG_DEBUG("State: ~p~n", [State]),
+    ?LOG_DEBUG(#{state => State}, #{domain => [dog_trainer]}),
     %Id = cowboy_req:binding(id, Req),
     %Sub = cowboy_req:binding(sub, Req),
     %Object = maps:get(<<"object">>,State),
@@ -291,7 +289,7 @@ delete_resource(Req@0, State) ->
             _ ->
                 undefined
         end,
-    ?LOG_DEBUG("ID: ~p, Path:~p", [Id, Path]),
+    ?LOG_DEBUG(#{id => Id, path => Path}, #{domain => [dog_trainer]}),
     Opts = [{api_user, ApiUserName}],
     {Result, Req@1} =
         case dog_file_transfer:delete_file(Path, Id, Opts) of
