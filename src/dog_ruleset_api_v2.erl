@@ -53,8 +53,13 @@ create(RuleMap@0) ->
                         end
                     ),
                     NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
-                    dog_ruleset_event:on_create(NewVal),
-                    {ok, NewVal};
+                    case dog_ruleset_event:on_create(NewVal) of
+                        {ok, _} ->
+                            {ok, NewVal};
+                        {error, Ec2Errors} ->
+                            ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]}),
+                            {ok, maps:put(<<"ec2_sg_errors">>, dog_ec2_sg:format_ec2_errors(Ec2Errors), NewVal)}
+                    end;
                 {error, Error} ->
                     ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]}),
                     Response = dog_parse:validation_error(Error),
@@ -195,8 +200,15 @@ update(Id, UpdateMap@0) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
-                            dog_ruleset_event:on_update(OldService, NewVal),
-                            {true, NewVal};
+                            ResponseVal =
+                                case dog_ruleset_event:on_update(OldService, NewVal) of
+                                    {ok, _} ->
+                                        NewVal;
+                                    {error, Ec2Errors} ->
+                                        ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]}),
+                                        maps:put(<<"ec2_sg_errors">>, dog_ec2_sg:format_ec2_errors(Ec2Errors), NewVal)
+                                end,
+                            {true, ResponseVal};
                         {0, 1} ->
                             OldVal = maps:get(<<"old_val">>, hd(maps:get(<<"changes">>, R))),
                             {false, OldVal};
@@ -228,8 +240,12 @@ delete(Id) ->
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 ->
-                    dog_ruleset_event:on_delete(OldVal),
-                    ok;
+                    case dog_ruleset_event:on_delete(OldVal) of
+                        {ok, _} -> ok;
+                        {error, Ec2Errors} ->
+                            ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]}),
+                            ok
+                    end;
                 _ -> {error, #{<<"error">> => <<"error">>}}
             end;
         {ok, Profiles} ->

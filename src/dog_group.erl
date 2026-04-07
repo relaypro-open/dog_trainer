@@ -285,7 +285,10 @@ create(Group@0) when is_map(Group@0) ->
                     ),
                     Key = hd(maps:get(<<"generated_keys">>, R)),
                     {ok, NewVal} = get_by_id(Key),
-                    dog_group_event:on_create(NewVal),
+                    case dog_group_event:on_create(NewVal) of
+                        {ok, _} -> ok;
+                        {error, Ec2Errors} -> ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]})
+                    end,
                     {ok, Key};
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
@@ -613,7 +616,10 @@ update(Id, UpdateMap) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             {ok, NewVal} = get_by_id(Id),
-                            dog_group_event:on_update(OldGroup, NewVal),
+                            case dog_group_event:on_update(OldGroup, NewVal) of
+                                {ok, _} -> ok;
+                                {error, Ec2Errors} -> ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]})
+                            end,
                             {true, Id};
                         {0, 1} -> {false, Id};
                         _ -> {false, no_updated}
@@ -643,7 +649,10 @@ delete(Id) ->
             Deleted = maps:get(<<"deleted">>, R),
             case Deleted of
                 1 ->
-                    dog_group_event:on_delete(OldVal),
+                    case dog_group_event:on_delete(OldVal) of
+                        {ok, _} -> ok;
+                        {error, Ec2Errors} -> ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]})
+                    end,
                     ok;
                 _ -> {error, #{<<"error">> => <<"error">>}}
             end;

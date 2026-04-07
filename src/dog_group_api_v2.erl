@@ -59,8 +59,13 @@ create(Group@0) when is_map(Group@0) ->
                         end
                     ),
                     NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
-                    dog_group_event:on_create(NewVal),
-                    {ok, NewVal};
+                    case dog_group_event:on_create(NewVal) of
+                        {ok, _} ->
+                            {ok, NewVal};
+                        {error, Ec2Errors} ->
+                            ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]}),
+                            {ok, maps:put(<<"ec2_sg_errors">>, dog_ec2_sg:format_ec2_errors(Ec2Errors), NewVal)}
+                    end;
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
                     {validation_error, Response}
@@ -84,8 +89,12 @@ delete(Id) ->
     Deleted = maps:get(<<"deleted">>, R),
     case Deleted of
         1 ->
-            dog_group_event:on_delete(OldVal),
-            ok;
+            case dog_group_event:on_delete(OldVal) of
+                {ok, _} -> ok;
+                {error, Ec2Errors} ->
+                    ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]}),
+                    ok
+            end;
         _ -> {error, #{<<"error">> => <<"error">>}}
     end.
 
@@ -132,8 +141,15 @@ replace(Id, ReplaceMap) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
-                            dog_group_event:on_update(OldExternal, NewVal),
-                            {true, NewVal};
+                            ResponseVal =
+                                case dog_group_event:on_update(OldExternal, NewVal) of
+                                    {ok, _} ->
+                                        NewVal;
+                                    {error, Ec2Errors} ->
+                                        ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]}),
+                                        maps:put(<<"ec2_sg_errors">>, dog_ec2_sg:format_ec2_errors(Ec2Errors), NewVal)
+                                end,
+                            {true, ResponseVal};
                         {0, 1} ->
                             OldVal = maps:get(<<"old_val">>, hd(maps:get(<<"changes">>, R))),
                             {false, OldVal};
@@ -197,8 +213,15 @@ update(Id, UpdateMap) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
-                            dog_group_event:on_update(OldGroup, NewVal),
-                            {true, NewVal};
+                            ResponseVal =
+                                case dog_group_event:on_update(OldGroup, NewVal) of
+                                    {ok, _} ->
+                                        NewVal;
+                                    {error, Ec2Errors} ->
+                                        ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]}),
+                                        maps:put(<<"ec2_sg_errors">>, dog_ec2_sg:format_ec2_errors(Ec2Errors), NewVal)
+                                end,
+                            {true, ResponseVal};
                         {0, 1} ->
                             OldVal = maps:get(<<"old_val">>, hd(maps:get(<<"changes">>, R))),
                             {false, OldVal};

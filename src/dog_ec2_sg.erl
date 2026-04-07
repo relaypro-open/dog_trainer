@@ -7,6 +7,7 @@
 
 -export([
     config/1,
+    format_ec2_errors/1,
     publish_ec2_sg/1,
     publish_ec2_sg_by_name/1
 ]).
@@ -37,10 +38,10 @@ publish_ec2_sg_by_name(DogGroupName) ->
             publish_ec2_sgs(DogGroup);
         _ ->
             ?LOG_INFO(#{doggroupname => DogGroupName}, #{domain => [dog_trainer]}),
-            []
+            {error, notfound}
     end.
 
--spec publish_ec2_sgs(DogGroup :: map()) -> [any()].
+-spec publish_ec2_sgs(DogGroup :: map()) -> {ok, list()} | {error, list()}.
 publish_ec2_sgs(DogGroup) ->
     Ec2SecurityGroupList = maps:get(<<"ec2_security_group_ids">>, DogGroup, []),
     DogGroupName = maps:get(<<"name">>, DogGroup),
@@ -59,29 +60,65 @@ publish_ec2_sgs(DogGroup) ->
         end,
         Ec2SecurityGroupList
     ),
-    Results.
+    Errors = [R || {SgResult, _, _, _} = R <- Results, sg_results_has_error(SgResult)],
+    case Errors of
+        [] -> {ok, Results};
+        _ -> {error, Errors}
+    end.
 
 -spec publish_ec2_sg({DogGroup :: map(), Region :: string(), SgId :: string()}) ->
-    {ok | error, DetailedResults :: list()}.
+    list().
 publish_ec2_sg({DogGroup, Region, SgId}) ->
     DogGroupId = maps:get(<<"id">>, DogGroup),
     AddRemoveMapIngress = diff_sg_ingress(SgId, Region, DogGroupId),
     ResultsIngress =
-        {update_sg_ingress(
-            SgId,
-            Region,
-            AddRemoveMapIngress
-        )},
+        case AddRemoveMapIngress of
+            {error, IngressReason} ->
+                ?LOG_ERROR(#{ingress_diff_error => IngressReason}, #{domain => [dog_trainer]}),
+                {error, ingress, IngressReason};
+            _ ->
+                update_sg_ingress(SgId, Region, AddRemoveMapIngress)
+        end,
     ?LOG_DEBUG(#{resultsingress => ResultsIngress}, #{domain => [dog_trainer]}),
     AddRemoveMapEgress = diff_sg_egress(SgId, Region, DogGroupId),
     ResultsEgress =
-        {update_sg_egress(
-            SgId,
-            Region,
-            AddRemoveMapEgress
-        )},
+        case AddRemoveMapEgress of
+            {error, EgressReason} ->
+                ?LOG_ERROR(#{egress_diff_error => EgressReason}, #{domain => [dog_trainer]}),
+                {error, egress, EgressReason};
+            _ ->
+                update_sg_egress(SgId, Region, AddRemoveMapEgress)
+        end,
     ?LOG_DEBUG(#{resultsegress => ResultsEgress}, #{domain => [dog_trainer]}),
     [ResultsIngress, ResultsEgress].
+
+sg_results_has_error({error, _}) ->
+    true;
+sg_results_has_error(SgResults) when is_list(SgResults) ->
+    lists:any(fun({error, _, _}) -> true; (_) -> false end, SgResults);
+sg_results_has_error(_) ->
+    false.
+
+-spec format_ec2_errors(Errors :: list()) -> list().
+format_ec2_errors(Errors) ->
+    lists:flatten(lists:map(fun format_ec2_error/1, Errors)).
+
+format_ec2_error({error, notfound}) ->
+    [#{<<"error">> => <<"group_not_found">>}];
+format_ec2_error({error, Items}) when is_list(Items) ->
+    lists:map(fun format_ec2_error_item/1, Items);
+format_ec2_error(Other) ->
+    [#{<<"error">> => erlang:list_to_binary(io_lib:format("~p", [Other]))}].
+
+format_ec2_error_item({{error, Reason}, GroupName, Region, SgId}) ->
+    #{
+        <<"group">> => GroupName,
+        <<"region">> => Region,
+        <<"sgid">> => SgId,
+        <<"error">> => Reason
+    };
+format_ec2_error_item(Other) ->
+    #{<<"error">> => erlang:list_to_binary(io_lib:format("~p", [Other]))}.
 
 -spec diff_sg_by_name(DogGroupName :: binary(), Region :: any(), SgId :: any()) -> map().
 diff_sg_by_name(DogGroupName, Region, SgId) ->

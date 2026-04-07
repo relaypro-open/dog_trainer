@@ -8,15 +8,15 @@
     on_delete/1
 ]).
 
--spec on_create(NewVal :: map()) -> ok.
+-spec on_create(NewVal :: map()) -> {ok, any()} | {error, any()}.
 on_create(NewVal) ->
     handle_change(NewVal).
 
--spec on_update(OldVal :: map(), NewVal :: map()) -> ok.
+-spec on_update(OldVal :: map(), NewVal :: map()) -> {ok, any()} | {error, any()}.
 on_update(_OldVal, NewVal) ->
     handle_change(NewVal).
 
--spec on_delete(OldVal :: map()) -> ok.
+-spec on_delete(OldVal :: map()) -> {ok, any()} | {error, any()}.
 on_delete(OldVal) ->
     handle_change(OldVal).
 
@@ -26,7 +26,7 @@ handle_change(Val) ->
     GroupType = <<"role">>,
     ?LOG_INFO(#{groupname => GroupName}, #{domain => [dog_trainer]}),
     dog_iptables:update_group_iptables(GroupName, GroupType),
-    dog_iptables:update_group_ec2_sgs(GroupName),
+    Ec2Result = dog_iptables:update_group_ec2_sgs(GroupName),
     {ok, R4IpsetsIptablesRuleset} = dog_iptables_ruleset:read_iptables_ruleset_set_v4_from_file(
         GroupName
     ),
@@ -51,4 +51,4 @@ handle_change(Val) ->
     dog_ipset_update_agent:queue_add(
         dog_common:concat([<<"group-">>, GroupName], binary)
     ),
-    ok.
+    Ec2Result.

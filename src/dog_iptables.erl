@@ -49,16 +49,21 @@ update_group_iptables(GroupZoneName, GroupType) ->
     dog_profile_update_agent:add_to_queue(Groups),
     ok.
 
--spec update_group_ec2_sgs(GroupZoneName :: binary()) -> [any()].
+-spec update_group_ec2_sgs(GroupZoneName :: binary()) -> {ok, list()} | {error, list()}.
 update_group_ec2_sgs(GroupZoneName) ->
     {ok, GroupList} = dog_group:role_group_effects_groups(GroupZoneName),
     ?LOG_DEBUG(#{grouplist => GroupList}, #{domain => [dog_trainer]}),
-    plists:map(
+    Results = plists:map(
         fun(Group) ->
             dog_ec2_sg:publish_ec2_sg_by_name(Group)
         end,
         GroupList
-    ).
+    ),
+    Errors = [R || R <- Results, element(1, R) =:= error],
+    case Errors of
+        [] -> {ok, Results};
+        _ -> {error, Errors}
+    end.
 
 -spec update_all_iptables() -> 'ok'.
 update_all_iptables() ->
