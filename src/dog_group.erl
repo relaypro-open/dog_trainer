@@ -286,8 +286,10 @@ create(Group@0) when is_map(Group@0) ->
                     Key = hd(maps:get(<<"generated_keys">>, R)),
                     {ok, NewVal} = get_by_id(Key),
                     case dog_group_event:on_create(NewVal) of
-                        {ok, _} -> ok;
-                        {error, Ec2Errors} -> ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]})
+                        {ok, _} ->
+                            ok;
+                        {error, Ec2Errors} ->
+                            ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]})
                     end,
                     {ok, Key};
                 {error, Error} ->
@@ -617,12 +619,29 @@ update(Id, UpdateMap) ->
                         {1, 0} ->
                             {ok, NewVal} = get_by_id(Id),
                             case dog_group_event:on_update(OldGroup, NewVal) of
-                                {ok, _} -> ok;
-                                {error, Ec2Errors} -> ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]})
-                            end,
-                            {true, Id};
-                        {0, 1} -> {false, Id};
-                        _ -> {false, no_updated}
+                                {ok, _} ->
+                                    {true, Id};
+                                {error, Ec2Errors} ->
+                                    ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{
+                                        domain => [dog_trainer]
+                                    }),
+                                    dog_rethink:run(fun(X2) ->
+                                        reql:db(X2, dog),
+                                        reql:table(X2, ?TYPE_TABLE),
+                                        reql:get(X2, Id),
+                                        reql:replace(X2, OldGroup)
+                                    end),
+                                    FormattedErrors = dog_ec2_sg:format_ec2_errors(Ec2Errors),
+                                    ErrorResp = #{
+                                        <<"error">> => <<"ec2_sg_update_failed">>,
+                                        <<"details">> => FormattedErrors
+                                    },
+                                    {validation_error, jsx:encode(ErrorResp)}
+                            end;
+                        {0, 1} ->
+                            {false, Id};
+                        _ ->
+                            {false, no_updated}
                     end;
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
@@ -650,11 +669,14 @@ delete(Id) ->
             case Deleted of
                 1 ->
                     case dog_group_event:on_delete(OldVal) of
-                        {ok, _} -> ok;
-                        {error, Ec2Errors} -> ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]})
+                        {ok, _} ->
+                            ok;
+                        {error, Ec2Errors} ->
+                            ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]})
                     end,
                     ok;
-                _ -> {error, #{<<"error">> => <<"error">>}}
+                _ ->
+                    {error, #{<<"error">> => <<"error">>}}
             end;
         {true, Profiles} ->
             ?LOG_INFO(#{id => Id, profiles => Profiles}, #{domain => [dog_trainer]}),
