@@ -58,19 +58,12 @@ create(RuleMap@0) ->
                             {ok, NewVal};
                         {error, Ec2Errors} ->
                             ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]}),
-                            Id = maps:get(<<"id">>, NewVal),
-                            dog_rethink:run(fun(X2) ->
-                                reql:db(X2, dog),
-                                reql:table(X2, ?TYPE_TABLE),
-                                reql:get(X2, Id),
-                                reql:delete(X2)
-                            end),
-                            FormattedErrors = dog_ec2_sg:format_ec2_errors(Ec2Errors),
-                            ErrorResp = #{
-                                <<"error">> => <<"ec2_sg_update_failed">>,
-                                <<"details">> => FormattedErrors
-                            },
-                            {validation_error, jsx:encode(ErrorResp)}
+                            {ok,
+                                maps:put(
+                                    <<"ec2_sg_errors">>,
+                                    dog_ec2_sg:format_ec2_errors(Ec2Errors),
+                                    NewVal
+                                )}
                     end;
                 {error, Error} ->
                     ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]}),
@@ -212,26 +205,21 @@ update(Id, UpdateMap@0) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
-                            case dog_ruleset_event:on_update(OldService, NewVal) of
-                                {ok, _} ->
-                                    {true, NewVal};
-                                {error, Ec2Errors} ->
-                                    ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{
-                                        domain => [dog_trainer]
-                                    }),
-                                    dog_rethink:run(fun(X2) ->
-                                        reql:db(X2, dog),
-                                        reql:table(X2, ?TYPE_TABLE),
-                                        reql:get(X2, Id),
-                                        reql:replace(X2, OldService)
-                                    end),
-                                    FormattedErrors = dog_ec2_sg:format_ec2_errors(Ec2Errors),
-                                    ErrorResp = #{
-                                        <<"error">> => <<"ec2_sg_update_failed">>,
-                                        <<"details">> => FormattedErrors
-                                    },
-                                    {validation_error, jsx:encode(ErrorResp)}
-                            end;
+                            ResponseVal =
+                                case dog_ruleset_event:on_update(OldService, NewVal) of
+                                    {ok, _} ->
+                                        NewVal;
+                                    {error, Ec2Errors} ->
+                                        ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{
+                                            domain => [dog_trainer]
+                                        }),
+                                        maps:put(
+                                            <<"ec2_sg_errors">>,
+                                            dog_ec2_sg:format_ec2_errors(Ec2Errors),
+                                            NewVal
+                                        )
+                                end,
+                            {true, ResponseVal};
                         {0, 1} ->
                             OldVal = maps:get(<<"old_val">>, hd(maps:get(<<"changes">>, R))),
                             {false, OldVal};

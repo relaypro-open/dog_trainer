@@ -152,7 +152,8 @@ delete(Id) ->
         1 ->
             dog_host_event:on_delete(OldVal),
             ok;
-        _ -> error
+        _ ->
+            error
     end.
 
 -spec update(Id :: binary(), UpdateMap :: map()) ->

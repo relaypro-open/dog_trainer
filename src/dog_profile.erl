@@ -795,39 +795,33 @@ update(Id, UpdateMap) ->
                         <<"profile_id">> => ProfileId
                     },
                     NewProfile = maps:merge(OldProfile, UpdateMap@0),
-                    case dog_ruleset:update(RulesetId, RulesMap@0) of
-                        {validation_error, Error} ->
-                            {validation_error, Error};
-                        {false, Error} ->
-                            {false, Error};
-                        {true, _NewRulesetId} ->
-                            case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
-                                ok ->
-                                    {ok, R} = dog_rethink:run(
-                                        fun(X) ->
-                                            reql:db(X, dog),
-                                            reql:table(X, ?TYPE_TABLE),
-                                            reql:get(X, Id),
-                                            reql:update(X, UpdateMap@0)
-                                        end
-                                    ),
-                                    ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
-                                    Replaced = maps:get(<<"replaced">>, R),
-                                    Unchanged = maps:get(<<"unchanged">>, R),
-                                    case {Replaced, Unchanged} of
-                                        {1, 0} ->
-                                            {ok, NewVal} = get_by_id(Id),
-                                            dog_profile_event:on_update(OldProfile, NewVal),
-                                            {true, Id};
-                                        {0, 1} ->
-                                            {false, Id};
-                                        _ ->
-                                            {false, no_updated}
-                                    end;
-                                {error, Error} ->
-                                    Response = dog_parse:validation_error(Error),
-                                    {validation_error, Response}
-                            end
+                    {_, _NewRulesetId} = dog_ruleset:update(RulesetId, RulesMap@0),
+                    case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
+                        ok ->
+                            {ok, R} = dog_rethink:run(
+                                fun(X) ->
+                                    reql:db(X, dog),
+                                    reql:table(X, ?TYPE_TABLE),
+                                    reql:get(X, Id),
+                                    reql:update(X, UpdateMap@0)
+                                end
+                            ),
+                            ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
+                            Replaced = maps:get(<<"replaced">>, R),
+                            Unchanged = maps:get(<<"unchanged">>, R),
+                            case {Replaced, Unchanged} of
+                                {1, 0} ->
+                                    {ok, NewVal} = get_by_id(Id),
+                                    dog_profile_event:on_update(OldProfile, NewVal),
+                                    {true, Id};
+                                {0, 1} ->
+                                    {false, Id};
+                                _ ->
+                                    {false, no_updated}
+                            end;
+                        {error, Error} ->
+                            Response = dog_parse:validation_error(Error),
+                            {validation_error, Response}
                     end
             end;
         {error, Error} ->

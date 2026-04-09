@@ -182,26 +182,8 @@ update(Id, UpdateMap) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             {ok, NewVal} = get_by_id(Id),
-                            case dog_ruleset_event:on_update(OldRules, NewVal) of
-                                {ok, _} ->
-                                    {true, Id};
-                                {error, Ec2Errors} ->
-                                    ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{
-                                        domain => [dog_trainer]
-                                    }),
-                                    dog_rethink:run(fun(X2) ->
-                                        reql:db(X2, dog),
-                                        reql:table(X2, ?TYPE_TABLE),
-                                        reql:get(X2, Id),
-                                        reql:replace(X2, OldRules)
-                                    end),
-                                    FormattedErrors = dog_ec2_sg:format_ec2_errors(Ec2Errors),
-                                    ErrorResp = #{
-                                        <<"error">> => <<"ec2_sg_update_failed">>,
-                                        <<"details">> => FormattedErrors
-                                    },
-                                    {validation_error, jsx:encode(ErrorResp)}
-                            end;
+                            dog_ruleset_event:on_update(OldRules, NewVal),
+                            {true, Id};
                         {0, 1} ->
                             {false, Id};
                         _ ->

@@ -67,7 +67,8 @@ delete(Id) ->
         1 ->
             dog_service_event:on_delete(OldVal),
             ok;
-        _ -> {error, #{<<"error">> => <<"error">>}}
+        _ ->
+            {error, #{<<"error">> => <<"error">>}}
     end.
 
 -spec get(Name :: binary()) -> [map()].

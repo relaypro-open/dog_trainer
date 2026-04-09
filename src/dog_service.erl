@@ -159,7 +159,8 @@ delete(ZoneId) ->
                 1 ->
                     dog_service_event:on_delete(OldVal),
                     ok;
-                _ -> {error, #{<<"error">> => <<"error">>}}
+                _ ->
+                    {error, #{<<"error">> => <<"error">>}}
             end;
         {true, Profiles} ->
             ?LOG_INFO(#{zoneid => ZoneId, profiles => Profiles}, #{domain => [dog_trainer]}),
@@ -189,8 +190,10 @@ update(Id, UpdateMap) ->
                             {ok, NewVal} = get_by_id(Id),
                             dog_service_event:on_update(OldService, NewVal),
                             {true, Id};
-                        {0, 1} -> {false, Id};
-                        _ -> {false, no_update}
+                        {0, 1} ->
+                            {false, Id};
+                        _ ->
+                            {false, no_update}
                     end;
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),

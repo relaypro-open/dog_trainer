@@ -861,8 +861,10 @@ update(Id, UpdateMap) ->
                             {ok, NewVal} = get_by_id(Id),
                             dog_host_event:on_update(OldHost, NewVal),
                             {true, Id};
-                        {0, 1} -> {false, Id};
-                        _ -> {false, no_updated}
+                        {0, 1} ->
+                            {false, Id};
+                        _ ->
+                            {false, no_updated}
                     end;
                 {error, Error} ->
                     {validation_error, Error}
@@ -897,7 +899,8 @@ delete(Id) ->
         1 ->
             dog_host_event:on_delete(OldVal),
             ok;
-        _ -> error
+        _ ->
+            error
     end.
 
 -spec get_state_from_host(Host :: map()) -> {'error', 'notfound'} | {'ok', _}.

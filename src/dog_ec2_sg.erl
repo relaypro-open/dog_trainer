@@ -79,7 +79,12 @@ publish_ec2_sg({DogGroup, Region, SgId}) ->
             _ ->
                 update_sg_ingress(SgId, Region, AddRemoveMapIngress)
         end,
-    ?LOG_DEBUG(#{resultsingress => ResultsIngress}, #{domain => [dog_trainer]}),
+    case ResultsIngress of
+        {error, _, _} ->
+            ?LOG_ERROR(#{resultsingress => ResultsIngress}, #{domain => [dog_trainer]});
+        _ ->
+            ?LOG_DEBUG(#{resultsingress => ResultsIngress}, #{domain => [dog_trainer]})
+    end,
     AddRemoveMapEgress = diff_sg_egress(SgId, Region, DogGroupId),
     ResultsEgress =
         case AddRemoveMapEgress of
@@ -89,13 +94,24 @@ publish_ec2_sg({DogGroup, Region, SgId}) ->
             _ ->
                 update_sg_egress(SgId, Region, AddRemoveMapEgress)
         end,
-    ?LOG_DEBUG(#{resultsegress => ResultsEgress}, #{domain => [dog_trainer]}),
+    case ResultsEgress of
+        {error, _, _} ->
+            ?LOG_ERROR(#{resultsegress => ResultsEgress}, #{domain => [dog_trainer]});
+        _ ->
+            ?LOG_DEBUG(#{resultsegress => ResultsEgress}, #{domain => [dog_trainer]})
+    end,
     [ResultsIngress, ResultsEgress].
 
 sg_results_has_error({error, _}) ->
     true;
 sg_results_has_error(SgResults) when is_list(SgResults) ->
-    lists:any(fun({error, _, _}) -> true; (_) -> false end, SgResults);
+    lists:any(
+        fun
+            ({error, _, _}) -> true;
+            (_) -> false
+        end,
+        SgResults
+    );
 sg_results_has_error(_) ->
     false.
 
@@ -292,9 +308,9 @@ update_sg_egress(Ec2SecurityGroupId, Region, AddRemoveMap) ->
 
 -spec parse_authorize_response(AuthorizeResponse :: tuple()) -> ok | string().
 parse_authorize_response(AuthorizeResponse) ->
-    ?LOG_DEBUG(#{authorizeresponse => AuthorizeResponse}, #{domain => [dog_trainer]}),
     case AuthorizeResponse of
         {error, {_ErrorType, _ErrorCode, _ErrorHeader, ErrorDescription}} ->
+            ?LOG_ERROR(#{authorizeresponse => AuthorizeResponse}, #{domain => [dog_trainer]}),
             Xml = element(2, (erlsom:simple_form(ErrorDescription))),
             {"Response", [], [
                 {"Errors", [], [
@@ -305,7 +321,6 @@ parse_authorize_response(AuthorizeResponse) ->
                 ]},
                 {"RequestID", [], [_RequestId]}
             ]} = Xml,
-            ?LOG_ERROR(AuthorizeResponse, #{domain => [dog_trainer]}),
             case Code of
                 %Ignore duplicate entry error
                 "InvalidPermission.Duplicate" ->
@@ -314,6 +329,7 @@ parse_authorize_response(AuthorizeResponse) ->
                     {Code, Message}
             end;
         Other ->
+            ?LOG_DEBUG(#{authorizeresponse => AuthorizeResponse}, #{domain => [dog_trainer]}),
             Other
     end.
 

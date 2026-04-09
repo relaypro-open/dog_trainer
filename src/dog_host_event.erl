@@ -121,10 +121,11 @@ handle_interfaces_change(_OldVal, NewVal) ->
         null ->
             pass;
         _ ->
-            OldInterfaces = case _OldVal of
-                null -> undefined;
-                _ -> maps:get(<<"interfaces">>, _OldVal, undefined)
-            end,
+            OldInterfaces =
+                case _OldVal of
+                    null -> undefined;
+                    _ -> maps:get(<<"interfaces">>, _OldVal, undefined)
+                end,
             NewInterfaces = maps:get(<<"interfaces">>, NewVal, undefined),
             case OldInterfaces =/= NewInterfaces of
                 true ->

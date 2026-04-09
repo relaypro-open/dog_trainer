@@ -63,7 +63,8 @@ delete(Id) ->
         1 ->
             dog_zone_event:on_delete(OldVal),
             ok;
-        _ -> {error, #{<<"error">> => <<"error">>}}
+        _ ->
+            {error, #{<<"error">> => <<"error">>}}
     end.
 
 -spec get_all() -> {ok, list()}.

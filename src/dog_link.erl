@@ -124,7 +124,8 @@ delete(Id) ->
                 1 ->
                     dog_link_event:on_delete(OldLink),
                     ok;
-                _ -> {error, #{<<"error">> => <<"error">>}}
+                _ ->
+                    {error, #{<<"error">> => <<"error">>}}
             end
     end.
 
@@ -158,8 +159,10 @@ update(Id, UpdateMap) ->
                             {ok, NewVal} = get_by_id(Id),
                             dog_link_event:on_update(OldLink, NewVal),
                             {true, Id};
-                        {0, 1} -> {false, Id};
-                        _ -> {false, no_update}
+                        {0, 1} ->
+                            {false, Id};
+                        _ ->
+                            {false, no_update}
                     end;
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
