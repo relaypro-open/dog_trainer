@@ -171,18 +171,30 @@ from_post_json(Req@0, State) ->
         {error, notfound} ->
             case Handler:create(Map) of
                 {validation_error, Error} ->
-                    cowboy_req:reply(
+                    Req@1 = cowboy_req:reply(
                         400,
                         #{<<"content-type">> => <<"application/json">>},
                         Error,
                         Req@0
-                    );
+                    ),
+                    {stop, Req@1, State};
                 {ok, Id} ->
                     SuccessMap = #{<<"id">> => Id, <<"result">> => <<"created">>},
                     Req@1 = cowboy_req:set_resp_body([jsx:encode(SuccessMap)], Req@0),
                     Uri = io_lib:format("~s/~s/~s", [?ROOT, HandlerPath, erlang:binary_to_list(Id)]),
                     ?LOG_INFO(#{uri => Uri}, #{domain => [dog_trainer]}),
-                    {{true, list_to_binary(Uri)}, Req@1, State}
+                    {{true, list_to_binary(Uri)}, Req@1, State};
+                {error, Ec2Errors} ->
+                    ErrorBody = jsx:encode(#{
+                        <<"ec2_sg_errors">> => dog_ec2_sg:format_ec2_errors(Ec2Errors)
+                    }),
+                    Req@1 = cowboy_req:reply(
+                        500,
+                        #{<<"content-type">> => <<"application/json">>},
+                        ErrorBody,
+                        Req@0
+                    ),
+                    {stop, Req@1, State}
             end;
         {ok, Result} ->
             Id = maps:get(<<"id">>, Result),
@@ -192,12 +204,13 @@ from_post_json(Req@0, State) ->
             %303 redirect
             {{true, list_to_binary(Uri)}, Req@1, State};
         {validation_error, Error} ->
-            cowboy_req:reply(
+            Req@1 = cowboy_req:reply(
                 400,
                 #{<<"content-type">> => <<"application/json">>},
                 Error,
                 Req@0
-            )
+            ),
+            {stop, Req@1, State}
     end.
 
 from_put_json(Req@0, State) ->
@@ -254,12 +267,24 @@ from_put_json(Req@0, State) ->
             ),
             {stop, Req@2, State};
         {validation_error, Error} ->
-            cowboy_req:reply(
+            Req@2 = cowboy_req:reply(
                 400,
                 #{<<"content-type">> => <<"application/json">>},
                 Error,
                 Req@1
-            )
+            ),
+            {stop, Req@2, State};
+        {error, Ec2Errors} ->
+            ErrorBody = jsx:encode(#{
+                <<"ec2_sg_errors">> => dog_ec2_sg:format_ec2_errors(Ec2Errors)
+            }),
+            Req@2 = cowboy_req:reply(
+                500,
+                #{<<"content-type">> => <<"application/json">>},
+                ErrorBody,
+                Req@1
+            ),
+            {stop, Req@2, State}
     end.
 
 to_json(Req, State) ->

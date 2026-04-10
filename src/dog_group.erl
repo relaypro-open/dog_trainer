@@ -287,11 +287,11 @@ create(Group@0) when is_map(Group@0) ->
                     {ok, NewVal} = get_by_id(Key),
                     case dog_group_event:on_create(NewVal) of
                         {ok, _} ->
-                            ok;
+                            {ok, Key};
                         {error, Ec2Errors} ->
-                            ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]})
-                    end,
-                    {ok, Key};
+                            ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]}),
+                            {error, Ec2Errors}
+                    end;
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
                     {validation_error, Response}
@@ -620,13 +620,13 @@ update(Id, UpdateMap) ->
                             {ok, NewVal} = get_by_id(Id),
                             case dog_group_event:on_update(OldGroup, NewVal) of
                                 {ok, _} ->
-                                    ok;
+                                    {true, Id};
                                 {error, Ec2Errors} ->
                                     ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{
                                         domain => [dog_trainer]
-                                    })
-                            end,
-                            {true, Id};
+                                    }),
+                                    {error, Ec2Errors}
+                            end;
                         {0, 1} ->
                             {false, Id};
                         _ ->
@@ -661,9 +661,9 @@ delete(Id) ->
                         {ok, _} ->
                             ok;
                         {error, Ec2Errors} ->
-                            ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]})
-                    end,
-                    ok;
+                            ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]}),
+                            {error, #{<<"ec2_sg_errors">> => dog_ec2_sg:format_ec2_errors(Ec2Errors)}}
+                    end;
                 _ ->
                     {error, #{<<"error">> => <<"error">>}}
             end;

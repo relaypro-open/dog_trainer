@@ -54,8 +54,15 @@ create(RulesMap) ->
                     Key = hd(maps:get(<<"generated_keys">>, R)),
                     ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
                     {ok, NewVal} = get_by_id(Key),
-                    dog_ruleset_event:on_create(NewVal),
-                    {ok, Key};
+                    case dog_ruleset_event:on_create(NewVal) of
+                        {ok, _} ->
+                            {ok, Key};
+                        {error, Ec2Errors} ->
+                            ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{
+                                domain => [dog_trainer]
+                            }),
+                            {error, Ec2Errors}
+                    end;
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
                     {validation_error, Response}
@@ -182,8 +189,15 @@ update(Id, UpdateMap) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             {ok, NewVal} = get_by_id(Id),
-                            dog_ruleset_event:on_update(OldRules, NewVal),
-                            {true, Id};
+                            case dog_ruleset_event:on_update(OldRules, NewVal) of
+                                {ok, _} ->
+                                    {true, Id};
+                                {error, Ec2Errors} ->
+                                    ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{
+                                        domain => [dog_trainer]
+                                    }),
+                                    {error, Ec2Errors}
+                            end;
                         {0, 1} ->
                             {false, Id};
                         _ ->

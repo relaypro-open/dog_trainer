@@ -618,16 +618,23 @@ create(ProfileMap@0) ->
                     ),
                     ProfileId = hd(maps:get(<<"generated_keys">>, R)),
                     ?LOG_DEBUG(#{r => R}, #{domain => [dog_trainer]}),
-                    {ok, _RulesetId} = dog_ruleset:create(
+                    case dog_ruleset:create(
                         #{
                             <<"name">> => Name,
                             <<"rules">> => RulesMap@0,
                             <<"profile_id">> => ProfileId
                         }
-                    ),
-                    {ok, NewVal} = get_by_id(ProfileId),
-                    dog_profile_event:on_create(NewVal),
-                    {ok, ProfileId};
+                    ) of
+                        {ok, _RulesetId} ->
+                            {ok, NewVal} = get_by_id(ProfileId),
+                            dog_profile_event:on_create(NewVal),
+                            {ok, ProfileId};
+                        {error, Ec2Errors} ->
+                            ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{
+                                domain => [dog_trainer]
+                            }),
+                            {error, Ec2Errors}
+                    end;
                 {error, Error} ->
                     Response = dog_parse:validation_error(Error),
                     {validation_error, Response}
@@ -795,7 +802,13 @@ update(Id, UpdateMap) ->
                         <<"profile_id">> => ProfileId
                     },
                     NewProfile = maps:merge(OldProfile, UpdateMap@0),
-                    {_, _NewRulesetId} = dog_ruleset:update(RulesetId, RulesMap@0),
+                    case dog_ruleset:update(RulesetId, RulesMap@0) of
+                        {error, Ec2Errors} ->
+                            ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{
+                                domain => [dog_trainer]
+                            }),
+                            {error, Ec2Errors};
+                        _ ->
                     case dog_json_schema:validate(?VALIDATION_TYPE, NewProfile) of
                         ok ->
                             {ok, R} = dog_rethink:run(
@@ -822,6 +835,7 @@ update(Id, UpdateMap) ->
                         {error, Error} ->
                             Response = dog_parse:validation_error(Error),
                             {validation_error, Response}
+                    end
                     end
             end;
         {error, Error} ->
