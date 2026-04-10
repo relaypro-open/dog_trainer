@@ -58,12 +58,7 @@ create(RuleMap@0) ->
                             {ok, NewVal};
                         {error, Ec2Errors} ->
                             ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]}),
-                            {ok,
-                                maps:put(
-                                    <<"ec2_sg_errors">>,
-                                    dog_ec2_sg:format_ec2_errors(Ec2Errors),
-                                    NewVal
-                                )}
+                            {error, Ec2Errors}
                     end;
                 {error, Error} ->
                     ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]}),
@@ -205,21 +200,15 @@ update(Id, UpdateMap@0) ->
                     case {Replaced, Unchanged} of
                         {1, 0} ->
                             NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
-                            ResponseVal =
-                                case dog_ruleset_event:on_update(OldService, NewVal) of
-                                    {ok, _} ->
-                                        NewVal;
-                                    {error, Ec2Errors} ->
-                                        ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{
-                                            domain => [dog_trainer]
-                                        }),
-                                        maps:put(
-                                            <<"ec2_sg_errors">>,
-                                            dog_ec2_sg:format_ec2_errors(Ec2Errors),
-                                            NewVal
-                                        )
-                                end,
-                            {true, ResponseVal};
+                            case dog_ruleset_event:on_update(OldService, NewVal) of
+                                {ok, _} ->
+                                    {true, NewVal};
+                                {error, Ec2Errors} ->
+                                    ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{
+                                        domain => [dog_trainer]
+                                    }),
+                                    {error, Ec2Errors}
+                            end;
                         {0, 1} ->
                             OldVal = maps:get(<<"old_val">>, hd(maps:get(<<"changes">>, R))),
                             {false, OldVal};
@@ -256,7 +245,7 @@ delete(Id) ->
                             ok;
                         {error, Ec2Errors} ->
                             ?LOG_ERROR(#{ec2_sg_errors => Ec2Errors}, #{domain => [dog_trainer]}),
-                            ok
+                            {error, #{<<"ec2_sg_errors">> => dog_ec2_sg:format_ec2_errors(Ec2Errors)}}
                     end;
                 _ ->
                     {error, #{<<"error">> => <<"error">>}}
