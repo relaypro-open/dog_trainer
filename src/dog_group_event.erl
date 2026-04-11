@@ -28,7 +28,7 @@ on_delete(OldVal) ->
     dog_ipset_update_agent:queue_add(
         dog_common:concat([<<"group-">>, GroupName], binary)
     ),
-    ok.
+    {ok, deleted}.
 
 handle_change(Val) ->
     GroupName = maps:get(<<"name">>, Val),
