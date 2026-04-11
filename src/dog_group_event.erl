@@ -18,7 +18,17 @@ on_update(_OldVal, NewVal) ->
 
 -spec on_delete(OldVal :: map()) -> {ok, any()} | {error, any()}.
 on_delete(OldVal) ->
-    handle_change(OldVal).
+    GroupName = maps:get(<<"name">>, OldVal),
+    imetrics:add_m(event, group_update),
+    GroupType = <<"role">>,
+    ?LOG_INFO(#{groupname => GroupName}, #{domain => [dog_trainer]}),
+    dog_iptables:update_group_iptables(GroupName, GroupType),
+    dog_iptables:update_group_ec2_sgs(GroupName),
+    ?LOG_INFO(#{message => "dog_ipset_update_agent:queue_add()"}, #{domain => [dog_trainer]}),
+    dog_ipset_update_agent:queue_add(
+        dog_common:concat([<<"group-">>, GroupName], binary)
+    ),
+    ok.
 
 handle_change(Val) ->
     GroupName = maps:get(<<"name">>, Val),

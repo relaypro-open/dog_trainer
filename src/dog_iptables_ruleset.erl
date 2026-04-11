@@ -1482,7 +1482,8 @@ read_iptables_ruleset_set_v4_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
         {error, Error} ->
-            ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
+            ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]}),
+            {ok, <<>>}
     end.
 -spec read_iptables_ruleset_set_v6_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_set_v6_from_file(GroupName) ->
@@ -1491,7 +1492,8 @@ read_iptables_ruleset_set_v6_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
         {error, Error} ->
-            ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
+            ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]}),
+            {ok, <<>>}
     end.
 -spec read_iptables_ruleset_unset_v4_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_unset_v4_from_file(GroupName) ->
@@ -1500,7 +1502,8 @@ read_iptables_ruleset_unset_v4_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
         {error, Error} ->
-            ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
+            ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]}),
+            {ok, <<>>}
     end.
 -spec read_iptables_ruleset_unset_v6_from_file(GroupName :: binary()) -> {ok, binary()}.
 read_iptables_ruleset_unset_v6_from_file(GroupName) ->
@@ -1509,7 +1512,8 @@ read_iptables_ruleset_unset_v6_from_file(GroupName) ->
         {ok, IptablesRuleset} ->
             {ok, IptablesRuleset};
         {error, Error} ->
-            ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]})
+            ?LOG_ERROR(#{error => Error}, #{domain => [dog_trainer]}),
+            {ok, <<>>}
     end.
 
 %%%--------------------------------------------------------------------
