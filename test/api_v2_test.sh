@@ -26,7 +26,7 @@ get ${BASEURL}/zones
 
 echo "SERVICE"
 SERVICE_ID=$(post "${TESTDIR}/service.json" "${BASEURL}/service")
-get ${BASEURL}/service/${SERVICE_ID} 
+get ${BASEURL}/service/${SERVICE_ID}
 get ${BASEURL}/service?name=drewtest
 echo -e "{\n\"name\":\"drewtest2\"\n}" > ${TESTDIR}/service_update.json
 put "${TESTDIR}/service_update.json" "${BASEURL}/service/${SERVICE_ID}"
@@ -61,11 +61,7 @@ put "${TESTDIR}/profile_v2_update.json" "${BASEURL}/profile/${PROFILE_ID}"
 putc "${TESTDIR}/profile_v2_update.json" "${BASEURL}/profile/${PROFILE_ID}" 303 #updates create new profiles
 putc "${TESTDIR}/profile_v2_update_blank_name.json" "${BASEURL}/profile/${PROFILE_ID}" 400
 get ${BASEURL}/profile/${PROFILE_ID}
-delete ${BASEURL}/profile/${PROFILE_ID}
 get ${BASEURL}/profiles
-
-echo "RULESET CLEANUP"
-delete ${BASEURL}/ruleset/${RULESET_ID}
 
 echo "GROUP"
 GROUP_ID=$(post "${TESTDIR}/group.json" "${BASEURL}/group")
@@ -88,6 +84,10 @@ putc "${TESTDIR}/host_update_blank_hostname.json" "${BASEURL}/host/${HOST_ID}" 4
 get ${BASEURL}/host/${HOST_ID}
 delete ${BASEURL}/host/${HOST_ID}
 get ${BASEURL}/hosts
+
+echo "RULESET CLEANUP"
+delete ${BASEURL}/profile/${PROFILE_ID}
+delete ${BASEURL}/ruleset/${RULESET_ID}
 
 echo "LINK/EXTERNAL"
 HOST_ID=$(post "${TESTDIR}/link.json" "${BASEURL}/link")
