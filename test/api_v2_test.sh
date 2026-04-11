@@ -63,6 +63,9 @@ putc "${TESTDIR}/profile_v2_update_blank_name.json" "${BASEURL}/profile/${PROFIL
 get ${BASEURL}/profile/${PROFILE_ID}
 get ${BASEURL}/profiles
 
+rm -f profile_v2.json
+rm -f profile_v2_update.json
+
 echo "GROUP"
 GROUP_ID=$(post "${TESTDIR}/group.json" "${BASEURL}/group")
 get ${BASEURL}/group/${GROUP_ID}
