@@ -27,6 +27,7 @@
     get_schema/0,
     grouped_by_ipset_name/0,
     grouped_by_ipset_name/4,
+    partition_by_address_handling/1,
     stop_external_broker_connection/1,
     start_external_broker_connection/1,
     to_ipset_names/2,
@@ -219,9 +220,7 @@ dump_all_active() ->
                     Else
                 )
         end,
-    {ExternalUnionEnvs, ExternalPrefixEnvs} = lists:splitwith(
-        fun(E) -> maps:get(<<"address_handling">>, E) == <<"union">> end, Externals
-    ),
+    {ExternalUnionEnvs, ExternalPrefixEnvs} = partition_by_address_handling(Externals),
     {ok, ExternalUnionEnvs, ExternalPrefixEnvs}.
 
 -spec dump_all() -> {ok, list(), list()}.
@@ -255,10 +254,14 @@ dump_all() ->
                     Else
                 )
         end,
-    {ExternalUnionEnvs, ExternalPrefixEnvs} = lists:splitwith(
-        fun(E) -> maps:get(<<"address_handling">>, E) == <<"union">> end, Externals
-    ),
+    {ExternalUnionEnvs, ExternalPrefixEnvs} = partition_by_address_handling(Externals),
     {ok, ExternalUnionEnvs, ExternalPrefixEnvs}.
+
+-spec partition_by_address_handling(Externals :: list()) -> {list(), list()}.
+partition_by_address_handling(Externals) ->
+    lists:partition(
+        fun(E) -> maps:get(<<"address_handling">>, E, <<"union">>) == <<"union">> end, Externals
+    ).
 
 -spec grouped_by_ipset_name() ->
     {

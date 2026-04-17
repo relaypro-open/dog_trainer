@@ -1,6 +1,24 @@
 -module(dog_external_tests).
 -include_lib("eunit/include/eunit.hrl").
 
+partition_by_address_handling_test() ->
+    Externals = [
+        #{<<"name">> => <<"e1">>, <<"address_handling">> => <<"union">>},
+        #{<<"name">> => <<"e2">>, <<"address_handling">> => <<"prefix">>},
+        #{<<"name">> => <<"e3">>, <<"address_handling">> => <<"union">>}
+    ],
+    {Union, Prefix} = dog_external:partition_by_address_handling(Externals),
+    
+    ?assertEqual(2, length(Union)),
+    ?assertEqual(1, length(Prefix)),
+    
+    [U1, U2] = Union,
+    ?assertEqual(<<"e1">>, maps:get(<<"name">>, U1)),
+    ?assertEqual(<<"e3">>, maps:get(<<"name">>, U2)),
+    
+    [P1] = Prefix,
+    ?assertEqual(<<"e2">>, maps:get(<<"name">>, P1)).
+
 grouped_by_ipset_name_merge_test() ->
     Env1 = #{
         <<"name">> => <<"e1">>,
