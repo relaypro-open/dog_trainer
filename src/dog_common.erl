@@ -82,11 +82,11 @@ merge_maps_of_lists([], Acc) ->
 merge_maps_of_lists(ListOfMapsOfLists, Acc) ->
     Map = hd(ListOfMapsOfLists),
     Rest = tl(ListOfMapsOfLists),
-    Keys = maps:keys(Map),
+    Keys = sets:to_list(sets:from_list(maps:keys(Map) ++ maps:keys(Acc))),
     NewAcc = lists:map(
         fun(Key) ->
             ExistingList = maps:get(Key, Acc, []),
-            NewList = maps:get(Key, Map),
+            NewList = maps:get(Key, Map, []),
             MergedList = sets:to_list(sets:from_list(lists:merge(ExistingList, NewList))),
             {Key, MergedList}
         end,

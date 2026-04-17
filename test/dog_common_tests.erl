@@ -63,6 +63,12 @@ merge_maps_of_lists_overlapping_test() ->
     Result = dog_common:merge_maps_of_lists(Input),
     ?assertEqual([1, 2, 3], lists:sort(maps:get(a, Result))).
 
+merge_maps_of_lists_disjoint_test() ->
+    Input = [#{a => [1]}, #{b => [2]}],
+    Result = dog_common:merge_maps_of_lists(Input),
+    ?assertEqual([1], maps:get(a, Result)),
+    ?assertEqual([2], maps:get(b, Result)).
+
 merge_maps_of_lists_empty_test() ->
     ?assertEqual(#{}, dog_common:merge_maps_of_lists([])).
 

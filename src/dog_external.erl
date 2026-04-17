@@ -410,7 +410,8 @@ grouped_by_ipset_name(Envs, Type, Version, AddressHandlingFun) ->
         end,
         Envs
     ),
-    maps:from_list(lists:flatten(AllEnvs)).
+    Maps = lists:map(fun maps:from_list/1, AllEnvs),
+    dog_common:merge_maps_of_lists(Maps).
 
 add_ipset_prefix(EnvName, LocalIpsetName) ->
     Separator = <<"#">>,
