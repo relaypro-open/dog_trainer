@@ -44,7 +44,7 @@
 -spec start_link(Link :: map()) ->
     {ok, Pid :: pid()} | ignore | {error, {already_started, Pid :: pid()} | term()}.
 start_link(Link) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [Link], []).
+    gen_server:start_link(?MODULE, [Link], []).
 
 %turtle publisher callback
 loop(_RoutingKey, _CType, Payload, State) ->
