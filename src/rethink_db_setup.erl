@@ -165,7 +165,8 @@ create_index(Connection, TableName, FieldName) ->
 
 -spec create_initial_global_hash(Connection :: pid()) -> {ok, map()}.
 create_initial_global_hash(Connection) ->
-    {ok, R} = dog_rethink:run(
+    {ok, R} = gen_rethink:run(
+        Connection,
         fun(X) ->
             reql:db(X, dog),
             reql:table(X, ipset)

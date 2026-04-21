@@ -17,6 +17,9 @@ github_release:
 	git tag ${VERSION}
 	git push --tags --force
 
+e2e:
+	./test/e2e/run.sh
+
 delete_release:
 	git tag -d ${VERSION}
 	git push --delete origin ${VERSION}
