@@ -1,0 +1,38 @@
+{
+  "name": "p_2",
+  "rules": {
+    "inbound": [
+      {
+        "action": "ACCEPT",
+        "active": true,
+        "comment": "allow all inbound",
+        "group": "any",
+        "group_type": "ANY",
+        "interface": "",
+        "log": false,
+        "log_prefix": "",
+        "order": 1,
+        "service": "any",
+        "states": [],
+        "type": "BASIC"
+      }
+    ],
+    "outbound": [
+      {
+        "action": "ACCEPT",
+        "active": true,
+        "comment": "allow all outbound",
+        "group": "any",
+        "group_type": "ANY",
+        "interface": "",
+        "log": false,
+        "log_prefix": "",
+        "order": 1,
+        "service": "any",
+        "states": [],
+        "type": "BASIC"
+      }
+    ]
+  },
+  "version": "1.1"
+}

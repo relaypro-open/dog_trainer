@@ -1,0 +1,9 @@
+{
+  "name": "test_group",
+  "profile_id": "$PROFILE_TEST_QA_ID",
+  "profile_name": "test_qa",
+  "profile_version": "latest",
+  "vars": {
+    "test": "dog_group-test_group"
+  }
+}

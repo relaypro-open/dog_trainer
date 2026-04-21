@@ -1,0 +1,9 @@
+{
+  "name": "local_group",
+  "profile_id": "$PROFILE_TEST_DREW_ID",
+  "profile_name": "test_drew",
+  "profile_version": "latest",
+  "vars": {
+    "test": "dog_group-local_group"
+  }
+}

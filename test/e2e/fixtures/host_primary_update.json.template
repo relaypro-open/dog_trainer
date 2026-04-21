@@ -1,0 +1,4 @@
+{
+  "group_id": "${GROUP_PRIMARY_ID}",
+  "hostname": "dog-agent"
+}

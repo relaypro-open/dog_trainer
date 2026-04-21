@@ -1,0 +1,66 @@
+{
+  "name": "p_primary",
+  "rules": {
+    "inbound": [
+      {
+        "action": "ACCEPT",
+        "active": true,
+        "comment": "allow ssh from g_2",
+        "group": "g_2",
+        "group_type": "ROLE",
+        "interface": "",
+        "log": false,
+        "log_prefix": "",
+        "order": 1,
+        "service": "ssh",
+        "states": [],
+        "type": "BASIC"
+      },
+      {
+        "action": "DROP",
+        "active": true,
+        "comment": "deny http from g_2",
+        "group": "g_2",
+        "group_type": "ROLE",
+        "interface": "",
+        "log": false,
+        "log_prefix": "",
+        "order": 2,
+        "service": "http",
+        "states": [],
+        "type": "BASIC"
+      },
+      {
+        "action": "DROP",
+        "active": true,
+        "comment": "default drop",
+        "group": "any",
+        "group_type": "ANY",
+        "interface": "",
+        "log": false,
+        "log_prefix": "",
+        "order": 3,
+        "service": "any",
+        "states": [],
+        "type": "BASIC"
+      }
+    ],
+    "outbound": [
+      {
+        "action": "ACCEPT",
+        "active": true,
+        "comment": "allow all outbound",
+        "group": "any",
+        "group_type": "ANY",
+        "interface": "",
+        "log": false,
+        "log_prefix": "",
+        "order": 1,
+        "service": "any",
+        "states": [],
+        "type": "BASIC"
+      }
+    ]
+  },
+  "version": "1.1"
+}

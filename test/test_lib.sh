@@ -10,7 +10,7 @@ OPTS=""
 #OPTS=( --key /opt/dog_trainer/client.key.pem --cert /opt/dog_trainer/client.cert.pem --cacert /tmp/consul/ca/consul-root.cer )
 
 function log() {
-  echo "${BASH_LINENO[-2]}: $@"
+  echo "${BASH_LINENO[0]}: $@"
 }
 
 passplus() {
@@ -36,7 +36,7 @@ getfail() {
 post() {
   DATA=$1
   URL=$2
-  R=$(curl ${OPTS} -d @"${DATA}" -w "|%{http_code}\n" --silent --show-error  -H "Content-Type: application/json" -X POST "${URL}")
+  R=$(curl ${OPTS} -d @"${DATA}" -w "|%{http_code}\n" --silent --show-error  -H "Content-Type: application/json" -H "Authorization: Bearer $TF_VAR_dog_api_token_sandbox" -X POST "${URL}")
   #RCMD="curl ${OPTS[@]} -d @"${DATA}" -w \"|%{http_code}\n\" --silent --show-error  -H \"Content-Type: application/json\" -X POST \"${URL}\""
   #>&2 log "RCMD: ${RCMD}"
   #R=$(${RCMD})
@@ -44,7 +44,7 @@ post() {
   BODY=$(echo ${R} | awk -F"|" '{print $1}')
   RESPONSE_CODE=$(echo ${R} | awk -F"|" '{print $2}')
   #>&2 log ${RESPONSE_CODE}
-  if [[ ${RESPONSE_CODE} -gt 400 ]] && [[ ${RESPONSE_CODE} -lt 600 ]] 
+  if [[ ${RESPONSE_CODE} -gt 400 ]] && [[ ${RESPONSE_CODE} -lt 600 ]]
   then
     >&2 log "fail: CODE ${RESPONSE_CODE}, POST ${URL}"
     #>&2 log ${BODY}
@@ -63,7 +63,7 @@ c_data() {
   DATA=$2
   URL=$3
   CODE=$4
-  R=$(curl ${OPTS[@]} -d @"${DATA}" -H "Content-Type: application/json" -X ${METHOD} --write-out %{http_code} --silent --output /dev/null --show-error ${URL})
+  R=$(curl ${OPTS[@]} -d @"${DATA}" -H "Content-Type: application/json" -H "Authorization: Bearer $TF_VAR_dog_api_token_sandbox" -X ${METHOD} --write-out %{http_code} --silent --output /dev/null --show-error ${URL})
   if [ "$R" == "$CODE" ];then passplus ;log "pass: ${METHOD} ${URL}";else failplus ;log "fail: ${R} != ${CODE}, ${METHOD} ${URL}";fi
   #if [ "$R" == "$CODE" ];then PASS=$((PASS+1));log "pass: ${METHOD} ${URL}";else let FAIL=${FAIL}+1;log "fail: ${R} != ${CODE}, ${METHOD} ${URL}";fi
 }
@@ -85,7 +85,7 @@ c_nodata() {
   METHOD=$1
   URL=$2
   CODE=$3
-  R=$(curl ${OPTS[@]} --write-out %{http_code} --silent --output /dev/null --show-error -H "Content-Type: application/json" -X ${METHOD} ${URL})
+  R=$(curl ${OPTS[@]} --write-out %{http_code} --silent --output /dev/null --show-error -H "Content-Type: application/json" -H "Authorization: Bearer $TF_VAR_dog_api_token_sandbox" -X ${METHOD} ${URL})
   if [ "$R" == "$CODE" ];then passplus ;log "pass: ${METHOD} ${URL}";else failplus ;log "fail: ${R} != ${CODE}, ${METHOD} ${URL}";fi
 }
 
@@ -107,7 +107,7 @@ delete() {
 
 get_id() {
   URL=$1
-  R=$(curl ${OPTS[@]} -w "\n%{http_code}\n" --silent --show-error  -H "Content-Type: application/json" -X GET "${URL}")
+  R=$(curl ${OPTS[@]} -w "\n%{http_code}\n" --silent --show-error  -H "Content-Type: application/json" -H "Authorization: Bearer $TF_VAR_dog_api_token_sandbox" -X GET "${URL}")
   BODY=$(echo ${R} | awk '{print $1}')
   RESPONSE_CODE=$(echo ${R} | awk '{print $2}')
   if [ "$RESPONSE_CODE" != "500" ]
@@ -128,7 +128,7 @@ get_id() {
 
 test_report() {
 echo
-	
+
 PASS=$(cat /tmp/pass.txt)
 FAIL=$(cat /tmp/fail.txt)
 echo "PASS: ${PASS} / FAIL: ${FAIL}"
