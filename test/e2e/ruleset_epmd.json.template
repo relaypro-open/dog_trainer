@@ -1,5 +1,6 @@
 {
   "name": "drewtest",
+  "profile_id": "__PROFILE_ID__",
   "rules": {
     "inbound": [
       {
@@ -10,7 +11,7 @@
         "group": "any",
         "group_type": "ZONE",
         "interface": "lo",
-        "log": true,
+        "log": "__LOG__",
         "log_prefix": "",
         "order": 1,
         "service": "any",
@@ -20,45 +21,30 @@
       {
         "action": "ACCEPT",
         "active": true,
-        "comment": "test ssh",
+        "comment": "test group",
         "environments": [],
-        "group": "test",
+        "group": "__GROUP_ID__",
         "group_type": "ROLE",
         "interface": "",
         "log": false,
         "log_prefix": "",
         "order": 2,
-        "service": "test-ssh",
+        "service": "__SERVICE_ID__",
         "states": [],
         "type": "BASIC"
       },
       {
         "action": "ACCEPT",
         "active": true,
-        "comment": "office ssh",
+        "comment": "zone",
         "environments": [],
-        "group": "office",
+        "group": "__ZONE_ID__",
         "group_type": "ZONE",
         "interface": "",
         "log": false,
         "log_prefix": "",
         "order": 3,
-        "service": "test-ssh",
-        "states": [],
-        "type": "BASIC"
-      },
-      {
-        "action": "ACCEPT",
-        "active": true,
-        "comment": "test2 any",
-        "environments": [],
-        "group": "test2",
-        "group_type": "ROLE",
-        "interface": "",
-        "log": false,
-        "log_prefix": "",
-        "order": 4,
-        "service": "any",
+        "service": "__SERVICE_ID__",
         "states": [],
         "type": "BASIC"
       },
@@ -72,28 +58,13 @@
         "interface": "",
         "log": false,
         "log_prefix": "",
-        "order": 5,
+        "order": 4,
         "service": "any",
         "states": [],
         "type": "BASIC"
       }
     ],
     "outbound": [
-      {
-        "action": "ACCEPT",
-        "active": false,
-        "comment": "",
-        "environments": [],
-        "group": "any",
-        "group_type": "ANY",
-        "interface": "",
-        "log": false,
-        "log_prefix": "",
-        "order": 1,
-        "service": "test-ssh",
-        "states": [],
-        "type": "BASIC"
-      },
       {
         "action": "ACCEPT",
         "active": true,
@@ -104,7 +75,7 @@
         "interface": "",
         "log": false,
         "log_prefix": "",
-        "order": 2,
+        "order": 1,
         "service": "any",
         "states": [],
         "type": "BASIC"

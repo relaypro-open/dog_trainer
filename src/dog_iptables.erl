@@ -65,21 +65,19 @@ update_group_ec2_sgs(GroupZoneName) ->
         _ -> {error, Errors}
     end.
 
--spec update_all_iptables() -> 'ok'.
+-spec update_all_iptables() -> list().
 update_all_iptables() ->
     ?LOG_DEBUG(#{message => "update_all_iptables:start"}, #{domain => [dog_trainer]}),
     {ok, Groups} = dog_group:get_active_groups(),
     GroupNames = [maps:get(<<"name">>, Group) || Group <- Groups],
     ChunkedGroupNames = chunk_list(GroupNames, 2),
-    lists:foreach(
+    lists:map(
         fun(GroupName) ->
             dog_profile_update_agent:add_to_queue(GroupName),
             timer:sleep(1000)
         end,
         ChunkedGroupNames
-    ),
-    ?LOG_DEBUG(#{message => "update_all_iptables:end"}, #{domain => [dog_trainer]}),
-    ok.
+    ).
 
 chunk_list(List) ->
     chunk_list(List, 2).

@@ -47,15 +47,32 @@ create(Group@0) when is_map(Group@0) ->
         {error, notfound} ->
             Timestamp = dog_time:timestamp(),
             Group@1 = maps:put(<<"created">>, Timestamp, Group@0),
-            NewMap = maps:merge(DefaultMap, Group@1),
-            ?LOG_DEBUG(#{newmap => NewMap}, #{domain => [dog_trainer]}),
-            case dog_json_schema:validate(?VALIDATION_TYPE, NewMap) of
+            Group@2 =
+                case maps:find(<<"profile_name">>, Group@1) of
+                    error ->
+                        maps:merge(DefaultMap, Group@1);
+                    {ok, ProfileName} ->
+                        ProfileId =
+                            case dog_profile:get_by_name(ProfileName) of
+                                {error, notfound} ->
+                                    <<"">>;
+                                {ok, Profile} ->
+                                    case maps:find(<<"id">>, Profile) of
+                                        error -> <<"">>;
+                                        {ok, Id} -> Id
+                                    end
+                            end,
+                        NewMap = maps:merge(DefaultMap, Group@1),
+                        maps:merge(NewMap, #{<<"profile_id">> => ProfileId})
+                end,
+            ?LOG_DEBUG(#{group2 => Group@2}, #{domain => [dog_trainer]}),
+            case dog_json_schema:validate(?VALIDATION_TYPE, Group@2) of
                 ok ->
                     {ok, R} = dog_rethink:run(
                         fun(X) ->
                             reql:db(X, dog),
                             reql:table(X, ?TYPE_TABLE),
-                            reql:insert(X, NewMap, #{return_changes => always})
+                            reql:insert(X, Group@2, #{return_changes => always})
                         end
                     ),
                     NewVal = maps:get(<<"new_val">>, hd(maps:get(<<"changes">>, R))),
@@ -198,7 +215,21 @@ update(Id, UpdateMap) ->
         {ok, OldGroup} ->
             OldGroup1 = maps:remove(<<"vars">>, OldGroup),
             OldGroup2 = maps:remove(<<"ec2_security_group_ids">>, OldGroup1),
-            NewGroup = maps:merge(OldGroup2, UpdateMap),
+            UpdateMap1 =
+                case maps:find(<<"profile_name">>, UpdateMap) of
+                    error ->
+                        UpdateMap;
+                    {ok, ProfileName} ->
+                        ProfileId =
+                            case dog_profile:get_by_name(ProfileName) of
+                                {error, notfound} ->
+                                    <<"">>;
+                                {ok, Profile} ->
+                                    maps:get(<<"id">>, Profile, <<"">>)
+                            end,
+                        maps:merge(UpdateMap, #{<<"profile_id">> => ProfileId})
+                end,
+            NewGroup = maps:merge(OldGroup2, UpdateMap1),
             case dog_json_schema:validate(?VALIDATION_TYPE, NewGroup) of
                 ok ->
                     {ok, R} = dog_rethink:run(

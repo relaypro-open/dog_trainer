@@ -1,0 +1,19 @@
+{
+  "ec2_vpc_id": "",
+  "location": "*",
+  "ec2_instance_id": "",
+  "ec2_instance_tags": {},
+  "name": "dog-agent-1",
+  "environment": "*",
+  "provider": "unknown",
+  "ec2_security_group_ids": "",
+  "hostkey": "dog-agent-1",
+  "group": "test",
+  "os_version": "11",
+  "os_distribution": "Debian",
+  "ec2_owner_id": "",
+  "ec2_subnet_id": "",
+  "ec2_availability_zone": "",
+  "ec2_region": "",
+  "version": "container"
+}

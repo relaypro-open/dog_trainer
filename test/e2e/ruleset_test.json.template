@@ -1,39 +1,43 @@
 {
-  "name": "p_primary",
+  "name": "test",
+  "profile_id": "__PROFILE_ID__",
   "rules": {
     "inbound": [
       {
-        "action": "DROP",
+        "action": "ACCEPT",
         "active": true,
-        "comment": "deny ssh from g_2",
-        "group": "g_2",
+        "comment": "allow epmd from test group",
+        "environments": [],
+        "group": "__TEST_GROUP_ID__",
         "group_type": "ROLE",
         "interface": "",
         "log": false,
         "log_prefix": "",
         "order": 1,
-        "service": "ssh",
+        "service": "__EPMD_SERVICE_ID__",
         "states": [],
         "type": "BASIC"
       },
       {
-        "action": "DROP",
+        "action": "ACCEPT",
         "active": true,
-        "comment": "deny http from g_2",
-        "group": "g_2",
-        "group_type": "ROLE",
+        "comment": "allow epmd from office zone",
+        "environments": [],
+        "group": "__OFFICE_ZONE_ID__",
+        "group_type": "ZONE",
         "interface": "",
         "log": false,
         "log_prefix": "",
         "order": 2,
-        "service": "http",
+        "service": "__EPMD_SERVICE_ID__",
         "states": [],
         "type": "BASIC"
       },
       {
         "action": "DROP",
         "active": true,
-        "comment": "default drop",
+        "comment": "",
+        "environments": [],
         "group": "any",
         "group_type": "ANY",
         "interface": "",
@@ -49,7 +53,8 @@
       {
         "action": "ACCEPT",
         "active": true,
-        "comment": "allow all outbound",
+        "comment": "",
+        "environments": [],
         "group": "any",
         "group_type": "ANY",
         "interface": "",
@@ -61,6 +66,5 @@
         "type": "BASIC"
       }
     ]
-  },
-  "version": "1.1"
+  }
 }

@@ -27,11 +27,15 @@ teardown() {
         echo "KEEP_RUNNING=1, skipping teardown."
     else
         echo "Tearing down..."
+        docker container stop rethinkdb || true
+        docker container rm rethinkdb || true
+        docker volume prune -f || true
         docker-compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" down -v
     fi
 }
 
-trap teardown EXIT
+#trap teardown EXIT
+teardown
 
 echo "Starting Docker Compose stack ($PROJECT_NAME)..."
 docker-compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" up -d
@@ -49,14 +53,6 @@ for i in {1..45}; do
         HEALTHY=1
         break
     fi
-    #echo "Not healthy yet. Checking if dog-trainer is asleep..."
-    #if docker logs dog-trainer 2>&1 | tail -n 10 | grep -q "sleep infinity"; then
-    #    echo "dog_trainer crashed. Restarting it..."
-    #    docker-compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" restart dog_trainer
-    #elif docker logs dog-trainer 2>&1 | tail -n 10 | grep -q "Crash dump"; then
-    #    echo "dog_trainer crashed. Restarting it..."
-    #    docker-compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" restart dog_trainer
-    #fi
     sleep 2
 done
 
@@ -65,22 +61,19 @@ if [ -z "${HEALTHY:-}" ]; then
     exit 1
 fi
 
-# Setup baseline resources (formerly Terraform)
-cd "$SCRIPT_DIR"
-./setup_baseline.sh
+# Setup baseline resources (handled by e2e_test.sh)
+# cd "$SCRIPT_DIR"
+# ./setup_baseline.sh
+# docker container restart dog-agent-1 dog-agent-2
 
 # Run scenarios
 # Initialize pass/fail counters
 echo 0 > /tmp/pass.txt
 echo 0 > /tmp/fail.txt
 
-echo "Running scenarios..."
+echo "Running E2E tests..."
 # We need to be in the e2e directory so fixtures are found
 cd "$SCRIPT_DIR"
-./scenario_two_agent.sh
-
-if [ -f "./scenario_profile_change.sh" ]; then
-    ./scenario_profile_change.sh
-fi
+./e2e_test.sh
 
 test_report

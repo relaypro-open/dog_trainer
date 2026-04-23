@@ -1,0 +1,1 @@
+{"name":"test-epmd","services":[{"ports":["4369"],"protocol":"tcp"}],"version":1}

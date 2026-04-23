@@ -1,0 +1,276 @@
+import os
+import sys
+import time
+import json
+import urllib.request
+import urllib.error
+import subprocess
+import logging
+from string import Template
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+class DogApi:
+    def __init__(self, base_url, token):
+        self.base_url = base_url
+        self.token = token
+        
+    def req(self, method, path, data=None):
+        url = f"{self.base_url}{path}"
+        headers = {"Authorization": f"Bearer {self.token}"}
+        req_data = None
+        if data:
+            req_data = json.dumps(data).encode('utf-8')
+            headers["Content-Type"] = "application/json"
+            
+        req = urllib.request.Request(url, data=req_data, headers=headers, method=method)
+        logging.debug(f"{method} {url}")
+        
+        try:
+            with urllib.request.urlopen(req, timeout=10) as response:
+                body = response.read().decode('utf-8')
+                logging.debug(f"Response {response.status}: {body}")
+                if body:
+                    return response.status, json.loads(body)
+                return response.status, None
+        except urllib.error.HTTPError as e:
+            body = e.read().decode('utf-8')
+            if e.code == 303:
+                logging.debug(f"Response 303 (See Other): {body}")
+                if body:
+                    try:
+                        return e.code, json.loads(body)
+                    except:
+                        return e.code, body
+                return e.code, None
+            logging.error(f"HTTPError {e.code}: {body}")
+            logs = run_cmd(["docker", "logs", "--tail", "100", "dog-trainer"], check=False); logging.error(f"Trainer Logs:\n{logs}"); raise Exception(f"API {method} {url} failed with {e.code}: {body}")
+        except Exception as e:
+            logging.error(f"Request Error: {e}")
+            raise
+            
+    def get(self, path): return self.req('GET', path)[1]
+    def post(self, path, data): return self.req('POST', path, data)[1]
+    def put(self, path, data): return self.req('PUT', path, data)[1]
+
+def run_cmd(cmd, check=True):
+    logging.debug(f"Running command: {' '.join(cmd)}")
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if check and res.returncode != 0:
+        logging.error(f"Command failed: {res.stderr}")
+        raise Exception(f"Cmd failed: {' '.join(cmd)}")
+    return res.stdout.strip()
+
+def load_fixture(path, vars_dict=None):
+    with open(path, 'r') as f:
+        content = f.read()
+    if vars_dict:
+        template = Template(content)
+        content = template.safe_substitute(vars_dict)
+    return json.loads(content)
+
+def teardown():
+    logging.info("Tearing down docker environment...")
+    run_cmd(['docker', 'container', 'stop', 'rethinkdb'], check=False)
+    run_cmd(['docker', 'container', 'rm', 'rethinkdb'], check=False)
+    run_cmd(['docker', 'volume', 'prune', '-f'], check=False)
+    compose_file = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../docker-compose.local_deploy.yml'))
+    run_cmd(['docker-compose', '-p', 'dog_e2e', '-f', compose_file, 'down', '-v'], check=False)
+
+def get_agent_ip(container_name):
+    # Using range loop to robustly get IP regardless of network name
+    cmd = ['docker', 'inspect', '-f', '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}', container_name]
+    return run_cmd(cmd)
+
+def wait_for_health(api, retries=45):
+    for i in range(retries):
+        try:
+            logging.info("Checking health...")
+            status, _ = api.req('GET', '/healthcheck')
+            if status == 200:
+                logging.info("dog_trainer is healthy!")
+                return True
+        except Exception:
+            pass
+        time.sleep(2)
+    raise Exception("dog_trainer failed to become healthy.")
+
+def wait_for_host_registered(api, hostname, timeout=60):
+    logging.info(f"Waiting for host {hostname} to register...")
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            data = api.get(f"/V2/host?name={hostname}")
+            if data:
+                if isinstance(data, list) and len(data) > 0:
+                    host_id = data[0].get("id")
+                    if host_id: return host_id
+                elif isinstance(data, dict) and "id" in data:
+                    return data["id"]
+        except Exception:
+            pass
+        time.sleep(2)
+    raise Exception(f"Timeout waiting for host {hostname} to register")
+
+def wait_for_convergence(api, group_id, host_id, timeout):
+    logging.info(f"Waiting for convergence group {group_id} and host {host_id}...")
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            g = api.get(f"/V2/group/{group_id}")
+            h = api.get(f"/V2/host/{host_id}")
+            
+            if g and h:
+                g_ipt = g.get("hash4_iptables")
+                g_ips = g.get("hash4_ipsets")
+                h_ipt = h.get("hash4_iptables")
+                h_ips = h.get("hash4_ipsets")
+                
+                logging.debug(f"Hashes: group ipt={g_ipt}, ips={g_ips} | host ipt={h_ipt}, ips={h_ips}")
+                
+                if g_ipt and g_ipt == h_ipt and g_ips and g_ips == h_ips:
+                    logging.info("Convergence reached!")
+                    return True
+        except Exception as e:
+            logging.debug(f"API call failed while waiting: {e}")
+        time.sleep(2)
+    
+    # Diagnostics
+    logging.error("Timeout waiting for convergence!")
+    logging.info("--- Host IPtables Save ---")
+    run_cmd(['docker', 'exec', 'dog-agent-1', 'iptables-save'], check=False)
+    logging.info("--- Host IPset List ---")
+    run_cmd(['docker', 'exec', 'dog-agent-1', 'ipset', 'list'], check=False)
+    logging.info("--- Trainer Logs Tail ---")
+    run_cmd(['docker-compose', '-p', 'dog_e2e', 'logs', '--tail', '50', 'dog-trainer'], check=False)
+    raise Exception("Convergence failed")
+
+def assert_connectivity(from_container, to_ip, port, expected):
+    logging.info(f"Checking connectivity from {from_container} to {to_ip}:{port} (expected {expected})...")
+    res = subprocess.run(['docker', 'exec', from_container, 'nc', '-zv', '-w2', to_ip, str(port)], capture_output=True, text=True)
+    if expected == "open":
+        assert res.returncode == 0, f"Expected {to_ip}:{port} open, but got closed/error: {res.stderr} {res.stdout}"
+        logging.info("PASS: Port is open")
+    else:
+        assert res.returncode != 0, f"Expected {to_ip}:{port} closed, but got open: {res.stdout} {res.stderr}"
+        logging.info("PASS: Port is closed")
+
+def main():
+    token = os.environ.get("TF_VAR_dog_api_token_sandbox", "dummy")
+    if token == "dummy":
+        # Check if the bash script passed it previously, or we can just try to read it.
+        # Run.sh sources it or expects it in environment. 
+        pass
+        
+    api = DogApi("http://localhost:7070/api", token)
+    
+    keep_running = os.environ.get("KEEP_RUNNING", "0") == "1"
+    
+    try:
+        compose_file = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../docker-compose.local_deploy.yml'))
+        logging.info("Starting Docker Compose...")
+        run_cmd(['docker-compose', '-p', 'dog_e2e', '-f', compose_file, 'up', '-d'])
+        
+        wait_for_health(api)
+        
+        # State Dictionary for Templates
+        v = {}
+        
+        # --- Baseline Setup ---
+        logging.info("Setting up baseline...")
+        fixt_dir = os.path.join(os.path.dirname(__file__), 'fixtures')
+        
+        # Wrap resource creation to catch 409 and proceed if it's acceptable, or just ignore 409.
+        # The bash script would fail on 409 if we use wait_for_health and recreate. Since we tear down it should be clean.
+        
+        try:
+                    api.post('/V2/fact', load_fixture(f"{fixt_dir}/baseline/fact_docker.json"))
+        except Exception as e:
+            logging.error(f'Fact creation failed: {e}')
+            run_cmd(['docker', 'logs', '--tail', '100', 'dog-trainer'], check=False)
+            raise
+        
+        zone_tz = api.post('/V2/zone', load_fixture(f"{fixt_dir}/baseline/zone_test_zone.json"))
+        v['ZONE_TEST_ZONE_ID'] = zone_tz['id']
+        
+        srv_ssh = api.post('/V2/service', load_fixture(f"{fixt_dir}/baseline/service_test_tcp_5555.json"))
+        v['SERVICE_SSH_ID'] = srv_ssh['id']
+        
+        prof_drew = api.post('/V2/profile', load_fixture(f"{fixt_dir}/baseline/profile_test_drew.json.template", v))
+        v['PROFILE_TEST_DREW_ID'] = prof_drew['id']
+        
+        prof_qa = api.post('/V2/profile', load_fixture(f"{fixt_dir}/baseline/profile_test_qa.json.template", v))
+        v['PROFILE_TEST_QA_ID'] = prof_qa['id']
+        
+        api.post('/V2/group', load_fixture(f"{fixt_dir}/baseline/group_test_qa.json.template", v))
+        api.post('/V2/group', load_fixture(f"{fixt_dir}/baseline/group_test_group.json.template", v))
+        api.post('/V2/group', load_fixture(f"{fixt_dir}/baseline/group_local_group.json.template", v))
+        
+        # --- Scenario Two Agent ---
+        logging.info("Running Scenario Two Agent...")
+        agent1_ip = get_agent_ip("dog-agent-1")
+        agent2_ip = get_agent_ip("dog-agent-2")
+        logging.info(f"dog-agent-1 IP: {agent1_ip}, dog-agent-2 IP: {agent2_ip}")
+        v['DOG_AGENT_IP'] = agent1_ip
+        v['DOG_AGENT_2_IP'] = agent2_ip
+        
+        zone_agent = api.post('/V2/zone', load_fixture(f"{fixt_dir}/zone_agent.json.template", v))
+        v['ZONE_ID'] = zone_agent['id']
+        
+        srv_ssh_2 = api.post('/V2/service', load_fixture(f"{fixt_dir}/service_ssh.json"))
+        v['SSH_SERVICE_ID'] = srv_ssh_2['id']
+        
+        srv_http = api.post('/V2/service', load_fixture(f"{fixt_dir}/service_http.json"))
+        v['HTTP_SERVICE_ID'] = srv_http['id']
+        
+        grp_prim = api.post('/V2/group', load_fixture(f"{fixt_dir}/group_primary.json"))
+        v['GROUP_PRIMARY_ID'] = grp_prim['id']
+        
+        grp_2 = api.post('/V2/group', load_fixture(f"{fixt_dir}/group_2.json"))
+        v['GROUP_2_ID'] = grp_2['id']
+        
+        prof_prim = api.post('/V2/profile', load_fixture(f"{fixt_dir}/profile_primary.json.template", v))
+        v['PROFILE_PRIMARY_ID'] = prof_prim['id']
+        
+        prof_2_sc = api.post('/V2/profile', load_fixture(f"{fixt_dir}/profile_2.json.template", v))
+        v['PROFILE_2_ID'] = prof_2_sc['id']
+        
+        api.put(f"/V2/group/{v['GROUP_PRIMARY_ID']}", load_fixture(f"{fixt_dir}/group_primary_update.json.template", v))
+        api.put(f"/V2/group/{v['GROUP_2_ID']}", load_fixture(f"{fixt_dir}/group_2_update.json.template", v))
+        
+        host_prim = wait_for_host_registered(api, "dog-agent-1", 120)
+        v['HOST_PRIMARY_ID'] = host_prim
+        
+        host_2 = wait_for_host_registered(api, "dog-agent-2", 120)
+        v['HOST_2_ID'] = host_2
+        
+        h1 = api.get(f"/V2/host/{host_prim}")
+        h1['group_id'] = v['GROUP_PRIMARY_ID']
+        if len(h1.get('hostkey', '')) < 10: h1['hostkey'] = h1['hostkey'].ljust(10, 'x')
+        if len(h1.get('name', '')) < 10: h1['name'] = h1['name'].ljust(10, 'x')
+        api.put(f"/V2/host/{host_prim}", h1)
+
+        h2 = api.get(f"/V2/host/{host_2}")
+        h2['group_id'] = v['GROUP_2_ID']
+        if len(h2.get('hostkey', '')) < 10: h2['hostkey'] = h2['hostkey'].ljust(10, 'x')
+        if len(h2.get('name', '')) < 10: h2['name'] = h2['name'].ljust(10, 'x')
+        api.put(f"/V2/host/{host_2}", h2)
+        
+        wait_for_convergence(api, v['GROUP_PRIMARY_ID'], host_prim, 600)
+        wait_for_convergence(api, v['GROUP_2_ID'], host_2, 60)
+        
+        time.sleep(1) # Give it 1s to settle
+        
+        assert_connectivity("dog-agent-2", agent1_ip, 5555, "open")
+        assert_connectivity("dog-agent-2", agent1_ip, 80, "closed")
+        
+        logging.info("SUCCESS: Scenario Two-agent reachability passed!")
+        
+    finally:
+        if not keep_running:
+            teardown()
+            pass
+
+if __name__ == "__main__":
+    main()
+

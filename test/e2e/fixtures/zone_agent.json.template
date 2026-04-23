@@ -1,5 +1,0 @@
-{
-  "name": "agent_zone",
-  "ipv4_addresses": ["${DOG_AGENT_IP}", "${DOG_AGENT_2_IP}"],
-  "ipv6_addresses": []
-}

@@ -1,11 +1,12 @@
 {
-  "name": "p_2",
+  "name": "local_group",
   "rules": {
     "inbound": [
       {
         "action": "ACCEPT",
         "active": true,
-        "comment": "allow all inbound",
+        "comment": "allow all",
+        "environments": [],
         "group": "any",
         "group_type": "ANY",
         "interface": "",
@@ -21,7 +22,8 @@
       {
         "action": "ACCEPT",
         "active": true,
-        "comment": "allow all outbound",
+        "comment": "allow all",
+        "environments": [],
         "group": "any",
         "group_type": "ANY",
         "interface": "",
@@ -34,5 +36,5 @@
       }
     ]
   },
-  "version": "1.1"
+  "profile_id": "8a12a03e-a454-40fd-b636-3a9e151f4bfa"
 }

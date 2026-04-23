@@ -1,32 +1,18 @@
 {
-  "name": "test_qa",
-  "version": "1.0",
+  "name": "local_group",
   "rules": {
     "inbound": [
       {
         "action": "ACCEPT",
         "active": true,
-        "comment": "test_zone",
-        "group": "$ZONE_TEST_ZONE_ID",
-        "group_type": "ZONE",
-        "interface": "",
-        "log": false,
-        "log_prefix": "",
-        "order": 1,
-        "service": "$SERVICE_SSH_ID",
-        "states": [],
-        "type": "BASIC"
-      },
-      {
-        "action": "DROP",
-        "active": true,
-        "comment": "",
+        "comment": "allow all",
+        "environments": [],
         "group": "any",
         "group_type": "ANY",
         "interface": "",
         "log": false,
         "log_prefix": "",
-        "order": 2,
+        "order": 1,
         "service": "any",
         "states": [],
         "type": "BASIC"
@@ -36,7 +22,8 @@
       {
         "action": "ACCEPT",
         "active": true,
-        "comment": "",
+        "comment": "allow all",
+        "environments": [],
         "group": "any",
         "group_type": "ANY",
         "interface": "",
@@ -48,5 +35,6 @@
         "type": "BASIC"
       }
     ]
-  }
+  },
+  "profile_id": "__PROFILE_ID__"
 }

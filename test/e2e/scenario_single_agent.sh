@@ -13,8 +13,8 @@ source "$(dirname "$0")/e2e_lib.sh"
 echo "Running scenario: Single-agent policy application"
 
 # 0. Discover IPs
-export DOG_AGENT_IP=$(get_agent_ip "dog-agent")
-echo "dog-agent IP: $DOG_AGENT_IP"
+export DOG_AGENT_IP=$(get_agent_ip "dog-agent-1")
+echo "dog-agent-1 IP: $DOG_AGENT_IP"
 
 # 1. Setup
 echo "Creating Zone..."
@@ -25,29 +25,30 @@ export ZONE_ID=$(post <(echo '{
 }') "${BASEURL}/V2/zone")
 
 echo "Creating Services..."
-export SSH_SERVICE_ID=$(post fixtures/service_ssh.json "${BASEURL}/V2/service")
+export SSH_SERVICE_ID=$(post fixtures/baseline/service_test_tcp_5555.json "${BASEURL}/V2/service")
 export HTTP_SERVICE_ID=$(post fixtures/service_http.json "${BASEURL}/V2/service")
 
 echo "Creating Group..."
 export GROUP_PRIMARY_ID=$(post fixtures/group_primary.json "${BASEURL}/V2/group")
 
-echo "Creating Profile..."
-# We will just allow SSH from ANY and drop HTTP
-export PROFILE_PRIMARY_ID=$(post <(echo '{
+echo "Creating Ruleset and Profile..."
+# We will just allow 5555 from ANY and drop HTTP
+export RULESET_PRIMARY_ID=$(post <(cat <<EOF
+{
   "name": "p_primary",
   "rules": {
     "inbound": [
       {
         "action": "ACCEPT",
         "active": true,
-        "comment": "allow ssh",
+        "comment": "allow 5555",
         "group": "any",
         "group_type": "ANY",
         "interface": "",
         "log": false,
         "log_prefix": "",
         "order": 1,
-        "service": "ssh",
+        "service": "${SSH_SERVICE_ID}",
         "states": [],
         "type": "BASIC"
       },
@@ -61,22 +62,32 @@ export PROFILE_PRIMARY_ID=$(post <(echo '{
         "log": false,
         "log_prefix": "",
         "order": 2,
-        "service": "http",
+        "service": "${HTTP_SERVICE_ID}",
         "states": [],
         "type": "BASIC"
       }
     ],
     "outbound": []
-  },
-  "version": "1.1"
-}') "${BASEURL}/V2/profile")
+  }
+}
+EOF
+) "${BASEURL}/V2/ruleset")
+
+export PROFILE_PRIMARY_ID=$(post <(cat <<EOF
+{
+  "name": "p_primary",
+  "version": "1.1",
+  "ruleset_id": "${RULESET_PRIMARY_ID}"
+}
+EOF
+) "${BASEURL}/V2/profile")
 
 echo "Assigning Profile to Group..."
 put <(envsubst < fixtures/group_primary_update.json.template) "${BASEURL}/V2/group/${GROUP_PRIMARY_ID}"
 
 # 2. Assign Host to Group
 echo "Waiting for host to register..."
-export HOST_PRIMARY_ID=$(wait_for_host_registered "dog-agent" 60)
+export HOST_PRIMARY_ID=$(wait_for_host_registered "dog-agent-1" 60)
 
 echo "Assigning Host to Group..."
 put <(envsubst < fixtures/host_primary_update.json.template) "${BASEURL}/V2/host/${HOST_PRIMARY_ID}"
@@ -89,7 +100,7 @@ wait_for_convergence "${GROUP_PRIMARY_ID}" "${HOST_PRIMARY_ID}" 60
 echo "Verifying rules applied..."
 sleep 1
 
-assert_iptables_contains "dog-agent" "allow ssh"
-assert_iptables_contains "dog-agent" "deny http"
+assert_iptables_contains "dog-agent-1" "allow 5555"
+assert_iptables_contains "dog-agent-1" "deny http"
 
 echo "Scenario 'Single-agent' passed!"

@@ -2,30 +2,10 @@
 set -euo pipefail
 
 # Source existing test library for post/put/get helpers
-# Assuming we are in test/e2e/
 source "$(dirname "$0")/../test_lib.sh"
 
 # Override or set BASEURL for E2E
 export BASEURL=${BASEURL:-"http://localhost:7070/api"}
-
-wait_for_healthy() {
-    local url=$1
-    local timeout=$2
-    local start_time=$(date +%s)
-    echo "Waiting for $url to be healthy..."
-    while true; do
-        if curl --silent --fail "$url" > /dev/null; then
-            echo "URL $url is healthy."
-            return 0
-        fi
-        local current_time=$(date +%s)
-        if (( current_time - start_time > timeout )); then
-            echo "Timeout waiting for $url"
-            return 1
-        fi
-        sleep 2
-    done
-}
 
 wait_for_host_registered() {
     local hostname=$1
@@ -33,22 +13,19 @@ wait_for_host_registered() {
     local start_time=$(date +%s)
     echo "Waiting for host $hostname to register..." >&2
     while true; do
-        local host_json=$(curl ${OPTS[@]} --silent -H "Authorization: Bearer $TF_VAR_dog_api_token_sandbox" "${BASEURL}/V2/host?name=${hostname}")
-        # If the response is a list and not empty
-        if [[ $(echo "$host_json" | jq '. | length') -gt 0 ]]; then
-            local host_id=$(echo "$host_json" | jq -r '.[0].id')
-            if [[ "$host_id" != "null" ]]; then
-                echo "Host $hostname registered with ID $host_id" >&2
-                echo "$host_id"
-                return 0
-            fi
+        local host_json=$(curl ${OPTS[@]} --silent -H "Authorization: Bearer $TF_VAR_dog_api_token_sandbox" "${BASEURL}/host?name=${hostname}")
+        local host_id=$(echo "$host_json" | jq -r 'if type=="array" then .[0].id else .id end')
+        if [[ -n "$host_id" && "$host_id" != "null" && "$host_id" != "" ]]; then
+            echo "Host $hostname registered with ID $host_id" >&2
+            echo "$host_id"
+            return 0
         fi
         local current_time=$(date +%s)
         if (( current_time - start_time > timeout )); then
             echo "Timeout waiting for host $hostname to register" >&2
             return 1
         fi
-        sleep 2
+        sleep 10
     done
 }
 
@@ -59,15 +36,21 @@ wait_for_convergence() {
     local start_time=$(date +%s)
     echo "Waiting for convergence between group $group_id and host $host_id..."
     while true; do
-        local group_json=$(curl ${OPTS[@]} --silent -H "Authorization: Bearer $TF_VAR_dog_api_token_sandbox" "${BASEURL}/V2/group/${group_id}")
-        local host_json=$(curl ${OPTS[@]} --silent -H "Authorization: Bearer $TF_VAR_dog_api_token_sandbox" "${BASEURL}/V2/host/${host_id}")
+        if [[ -z "$host_id" || "$host_id" == "null" ]]; then
+            echo "Error: host_id is empty or null in wait_for_convergence." >&2
+            return 1
+        fi
+
+        # Use curl directly to get JSON bodies by ID
+        local group_json=$(curl ${OPTS[@]} --silent -H "Authorization: Bearer $TF_VAR_dog_api_token_sandbox" "${BASEURL}/group/${group_id}")
+        local host_json=$(curl ${OPTS[@]} --silent -H "Authorization: Bearer $TF_VAR_dog_api_token_sandbox" "${BASEURL}/host/${host_id}")
 
         local group_ipt_hash=$(echo "$group_json" | jq -r '.hash4_iptables // empty')
         local group_ips_hash=$(echo "$group_json" | jq -r '.hash4_ipsets // empty')
         local host_ipt_hash=$(echo "$host_json" | jq -r '.hash4_iptables // empty')
         local host_ips_hash=$(echo "$host_json" | jq -r '.hash4_ipsets // empty')
 
-        if [[ -n "$group_ipt_hash" && "$group_ipt_hash" == "$host_ipt_hash" && -n "$group_ips_hash" && "$group_ips_hash" == "$host_ips_hash" ]]; then
+        if [ -n "$group_ipt_hash" ] && [ "$group_ipt_hash" = "$host_ipt_hash" ] && [ -n "$group_ips_hash" ] && [ "$group_ips_hash" = "$host_ips_hash" ]; then
             echo "Convergence reached!"
             return 0
         fi
@@ -79,14 +62,14 @@ wait_for_convergence() {
             echo "Host  ($host_id) hashes: ipt=$host_ipt_hash, ips=$host_ips_hash"
             # Failure diagnostics
             echo "--- Host IPtables Save ---"
-            agent_exec "dog-agent" "iptables-save" || true
+            agent_exec "dog-agent-1" iptables-save || true
             echo "--- Host IPset List ---"
-            agent_exec "dog-agent" "ipset list" || true
+            agent_exec "dog-agent-1" ipset list || true
             echo "--- Trainer Logs Tail ---"
             docker-compose -p dog_e2e logs --tail 50 dog-trainer || true
             return 1
         fi
-        sleep 2
+        sleep 10
     done
 }
 
@@ -98,8 +81,7 @@ agent_exec() {
 
 get_agent_ip() {
     local container=$1
-    # Assuming project name 'dog_e2e' as per run.sh
-    docker inspect -f '{{.NetworkSettings.Networks.dog_e2e_default.IPAddress}}' "$container"
+    docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container"
 }
 
 assert_connectivity() {
@@ -126,14 +108,45 @@ assert_connectivity() {
     fi
 }
 
-assert_iptables_contains() {
-    local container=$1
-    local pattern=$2
-    echo "Checking if iptables on $container contains '$pattern'..."
-    if agent_exec "$container" iptables-save | grep -q "$pattern"; then
-        echo "PASS: iptables contains '$pattern'"
+resolve_json_template() {
+    local template=$1
+    local output=$2
+    shift 2
+    
+    local jq_args=()
+    local jq_expr="walk(if type == \"string\" then . as \$val | "
+    
+    local first=1
+    while (( "$#" )); do
+        local key=$1
+        local val=$2
+        shift 2
+        
+        # Unique arg name for jq
+        local arg_name="v$(echo -n "$key" | md5sum | cut -c1-8)"
+        jq_args+=("--arg" "$arg_name" "$val")
+        
+        # Determine if we should parse as boolean
+        local parse_val="\$$arg_name"
+        if [ "$val" = "true" ]; then
+             parse_val="true"
+        elif [ "$val" = "false" ]; then
+             parse_val="false"
+        fi
+        
+        if [ $first -eq 1 ]; then
+            jq_expr="${jq_expr} if \$val == \"${key}\" then ${parse_val}"
+            first=0
+        else
+            jq_expr="${jq_expr} elif \$val == \"${key}\" then ${parse_val}"
+        fi
+    done
+    
+    if [ $first -eq 0 ]; then
+        jq_expr="${jq_expr} else \$val end else . end)"
     else
-        echo "FAIL: iptables does not contain '$pattern'"
-        return 1
+        jq_expr="."
     fi
+    
+    jq "${jq_args[@]}" "$jq_expr" "$template" > "$output"
 }

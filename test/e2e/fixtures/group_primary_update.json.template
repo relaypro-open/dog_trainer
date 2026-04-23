@@ -1,6 +1,0 @@
-{
-  "name": "g_primary",
-  "profile_name": "p_primary",
-  "profile_id": "${PROFILE_PRIMARY_ID}",
-  "profile_version": "latest"
-}
